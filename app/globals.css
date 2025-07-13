@@ -10,6 +10,23 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* Touch-specific utilities */
+  .tap-highlight-none {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .touch-pan-y {
+    touch-action: pan-y;
+  }
+  
+  .touch-pan-x {
+    touch-action: pan-x;
+  }
+  
+  .touch-none {
+    touch-action: none;
+  }
 }
 
 @layer base {
@@ -90,5 +107,111 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+  
+  /* Enhanced smooth scrolling with mobile optimization */
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 80px; /* Account for sticky header */
+  }
+  
+  /* Mobile-specific scroll padding */
+  @media (max-width: 1024px) {
+    html {
+      scroll-padding-top: 70px;
+    }
+  }
+  
+  /* Custom scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: rgb(248 250 252 / 0.5);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, rgb(59 130 246), rgb(147 51 234));
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(to bottom, rgb(37 99 235), rgb(126 34 206));
+  }
+  
+  /* Touch-friendly interactions */
+  @media (hover: none) and (pointer: coarse) {
+    /* Remove hover effects on touch devices */
+    .hover\:scale-105:hover {
+      transform: none;
+    }
+    
+    /* Increase tap targets */
+    button, a, [role="button"] {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+  
+  /* Disable text selection on UI elements for better touch experience */
+  button, .select-none {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* Enhanced touch feedback */
+  button:active, [role="button"]:active {
+    transform: scale(0.95);
+    transition: transform 0.1s ease;
+  }
+  
+  /* Prevent zoom on input focus (iOS) */
+  @media screen and (max-width: 768px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    textarea,
+    select {
+      font-size: 16px;
+    }
+  }
+  
+  /* Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  
+  /* Mobile-specific optimizations */
+  @media (max-width: 768px) {
+    /* Improve readability on small screens */
+    body {
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    
+    /* Optimize hero text for mobile */
+    .hero-title {
+      font-size: clamp(2rem, 8vw, 4rem);
+      line-height: 1.1;
+    }
+    
+    /* Better spacing for mobile cards */
+    .mobile-card {
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
   }
 }

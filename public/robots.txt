@@ -1,0 +1,32 @@
+User-agent: *
+Allow: /
+
+# Specific bot instructions
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
+
+# Disallow admin and private areas
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/
+Disallow: /private/
+
+# Allow images and static assets
+Allow: /public/
+Allow: /*.jpg
+Allow: /*.png
+Allow: /*.gif
+Allow: /*.svg
+Allow: /*.css
+Allow: /*.js
+
+# Sitemap location
+Sitemap: https://ai4u.space/sitemap.xml
+
+# Crawl delay (seconds)
+Crawl-delay: 1
