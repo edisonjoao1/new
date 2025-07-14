@@ -49,6 +49,7 @@ export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const sectionsRef = useRef<Record<string, HTMLElement | null>>({})
+  const [windowDimensions, setWindowDimensions] = useState({ width: 0, height: 0 })
 
   const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
     api: "/api/chat",
@@ -75,10 +76,21 @@ export default function LandingPage() {
   }, [handleMouseMove])
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      setWindowDimensions({ width: window.innerWidth, height: window.innerHeight })
+    }
+    // Existing useEffect for chatEndRef
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
   }, [messages])
+
+  // Add a separate useEffect for window dimensions to run only once on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setWindowDimensions({ width: window.innerWidth, height: window.innerHeight })
+    }
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -142,17 +154,23 @@ export default function LandingPage() {
     window.location.href = `mailto:ideas@ai4u.space?subject=${subject}&body=${body}`
   }
 
-  const heroParallaxStyle = (depth: number) => ({
-    transform: `translate3d(${(mousePosition.x - window.innerWidth / 2) * depth * 0.01}px, ${
-      (mousePosition.y - window.innerHeight / 2) * depth * 0.01
-    }px, 0)`,
-  })
+  const heroParallaxStyle = (depth: number) => {
+    if (windowDimensions.width === 0) return {} // Return empty object on server
+    return {
+      transform: `translate3d(${(mousePosition.x - windowDimensions.width / 2) * depth * 0.01}px, ${
+        (mousePosition.y - windowDimensions.height / 2) * depth * 0.01
+      }px, 0)`,
+    }
+  }
 
-  const floatingShapeStyle = (depth: number) => ({
-    transform: `translate3d(${(mousePosition.x - window.innerWidth / 2) * depth * 0.005}px, ${
-      (mousePosition.y - window.innerHeight / 2) * depth * 0.005
-    }px, 0)`,
-  })
+  const floatingShapeStyle = (depth: number) => {
+    if (windowDimensions.width === 0) return {} // Return empty object on server
+    return {
+      transform: `translate3d(${(mousePosition.x - windowDimensions.width / 2) * depth * 0.005}px, ${
+        (mousePosition.y - windowDimensions.height / 2) * depth * 0.005
+      }px, 0)`,
+    }
+  }
 
   const chatQuickActions = [
     "What services do you offer?",
