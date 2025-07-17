@@ -55,8 +55,15 @@ const AdvancedParticleSystem: React.FC<{
     }>
   >([])
   const animationRef = useRef<number>()
+  const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isClient) return
+
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -64,6 +71,7 @@ const AdvancedParticleSystem: React.FC<{
     if (!ctx) return
 
     const resizeCanvas = () => {
+      if (typeof window === "undefined") return
       canvas.width = canvas.offsetWidth * window.devicePixelRatio
       canvas.height = canvas.offsetHeight * window.devicePixelRatio
       ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
@@ -180,7 +188,9 @@ const AdvancedParticleSystem: React.FC<{
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [mousePosition, scrollY, isActive])
+  }, [mousePosition, scrollY, isActive, isClient])
+
+  if (!isClient) return null
 
   return (
     <canvas
@@ -200,9 +210,14 @@ const Floating3DElement: React.FC<{
 }> = ({ children, depth, mousePosition, className }) => {
   const elementRef = useRef<HTMLDivElement>(null)
   const [transform, setTransform] = useState("")
+  const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
-    if (!elementRef.current) return
+    setIsClient(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isClient || !elementRef.current || typeof window === "undefined") return
 
     const rect = elementRef.current.getBoundingClientRect()
     const centerX = rect.left + rect.width / 2
@@ -220,7 +235,7 @@ const Floating3DElement: React.FC<{
       rotateX(${rotateX}deg) 
       rotateY(${rotateY}deg)
     `)
-  }, [mousePosition, depth])
+  }, [mousePosition, depth, isClient])
 
   return (
     <div ref={elementRef} className={cn("transition-transform duration-300 ease-out", className)} style={{ transform }}>
@@ -237,8 +252,15 @@ const MorphingSVGShape: React.FC<{
 }> = ({ className, colors, complexity = 5 }) => {
   const pathRef = useRef<SVGPathElement>(null)
   const [currentPath, setCurrentPath] = useState("")
+  const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isClient) return
+
     const generatePath = () => {
       const points = Array.from({ length: complexity }, (_, i) => {
         const angle = (i / complexity) * Math.PI * 2
@@ -260,7 +282,9 @@ const MorphingSVGShape: React.FC<{
     }
 
     animate()
-  }, [complexity])
+  }, [complexity, isClient])
+
+  if (!isClient) return null
 
   return (
     <div className={cn("absolute", className)}>
@@ -298,6 +322,11 @@ const InteractiveTerminal: React.FC<{ isVisible: boolean }> = ({ isVisible }) =>
   const [lines, setLines] = useState<string[]>([])
   const [currentLine, setCurrentLine] = useState("")
   const [isTyping, setIsTyping] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   const codeSnippets = [
     "npm install @ai-sdk/openai",
@@ -310,7 +339,7 @@ const InteractiveTerminal: React.FC<{ isVisible: boolean }> = ({ isVisible }) =>
   ]
 
   useEffect(() => {
-    if (!isVisible) return
+    if (!isVisible || !isClient) return
 
     let lineIndex = 0
     let charIndex = 0
@@ -343,9 +372,9 @@ const InteractiveTerminal: React.FC<{ isVisible: boolean }> = ({ isVisible }) =>
 
     const timer = setTimeout(typeWriter, 1000)
     return () => clearTimeout(timer)
-  }, [isVisible])
+  }, [isVisible, isClient])
 
-  if (!isVisible) return null
+  if (!isVisible || !isClient) return null
 
   return (
     <div className="absolute top-4 right-4 w-80 bg-gray-900 rounded-lg p-4 font-mono text-sm shadow-2xl border border-gray-700">
@@ -402,8 +431,15 @@ const GradientIconWrapper: React.FC<{
 const useScrollAnimation = (threshold = 0.1) => {
   const [isVisible, setIsVisible] = useState(false)
   const elementRef = useRef<HTMLDivElement>(null)
+  const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isClient) return
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         setIsVisible(entry.isIntersecting)
@@ -416,7 +452,7 @@ const useScrollAnimation = (threshold = 0.1) => {
     }
 
     return () => observer.disconnect()
-  }, [threshold])
+  }, [threshold, isClient])
 
   return { elementRef, isVisible }
 }
@@ -432,6 +468,7 @@ export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const [isHeroActive, setIsHeroActive] = useState(false)
+  const [isClient, setIsClient] = useState(false)
 
   const chatEndRef = useRef<HTMLDivElement>(null)
   const sectionsRef = useRef<Record<string, HTMLElement | null>>({})
@@ -449,19 +486,27 @@ export default function LandingPage() {
     ],
   })
 
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
   // Enhanced mouse tracking
   const handleMouseMove = useCallback((e: MouseEvent) => {
     setMousePosition({ x: e.clientX, y: e.clientY })
   }, [])
 
   const handleMouseLeave = useCallback(() => {
-    setMousePosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
+    if (typeof window !== "undefined") {
+      setMousePosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
+    }
   }, [])
 
   useEffect(() => {
+    if (!isClient) return
+
     window.addEventListener("mousemove", handleMouseMove)
     return () => window.removeEventListener("mousemove", handleMouseMove)
-  }, [handleMouseMove])
+  }, [handleMouseMove, isClient])
 
   useEffect(() => {
     if (chatEndRef.current) {
@@ -470,6 +515,8 @@ export default function LandingPage() {
   }, [messages])
 
   useEffect(() => {
+    if (!isClient) return
+
     const handleScroll = () => {
       const currentScrollY = window.scrollY
       setScrollY(currentScrollY)
@@ -514,9 +561,11 @@ export default function LandingPage() {
     window.addEventListener("scroll", handleScroll)
     handleScroll()
     return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
+  }, [isClient])
 
   const scrollToSection = (sectionId: string) => {
+    if (typeof window === "undefined") return
+
     const section = document.getElementById(sectionId)
     if (section) {
       const headerOffset = 80
@@ -535,7 +584,9 @@ export default function LandingPage() {
     e.preventDefault()
     const subject = encodeURIComponent("New Idea Submission")
     const body = encodeURIComponent(`Name: ${ideaForm.name}\nEmail: ${ideaForm.email}\n\nIdea:\n${ideaForm.idea}`)
-    window.location.href = `mailto:ideas@ai4u.space?subject=${subject}&body=${body}`
+    if (typeof window !== "undefined") {
+      window.location.href = `mailto:ideas@ai4u.space?subject=${subject}&body=${body}`
+    }
   }
 
   const chatQuickActions = [
@@ -544,6 +595,10 @@ export default function LandingPage() {
     "How can AI help my business?",
     "What's your pricing model?",
   ]
+
+  // Safe window dimensions
+  const windowWidth = isClient && typeof window !== "undefined" ? window.innerWidth : 1920
+  const windowHeight = isClient && typeof window !== "undefined" ? window.innerHeight : 1080
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative overflow-hidden">
@@ -555,19 +610,19 @@ export default function LandingPage() {
         <div
           className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-br from-pastel-teal to-pastel-lavender rounded-full blur-3xl opacity-50 animate-pulse-slow"
           style={{
-            transform: `translate3d(${(mousePosition.x - window.innerWidth / 2) * 0.01}px, ${(mousePosition.y - window.innerHeight / 2) * 0.01}px, 0) scale(${1 + scrollY * 0.0005})`,
+            transform: `translate3d(${(mousePosition.x - windowWidth / 2) * 0.01}px, ${(mousePosition.y - windowHeight / 2) * 0.01}px, 0) scale(${1 + scrollY * 0.0005})`,
           }}
         />
         <div
           className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-gradient-to-br from-soft-pink to-light-violet rounded-full blur-3xl opacity-50 animate-pulse-slow delay-1000"
           style={{
-            transform: `translate3d(${(mousePosition.x - window.innerWidth / 2) * -0.005}px, ${(mousePosition.y - window.innerHeight / 2) * -0.005}px, 0) scale(${1 + scrollY * 0.0003})`,
+            transform: `translate3d(${(mousePosition.x - windowWidth / 2) * -0.005}px, ${(mousePosition.y - windowHeight / 2) * -0.005}px, 0) scale(${1 + scrollY * 0.0003})`,
           }}
         />
         <div
           className="absolute top-1/2 left-1/2 w-72 h-72 bg-gradient-to-br from-pale-blue to-mint rounded-full blur-3xl opacity-50 animate-pulse-slow delay-2000"
           style={{
-            transform: `translate3d(${(mousePosition.x - window.innerWidth / 2) * 0.008}px, ${(mousePosition.y - window.innerHeight / 2) * 0.008}px, 0) scale(${1 + scrollY * 0.0004})`,
+            transform: `translate3d(${(mousePosition.x - windowWidth / 2) * 0.008}px, ${(mousePosition.y - windowHeight / 2) * 0.008}px, 0) scale(${1 + scrollY * 0.0004})`,
           }}
         />
       </div>
@@ -705,14 +760,14 @@ export default function LandingPage() {
                     rgba(255,255,255,0.85) 50%, 
                     rgba(255,255,255,0.75) 100%
                   ),
-                  radial-gradient(circle at ${(mousePosition.x / window.innerWidth) * 100}% ${(mousePosition.y / window.innerHeight) * 100}%, 
+                  radial-gradient(circle at ${(mousePosition.x / windowWidth) * 100}% ${(mousePosition.y / windowHeight) * 100}%, 
                     rgba(59,130,246,0.15) 0%, 
                     rgba(139,92,246,0.1) 30%, 
                     rgba(236,72,153,0.05) 60%,
                     transparent 100%
                   )
                 `,
-                transform: `translateZ(0) scale(${1 + scrollY * 0.0001}) rotateX(${(mousePosition.y - window.innerHeight / 2) * 0.005}deg) rotateY(${(mousePosition.x - window.innerWidth / 2) * 0.005}deg)`,
+                transform: `translateZ(0) scale(${1 + scrollY * 0.0001}) rotateX(${(mousePosition.y - windowHeight / 2) * 0.005}deg) rotateY(${(mousePosition.x - windowWidth / 2) * 0.005}deg)`,
                 transition: "all 0.3s ease-out",
               }}
             >
@@ -799,8 +854,8 @@ export default function LandingPage() {
                         <div
                           className="absolute bottom-0 left-1/2 transform -translate-x-1/2 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 group-hover:w-full transition-all duration-1000 ease-out rounded-full"
                           style={{
-                            width: `${Math.min(60, (mousePosition.x / window.innerWidth) * 80)}%`,
-                            filter: `blur(${Math.abs(mousePosition.x - window.innerWidth / 2) * 0.005}px)`,
+                            width: `${Math.min(60, (mousePosition.x / windowWidth) * 80)}%`,
+                            filter: `blur(${Math.abs(mousePosition.x - windowWidth / 2) * 0.005}px)`,
                           }}
                         ></div>
                       </div>
@@ -925,7 +980,7 @@ export default function LandingPage() {
                 <div
                   className="absolute top-0 left-0 w-full h-full opacity-0 hover:opacity-100 transition-opacity duration-700"
                   style={{
-                    background: `radial-gradient(circle at ${(mousePosition.x / window.innerWidth) * 100}% ${(mousePosition.y / window.innerHeight) * 100}%, rgba(59,130,246,0.05) 0%, transparent 50%)`,
+                    background: `radial-gradient(circle at ${(mousePosition.x / windowWidth) * 100}% ${(mousePosition.y / windowHeight) * 100}%, rgba(59,130,246,0.05) 0%, transparent 50%)`,
                   }}
                 ></div>
               </div>
@@ -1079,9 +1134,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Continue with other sections... */}
-      {/* For brevity, I'll continue with the Products section and then indicate the pattern */}
-
       {/* Enhanced Live Products Section */}
       <section
         id="products"
@@ -1213,9 +1265,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
-      {/* I'll continue with the remaining sections following the same enhanced pattern... */}
-      {/* Results, Insights, Ideas, and Contact sections would follow similar enhancements */}
 
       {/* Enhanced Chat Interface */}
       {isChatOpen && (
