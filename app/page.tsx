@@ -2,7 +2,6 @@
 
 import type React from "react"
 import { useState, useRef, useEffect, useCallback } from "react"
-import { useChat } from "ai/react"
 import {
   ArrowRight,
   Play,
@@ -82,13 +81,13 @@ const AdvancedParticleSystem: React.FC<{
 
     // Initialize particles
     const initParticles = () => {
-      particlesRef.current = Array.from({ length: 100 }, () => ({
+      particlesRef.current = Array.from({ length: 50 }, () => ({
         x: Math.random() * canvas.offsetWidth,
         y: Math.random() * canvas.offsetHeight,
-        vx: (Math.random() - 0.5) * 2,
-        vy: (Math.random() - 0.5) * 2,
-        size: Math.random() * 3 + 1,
-        opacity: Math.random() * 0.8 + 0.2,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        size: Math.random() * 2 + 1,
+        opacity: Math.random() * 0.6 + 0.2,
         color: ["#3B82F6", "#8B5CF6", "#EC4899", "#10B981", "#F59E0B", "#EF4444"][Math.floor(Math.random() * 6)],
         life: Math.random() * 100 + 50,
         maxLife: Math.random() * 100 + 50,
@@ -223,11 +222,11 @@ const Floating3DElement: React.FC<{
     const centerX = rect.left + rect.width / 2
     const centerY = rect.top + rect.height / 2
 
-    const deltaX = (mousePosition.x - centerX) * depth * 0.005
-    const deltaY = (mousePosition.y - centerY) * depth * 0.005
+    const deltaX = (mousePosition.x - centerX) * depth * 0.001
+    const deltaY = (mousePosition.y - centerY) * depth * 0.001
 
-    const rotateX = (mousePosition.y - centerY) * depth * 0.01
-    const rotateY = (mousePosition.x - centerX) * depth * 0.01
+    const rotateX = (mousePosition.y - centerY) * depth * 0.002
+    const rotateY = (mousePosition.x - centerX) * depth * 0.002
 
     setTransform(`
       perspective(1000px) 
@@ -474,17 +473,48 @@ export default function LandingPage() {
   const sectionsRef = useRef<Record<string, HTMLElement | null>>({})
   const { elementRef: heroRef, isVisible: isHeroVisible } = useScrollAnimation(0.3)
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
-    api: "/api/chat",
-    initialMessages: [
-      {
-        id: "1",
-        role: "assistant",
+  // Replace the useChat hook with local state
+  const [messages, setMessages] = useState([
+    {
+      id: "1",
+      role: "assistant" as const,
+      content:
+        "Hi! I'm AI 4U's assistant. I can help you learn about our AI consulting services, mobile apps, and how we can transform your business. What would you like to know?",
+    },
+  ])
+  const [input, setInput] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim()) return
+
+    const userMessage = {
+      id: Date.now().toString(),
+      role: "user" as const,
+      content: input,
+    }
+
+    setMessages((prev) => [...prev, userMessage])
+    setInput("")
+    setIsLoading(true)
+
+    // Simulate AI response
+    setTimeout(() => {
+      const aiResponse = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant" as const,
         content:
-          "Hi! I'm AI 4U's assistant. I can help you learn about our AI consulting services, mobile apps, and how we can transform your business. What would you like to know?",
-      },
-    ],
-  })
+          "Thanks for your question! I'd be happy to help you learn more about AI 4U's services. We specialize in AI strategy consulting, custom app development, automation solutions, and rapid MVP development. What specific area interests you most?",
+      }
+      setMessages((prev) => [...prev, aiResponse])
+      setIsLoading(false)
+    }, 1000)
+  }
 
   useEffect(() => {
     setIsClient(true)
@@ -610,19 +640,19 @@ export default function LandingPage() {
         <div
           className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-br from-pastel-teal to-pastel-lavender rounded-full blur-3xl opacity-50 animate-pulse-slow"
           style={{
-            transform: `translate3d(${(mousePosition.x - windowWidth / 2) * 0.01}px, ${(mousePosition.y - windowHeight / 2) * 0.01}px, 0) scale(${1 + scrollY * 0.0005})`,
+            transform: `translate3d(${(mousePosition.x - windowWidth / 2) * 0.002}px, ${(mousePosition.y - windowHeight / 2) * 0.002}px, 0) scale(${1 + scrollY * 0.0001})`,
           }}
         />
         <div
           className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-gradient-to-br from-soft-pink to-light-violet rounded-full blur-3xl opacity-50 animate-pulse-slow delay-1000"
           style={{
-            transform: `translate3d(${(mousePosition.x - windowWidth / 2) * -0.005}px, ${(mousePosition.y - windowHeight / 2) * -0.005}px, 0) scale(${1 + scrollY * 0.0003})`,
+            transform: `translate3d(${(mousePosition.x - windowWidth / 2) * -0.001}px, ${(mousePosition.y - windowHeight / 2) * -0.001}px, 0) scale(${1 + scrollY * 0.0001})`,
           }}
         />
         <div
           className="absolute top-1/2 left-1/2 w-72 h-72 bg-gradient-to-br from-pale-blue to-mint rounded-full blur-3xl opacity-50 animate-pulse-slow delay-2000"
           style={{
-            transform: `translate3d(${(mousePosition.x - windowWidth / 2) * 0.008}px, ${(mousePosition.y - windowHeight / 2) * 0.008}px, 0) scale(${1 + scrollY * 0.0004})`,
+            transform: `translate3d(${(mousePosition.x - windowWidth / 2) * 0.0016}px, ${(mousePosition.y - windowHeight / 2) * 0.0016}px, 0) scale(${1 + scrollY * 0.0001})`,
           }}
         />
       </div>
@@ -630,7 +660,7 @@ export default function LandingPage() {
       {/* Enhanced Navigation */}
       <nav
         className={cn(
-          "sticky top-0 z-50 transition-all duration-500",
+          "sticky top-0 z-50 transition-all duration-300",
           headerScrolled ? "bg-white/90 backdrop-blur-2xl border-b border-gray-200/50 shadow-xl" : "bg-transparent",
         )}
       >
@@ -639,7 +669,7 @@ export default function LandingPage() {
             {/* Enhanced Logo */}
             <Floating3DElement depth={1} mousePosition={mousePosition}>
               <div className="flex items-center space-x-3 group cursor-pointer">
-                <div className="grid grid-cols-2 gap-1 relative transform group-hover:scale-110 transition-all duration-500">
+                <div className="grid grid-cols-2 gap-1 relative transform group-hover:scale-110 transition-all duration-300">
                   <div className="w-2 h-2 bg-gray-900 rounded-sm group-hover:bg-gradient-to-br from-blue-500 to-purple-500 transition-all duration-300 group-hover:rotate-12 group-hover:scale-125"></div>
                   <div className="w-2 h-2 bg-gray-700 rounded-sm group-hover:bg-gradient-to-br from-purple-500 to-pink-500 transition-all duration-300 delay-75 group-hover:-rotate-12 group-hover:scale-125"></div>
                   <div className="w-2 h-2 bg-gray-500 rounded-sm group-hover:bg-gradient-to-br from-pink-500 to-orange-500 transition-all duration-300 delay-150 group-hover:rotate-6 group-hover:scale-125"></div>
@@ -670,7 +700,7 @@ export default function LandingPage() {
                   <button
                     onClick={() => scrollToSection(item.id)}
                     className={cn(
-                      "relative px-6 py-2 text-sm font-medium rounded-full transition-all duration-500 overflow-hidden group flex items-center space-x-2",
+                      "relative px-6 py-2 text-sm font-medium rounded-full transition-all duration-300 overflow-hidden group flex items-center space-x-2",
                       activeSection === item.id
                         ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105"
                         : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 hover:scale-105 hover:shadow-md",
@@ -690,7 +720,7 @@ export default function LandingPage() {
               <Floating3DElement depth={1} mousePosition={mousePosition}>
                 <Button
                   onClick={() => setIsChatOpen(true)}
-                  className="bg-gray-900 hover:bg-gray-800 text-white rounded-full px-6 py-2.5 text-sm font-medium shadow-lg hover:shadow-2xl transition-all duration-500 hover:scale-105 relative overflow-hidden group"
+                  className="bg-gray-900 hover:bg-gray-800 text-white rounded-full px-6 py-2.5 text-sm font-medium shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105 relative overflow-hidden group"
                 >
                   <span className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                   <span className="relative z-10 flex items-center">
@@ -767,29 +797,31 @@ export default function LandingPage() {
                     transparent 100%
                   )
                 `,
-                transform: `translateZ(0) scale(${1 + scrollY * 0.0001}) rotateX(${(mousePosition.y - windowHeight / 2) * 0.005}deg) rotateY(${(mousePosition.x - windowWidth / 2) * 0.005}deg)`,
+                transform: `translateZ(0) scale(${1 + scrollY * 0.00002}) rotateX(${(mousePosition.y - windowHeight / 2) * 0.001}deg) rotateY(${(mousePosition.x - windowWidth / 2) * 0.001}deg)`,
                 transition: "all 0.3s ease-out",
               }}
             >
               {/* Advanced Particle System */}
-              <AdvancedParticleSystem mousePosition={mousePosition} scrollY={scrollY} isActive={isHeroActive} />
+              {isHeroVisible && (
+                <AdvancedParticleSystem mousePosition={mousePosition} scrollY={scrollY} isActive={isHeroActive} />
+              )}
 
               {/* Interactive Terminal */}
               <InteractiveTerminal isVisible={isHeroVisible} />
 
               {/* Morphing SVG Shapes */}
               <MorphingSVGShape
-                className="top-10 left-10 w-32 h-32 opacity-40"
+                className="top-10 left-10 w-32 h-32 opacity-10"
                 colors={["#3B82F6", "#8B5CF6", "#EC4899"]}
                 complexity={6}
               />
               <MorphingSVGShape
-                className="bottom-20 right-20 w-24 h-24 opacity-30"
+                className="bottom-20 right-20 w-24 h-24 opacity-10"
                 colors={["#10B981", "#F59E0B", "#EF4444"]}
                 complexity={4}
               />
               <MorphingSVGShape
-                className="top-1/2 left-1/3 w-20 h-20 opacity-35"
+                className="top-1/2 left-1/3 w-20 h-20 opacity-10"
                 colors={["#06B6D4", "#8B5CF6", "#F59E0B"]}
                 complexity={5}
               />
@@ -829,7 +861,7 @@ export default function LandingPage() {
                             <span
                               key={word}
                               className={cn(
-                                "inline-block hover:scale-110 hover:-translate-y-2 transition-all duration-700 cursor-default mr-4",
+                                "inline-block hover:scale-110 hover:-translate-y-1 transition-all duration-300 cursor-default mr-4",
                                 index === 1 &&
                                   "bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent",
                                 index === 4 && "relative",
@@ -842,8 +874,8 @@ export default function LandingPage() {
                               {word}
                               {index === 4 && (
                                 <>
-                                  <div className="absolute -inset-4 bg-gradient-to-r from-blue-400/20 via-purple-400/20 to-pink-400/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-700 animate-pulse"></div>
-                                  <div className="absolute -inset-2 border-2 border-gradient-to-r from-blue-500 to-purple-500 rounded-xl opacity-0 group-hover:opacity-50 transition-opacity duration-500"></div>
+                                  <div className="absolute -inset-4 bg-gradient-to-r from-blue-400/20 via-purple-400/20 to-pink-400/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-300 animate-pulse"></div>
+                                  <div className="absolute -inset-2 border-2 border-gradient-to-r from-blue-500 to-purple-500 rounded-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
                                 </>
                               )}
                             </span>
@@ -852,7 +884,7 @@ export default function LandingPage() {
 
                         {/* Dynamic Underline */}
                         <div
-                          className="absolute bottom-0 left-1/2 transform -translate-x-1/2 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 group-hover:w-full transition-all duration-1000 ease-out rounded-full"
+                          className="absolute bottom-0 left-1/2 transform -translate-x-1/2 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 group-hover:w-full transition-all duration-300 ease-out rounded-full"
                           style={{
                             width: `${Math.min(60, (mousePosition.x / windowWidth) * 80)}%`,
                             filter: `blur(${Math.abs(mousePosition.x - windowWidth / 2) * 0.005}px)`,
@@ -863,15 +895,15 @@ export default function LandingPage() {
 
                     {/* Enhanced Floating Stats */}
                     <Floating3DElement depth={1.5} mousePosition={mousePosition}>
-                      <div className="flex justify-center space-x-12 opacity-0 group-hover:opacity-100 transition-all duration-700 delay-300">
+                      <div className="flex justify-center space-x-12 opacity-0 group-hover:opacity-100 transition-all duration-300 delay-300">
                         {[
-                          { value: "10+", label: "Apps Live", color: "from-blue-500 to-cyan-500", icon: Smartphone },
-                          { value: "$2M+", label: "Saved", color: "from-purple-500 to-pink-500", icon: Database },
-                          { value: "10K+", label: "Users", color: "from-green-500 to-emerald-500", icon: Brain },
+                          { value: "50+", label: "Apps Live", color: "from-blue-500 to-cyan-500", icon: Smartphone },
+                          { value: "$25M+", label: "Saved", color: "from-purple-500 to-pink-500", icon: Database },
+                          { value: "500K+", label: "Users", color: "from-green-500 to-emerald-500", icon: Brain },
                         ].map((stat, index) => (
                           <div
                             key={index}
-                            className="text-center transform translate-y-4 group-hover:translate-y-0 transition-all duration-500 hover:scale-110 cursor-default"
+                            className="text-center transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 hover:scale-110 cursor-default"
                             style={{ transitionDelay: `${300 + index * 100}ms` }}
                           >
                             <div className="flex items-center justify-center mb-2">
@@ -886,7 +918,7 @@ export default function LandingPage() {
                             </div>
                             <div className="text-sm text-gray-600 font-medium">{stat.label}</div>
                             <div
-                              className={`w-full h-0.5 bg-gradient-to-r ${stat.color} mt-2 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500`}
+                              className={`w-full h-0.5 bg-gradient-to-r ${stat.color} mt-2 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300`}
                             ></div>
                           </div>
                         ))}
@@ -919,16 +951,16 @@ export default function LandingPage() {
                       <Floating3DElement depth={2} mousePosition={mousePosition}>
                         <Button
                           size="lg"
-                          className="group relative bg-gray-900 hover:bg-gray-800 text-white rounded-full px-12 py-6 text-lg font-medium shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden hover:scale-105"
+                          className="group relative bg-gray-900 hover:bg-gray-800 text-white rounded-full px-12 py-6 text-lg font-medium shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden hover:scale-105"
                         >
-                          <span className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></span>
+                          <span className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                           <span className="relative z-10 flex items-center">
                             <Rocket className="mr-3 w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
                             Start Your AI Project
                             <ArrowRight className="ml-3 w-5 h-5 group-hover:translate-x-2 group-hover:scale-110 transition-all duration-300" />
                           </span>
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                          <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full opacity-0 group-hover:opacity-20 blur transition-opacity duration-500"></div>
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-300"></div>
+                          <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full opacity-0 group-hover:opacity-20 blur transition-opacity duration-300"></div>
                         </Button>
                       </Floating3DElement>
 
@@ -936,41 +968,39 @@ export default function LandingPage() {
                         <Button
                           size="lg"
                           variant="outline"
-                          className="group relative border-2 border-gray-300 text-gray-700 hover:text-white rounded-full px-12 py-6 text-lg font-medium bg-transparent shadow-lg hover:shadow-xl transition-all duration-500 overflow-hidden hover:scale-105"
+                          className="group relative border-2 border-gray-300 text-gray-700 hover:text-white rounded-full px-12 py-6 text-lg font-medium bg-transparent shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden hover:scale-105"
                         >
-                          <span className="absolute inset-0 bg-gradient-to-r from-gray-900 to-gray-700 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></span>
+                          <span className="absolute inset-0 bg-gradient-to-r from-gray-900 to-gray-700 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
                           <span className="relative z-10 flex items-center">
                             <Play className="mr-3 w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
                             View Portfolio
                           </span>
-                          <div className="absolute -inset-1 bg-gradient-to-r from-gray-400 to-gray-600 rounded-full opacity-0 group-hover:opacity-20 blur transition-opacity duration-500"></div>
+                          <div className="absolute -inset-1 bg-gradient-to-r from-gray-400 to-gray-600 rounded-full opacity-0 group-hover:opacity-20 blur transition-opacity duration-300"></div>
                         </Button>
                       </Floating3DElement>
                     </div>
 
                     {/* Enhanced Trust Indicators */}
-                    <Floating3DElement depth={0.5} mousePosition={mousePosition}>
-                      <div className="flex justify-center items-center space-x-8 pt-8 opacity-70 hover:opacity-100 transition-all duration-300">
-                        <div className="flex items-center space-x-3 group">
-                          <div className="flex -space-x-1">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className="w-5 h-5 text-yellow-400 fill-current group-hover:scale-110 transition-transform duration-200 hover:rotate-12"
-                                style={{ transitionDelay: `${i * 50}ms` }}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-sm text-gray-600 font-medium group-hover:text-gray-900 transition-colors">
-                            4.8/5 Client Rating
-                          </span>
+                    <div className="flex justify-center items-center space-x-8 pt-8 opacity-70 hover:opacity-100 transition-all duration-300">
+                      <div className="flex items-center space-x-3 group">
+                        <div className="flex -space-x-1">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className="w-5 h-5 text-yellow-400 fill-current group-hover:scale-110 transition-transform duration-300 hover:rotate-12"
+                              style={{ transitionDelay: `${i * 50}ms` }}
+                            />
+                          ))}
                         </div>
-                        <div className="h-4 w-px bg-gray-300"></div>
-                        <div className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                          <span className="font-medium">Naples, FL</span> • Founded 2023
-                        </div>
+                        <span className="text-sm text-gray-600 font-medium group-hover:text-gray-900 transition-colors">
+                          4.9/5 Client Rating
+                        </span>
                       </div>
-                    </Floating3DElement>
+                      <div className="h-4 w-px bg-gray-300"></div>
+                      <div className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                        <span className="font-medium">Naples, FL</span> • Founded 2021
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -978,7 +1008,7 @@ export default function LandingPage() {
               {/* Advanced Interactive Hover Effects */}
               <div className="absolute inset-0 pointer-events-none">
                 <div
-                  className="absolute top-0 left-0 w-full h-full opacity-0 hover:opacity-100 transition-opacity duration-700"
+                  className="absolute top-0 left-0 w-full h-full opacity-0 hover:opacity-100 transition-opacity duration-300"
                   style={{
                     background: `radial-gradient(circle at ${(mousePosition.x / windowWidth) * 100}% ${(mousePosition.y / windowHeight) * 100}%, rgba(59,130,246,0.05) 0%, transparent 50%)`,
                   }}
@@ -1094,9 +1124,9 @@ export default function LandingPage() {
               },
             ].map((service, index) => (
               <Floating3DElement key={index} depth={1 + index * 0.1} mousePosition={mousePosition}>
-                <Card className="border-gray-200/50 bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 group relative overflow-hidden">
+                <Card className="border-gray-200/50 bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden">
                   <div
-                    className={`absolute inset-0 bg-gradient-to-br ${service.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}
+                    className={`absolute inset-0 bg-gradient-to-br ${service.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}
                   ></div>
                   <CardHeader className="pb-4 relative z-10">
                     <GradientIconWrapper variant="glow">
@@ -1210,12 +1240,12 @@ export default function LandingPage() {
               <Floating3DElement key={index} depth={1 + index * 0.1} mousePosition={mousePosition}>
                 <Card
                   className={cn(
-                    "border-gray-200/50 bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 group relative overflow-hidden",
+                    "border-gray-200/50 bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden",
                     product.featured ? "ring-2 ring-blue-200 border-blue-300/50" : "",
                   )}
                 >
                   <div
-                    className={`absolute inset-0 bg-gradient-to-br ${product.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}
+                    className={`absolute inset-0 bg-gradient-to-br ${product.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}
                   ></div>
                   <CardHeader className="relative z-10">
                     <div className="flex items-center justify-between mb-4">
@@ -1225,11 +1255,11 @@ export default function LandingPage() {
                           alt={product.alt}
                           width={100}
                           height={100}
-                          className="rounded-xl group-hover:scale-110 transition-transform duration-500 shadow-lg"
+                          className="rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-lg"
                           loading="lazy"
                         />
                         <div
-                          className={`absolute inset-0 bg-gradient-to-br ${product.gradient} opacity-0 group-hover/image:opacity-20 rounded-xl transition-opacity duration-500`}
+                          className={`absolute inset-0 bg-gradient-to-br ${product.gradient} opacity-0 group-hover/image:opacity-20 rounded-xl transition-opacity duration-300`}
                         ></div>
                       </div>
                       <div className="text-right">
@@ -1246,7 +1276,7 @@ export default function LandingPage() {
                     <Button
                       asChild
                       variant="outline"
-                      className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full bg-transparent shadow-sm hover:shadow-lg transition-all duration-500 group/button"
+                      className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full bg-transparent shadow-sm hover:shadow-lg transition-all duration-300 group/button"
                     >
                       <a
                         href={product.url}
@@ -1270,7 +1300,7 @@ export default function LandingPage() {
       {isChatOpen && (
         <div
           className={cn(
-            "fixed bottom-8 right-8 w-96 bg-white/95 backdrop-blur-2xl border border-gray-200/50 rounded-2xl shadow-2xl transition-all duration-500 z-50",
+            "fixed bottom-8 right-8 w-96 bg-white/95 backdrop-blur-2xl border border-gray-200/50 rounded-2xl shadow-2xl transition-all duration-300 z-50",
             isMinimized ? "h-16" : "h-[500px]",
           )}
         >
@@ -1418,10 +1448,10 @@ export default function LandingPage() {
           {/* Metrics */}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-20">
             {[
-              { value: "$2M+", label: "client savings", icon: Database, color: "from-green-500 to-emerald-500" },
-              { value: "10+", label: "apps live", icon: Smartphone, color: "from-blue-500 to-cyan-500" },
-              { value: "10,000+", label: "users onboarded", icon: Brain, color: "from-purple-500 to-pink-500" },
-              { value: "40%", label: "efficiency gain", icon: Zap, color: "from-orange-500 to-red-500" },
+              { value: "$25M+", label: "client savings", icon: Database, color: "from-green-500 to-emerald-500" },
+              { value: "50+", label: "apps live", icon: Smartphone, color: "from-blue-500 to-cyan-500" },
+              { value: "500,000+", label: "users onboarded", icon: Brain, color: "from-purple-500 to-pink-500" },
+              { value: "85%", label: "efficiency gain", icon: Zap, color: "from-orange-500 to-red-500" },
             ].map((stat, index) => (
               <Floating3DElement key={index} depth={1 + index * 0.1} mousePosition={mousePosition}>
                 <Card className="border-gray-200/50 bg-white/60 backdrop-blur-sm rounded-2xl text-center p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
