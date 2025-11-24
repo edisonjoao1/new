@@ -3,45 +3,12 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Calendar, Clock } from 'lucide-react'
-
-// In production, you'd load these from MDX files or a CMS
-const blogPosts: Record<string, any> = {
-  'ai-automation-business-2024': {
-    title: 'How AI Automation is Transforming Small Businesses in 2024',
-    date: '2024-11-20',
-    readTime: '5 min read',
-    author: 'Edison Espinosa',
-    category: 'AI Strategy',
-    content: `
-This is a placeholder for the blog post content. In a production environment, you would:
-
-1. Create MDX files in a \`content/blog\` directory
-2. Use \`next-mdx-remote\` or a similar library to render the content
-3. Add proper styling and components for rich content
-
-**Example MDX Structure:**
-
-\`\`\`
----
-title: Your Blog Post Title
-date: 2024-11-20
-author: Edison Espinosa
-category: AI Strategy
----
-
-# Your Content Here
-
-This is where your actual blog content would go, with full markdown support,
-embedded components, code blocks, and more.
-\`\`\`
-
-For now, this serves as a template to show how individual blog posts would be displayed.
-    `,
-  },
-}
+import { getPostBySlug, getAllPostSlugs } from '@/lib/blog/posts'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const post = blogPosts[params.slug]
+  const post = await getPostBySlug(params.slug)
 
   if (!post) {
     return {
@@ -51,12 +18,13 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
   return {
     title: `${post.title} | AI 4U Labs Blog`,
-    description: post.title,
+    description: post.excerpt,
+    keywords: post.keywords,
   }
 }
 
-export default function BlogPostPage({ params }: { params: { slug: string } }) {
-  const post = blogPosts[params.slug]
+export default async function BlogPostPage({ params }: { params: { slug: string } }) {
+  const post = await getPostBySlug(params.slug)
 
   if (!post) {
     notFound()
@@ -88,7 +56,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
               </div>
               <div className="flex items-center text-slate-400 text-sm">
                 <Clock className="w-4 h-4 mr-1" />
-                {post.readTime}
+                {post.readingTime} min read
               </div>
             </div>
 
@@ -101,10 +69,10 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
             </p>
           </header>
 
-          <div className="prose prose-invert prose-slate max-w-none">
-            <div className="text-slate-300 leading-relaxed space-y-6 whitespace-pre-line">
+          <div className="prose prose-invert prose-slate max-w-none prose-headings:text-white prose-h2:text-3xl prose-h2:mt-8 prose-h3:text-2xl prose-p:text-slate-300 prose-strong:text-white prose-code:text-blue-300 prose-pre:bg-slate-900 prose-a:text-blue-400 hover:prose-a:text-blue-300">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {post.content}
-            </div>
+            </ReactMarkdown>
           </div>
 
           <footer className="mt-16 pt-8 border-t border-slate-700">
@@ -129,7 +97,8 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
 }
 
 export async function generateStaticParams() {
-  return Object.keys(blogPosts).map((slug) => ({
+  const slugs = await getAllPostSlugs()
+  return slugs.map((slug) => ({
     slug,
   }))
 }
