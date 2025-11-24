@@ -1,16 +1,20 @@
 import { MetadataRoute } from 'next'
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ai4ulabs.com'
-
   return {
     rules: [
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/api/', '/admin/'],
+        disallow: ['/api/'],
+      },
+      {
+        userAgent: 'Googlebot',
+        allow: '/',
+        disallow: ['/api/'],
+        crawlDelay: 0,
       },
     ],
-    sitemap: `${baseUrl}/sitemap.xml`,
+    sitemap: 'https://ai4u.space/sitemap.xml',
   }
 }

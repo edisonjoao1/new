@@ -9,35 +9,43 @@ import { Toaster } from "sonner"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://ai4u.space"), // Replace with your actual domain
-  title: "AI 4U Labs - Transform Your Business with Cutting-Edge AI Solutions",
+  metadataBase: new URL("https://ai4u.space"),
+  title: {
+    default: "AI 4U Labs | We Build Anything with AI | Custom AI Development",
+    template: "%s | AI 4U Labs"
+  },
   description:
-    "AI 4U is a leading AI consulting studio based in Naples, Florida, specializing in custom AI app development, automation, strategy, and localization. We build powerful AI tools and mobile applications that solve real business problems and drive measurable results.",
+    "AI 4U Labs builds production-ready AI applications for startups and Fortune 500s. 10+ shipped products, 1M+ users. From AI agents to mobile apps, we turn ideas into live products in 2-4 weeks.",
   keywords: [
+    "AI development",
+    "custom AI applications",
     "AI consulting",
     "AI app development",
     "AI automation",
-    "AI strategy",
+    "GPT-4 integration",
+    "Claude AI development",
     "machine learning",
-    "LLM integration",
-    "Naples Florida AI",
-    "custom AI solutions",
-    "mobile AI apps",
+    "AI agents",
+    "conversational AI",
+    "AI mobile apps",
+    "rapid AI prototyping",
+    "AI MVP development",
+    "production AI systems",
     "AI for business",
-    "AI 4U",
+    "AI 4U Labs",
   ],
   openGraph: {
-    title: "AI 4U Labs - Transform Your Business with Cutting-Edge AI Solutions",
+    title: "AI 4U Labs | We Build Anything with AI",
     description:
-      "AI 4U is a leading AI consulting studio based in Naples, Florida, specializing in custom AI app development, automation, strategy, and localization. We build powerful AI tools and mobile applications that solve real business problems and drive measurable results.",
+      "AI 4U Labs builds production-ready AI applications for startups and Fortune 500s. 10+ shipped products, 1M+ users. From AI agents to mobile apps, we turn ideas into live products in 2-4 weeks.",
     url: "https://ai4u.space",
     siteName: "AI 4U Labs",
     images: [
       {
-        url: "/placeholder.svg?height=630&width=1200", // Replace with a relevant image for Open Graph
+        url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "AI 4U Labs - AI Consulting and Development",
+        alt: "AI 4U Labs - We Build Anything with AI",
       },
     ],
     locale: "en_US",
@@ -45,11 +53,11 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI 4U Labs - Transform Your Business with Cutting-Edge AI Solutions",
+    title: "AI 4U Labs | We Build Anything with AI",
     description:
-      "AI 4U is a leading AI consulting studio based in Naples, Florida, specializing in custom AI app development, automation, strategy, and localization. We build powerful AI tools and mobile applications that solve real business problems and drive measurable results.",
-    images: ["/placeholder.svg?height=675&width=1200"], // Replace with a relevant image for Twitter Card
-    creator: "@AI4ULabs", // Replace with your Twitter handle
+      "AI 4U Labs builds production-ready AI applications. 10+ shipped products, 1M+ users. AI agents, mobile apps, payment systems. 2-4 week MVP delivery.",
+    images: ["/og-image.png"],
+    creator: "@ai4ulabs",
   },
   robots: {
     index: true,
@@ -90,17 +98,27 @@ export default function RootLayout({
                   "@type": "Organization",
                   "@id": "https://ai4u.space/#organization",
                   name: "AI 4U Labs",
+                  alternateName: "AI 4U",
                   url: "https://ai4u.space",
-                  logo: "https://ai4u.space/logo.png", // Replace with your logo URL
+                  logo: "https://ai4u.space/logo.png",
+                  description: "AI 4U Labs builds production-ready AI applications for startups and Fortune 500s. We ship AI agents, mobile apps, and payment systems.",
+                  foundingDate: "2023",
                   contactPoint: {
                     "@type": "ContactPoint",
-                    telephone: "+1-239-555-1234", // Replace with your phone number
                     contactType: "Customer Service",
-                    email: "info@ai4u.space",
+                    email: "edison@ai4ulabs.com",
+                    availableLanguage: ["English", "Spanish"]
                   },
+                  areaServed: {
+                    "@type": "Place",
+                    name: "Worldwide"
+                  },
+                  slogan: "We Build Anything with AI",
+                  knowsAbout: ["Artificial Intelligence", "Machine Learning", "Mobile App Development", "AI Agents", "GPT-4", "Claude AI", "Payment Systems"],
                   sameAs: [
-                    "https://twitter.com/AI4ULabs", // Replace with your social media links
+                    "https://twitter.com/ai4ulabs",
                     "https://linkedin.com/company/ai4ulabs",
+                    "https://github.com/ai4ulabs"
                   ],
                 },
                 {
