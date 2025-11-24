@@ -1,0 +1,69 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { Resend } from 'resend'
+import { z } from 'zod'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
+
+const contactSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Invalid email address'),
+  company: z.string().optional(),
+  message: z.string().min(10, 'Message must be at least 10 characters'),
+})
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json()
+    const validatedData = contactSchema.parse(body)
+
+    if (!process.env.RESEND_API_KEY) {
+      return NextResponse.json(
+        { error: 'Email service not configured' },
+        { status: 500 }
+      )
+    }
+
+    const emailHtml = `
+      <h2>New Contact Form Submission</h2>
+      <p><strong>Name:</strong> ${validatedData.name}</p>
+      <p><strong>Email:</strong> ${validatedData.email}</p>
+      ${validatedData.company ? `<p><strong>Company:</strong> ${validatedData.company}</p>` : ''}
+      <p><strong>Message:</strong></p>
+      <p>${validatedData.message.replace(/\n/g, '<br>')}</p>
+    `
+
+    const { data, error } = await resend.emails.send({
+      from: 'AI 4U Labs <noreply@ai4ulabs.com>',
+      to: [process.env.CONTACT_EMAIL || 'edison@ai4ulabs.com'],
+      replyTo: validatedData.email,
+      subject: `New Contact: ${validatedData.name}${validatedData.company ? ` from ${validatedData.company}` : ''}`,
+      html: emailHtml,
+    })
+
+    if (error) {
+      console.error('Resend error:', error)
+      return NextResponse.json(
+        { error: 'Failed to send email' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(
+      { success: true, message: 'Email sent successfully', data },
+      { status: 200 }
+    )
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation error', details: error.errors },
+        { status: 400 }
+      )
+    }
+
+    console.error('Contact API error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
