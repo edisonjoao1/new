@@ -1,5 +1,5 @@
 import { OpenAI } from 'openai'
-import { OpenAIStream, StreamingTextResponse } from 'ai'
+import { StreamingTextResponse } from 'ai'
 import { NextRequest } from 'next/server'
 
 const openai = new OpenAI({
@@ -71,7 +71,20 @@ Be helpful, professional, and concise. Use "we" language to represent the team. 
       max_tokens: 500,
     })
 
-    const stream = OpenAIStream(response as any)
+    // Convert OpenAI stream to ReadableStream for StreamingTextResponse
+    const encoder = new TextEncoder()
+    const stream = new ReadableStream({
+      async start(controller) {
+        for await (const chunk of response) {
+          const text = chunk.choices[0]?.delta?.content || ''
+          if (text) {
+            controller.enqueue(encoder.encode(text))
+          }
+        }
+        controller.close()
+      },
+    })
+
     return new StreamingTextResponse(stream)
   } catch (error) {
     console.error('Chat API error:', error)
