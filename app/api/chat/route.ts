@@ -71,7 +71,7 @@ Be helpful, professional, and concise. Use "we" language to represent the team. 
       max_tokens: 500,
     })
 
-    const stream = OpenAIStream(response)
+    const stream = OpenAIStream(response as any)
     return new StreamingTextResponse(stream)
   } catch (error) {
     console.error('Chat API error:', error)
