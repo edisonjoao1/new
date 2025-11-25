@@ -8,20 +8,20 @@ const aiLabs = [
   {
     name: 'OpenAI',
     color: 'from-emerald-500 to-teal-500',
-    description: 'GPT-4o, o1, Realtime API',
-    details: 'Built SheGPT with Realtime API in 6 days. Production apps using GPT-4o, o1-preview, and DALL-E 3.'
+    description: 'GPT-5.1, Realtime API',
+    details: 'Built SheGPT with Realtime API in 6 days. Production apps using GPT-5.1, GPT-5.1 mini, and DALL-E 3.'
   },
   {
     name: 'Anthropic',
     color: 'from-orange-500 to-amber-500',
-    description: 'Claude 3.5 Sonnet, MCP',
-    details: 'Pioneered MCP servers for conversational payments. Daily production use across multiple apps.'
+    description: 'Claude Opus 4.5, MCP',
+    details: 'Pioneered MCP servers for conversational payments. Daily production use of Claude Opus 4.5 across multiple apps.'
   },
   {
     name: 'Google',
     color: 'from-blue-500 to-cyan-500',
-    description: 'Gemini 2.5 Pro & Flash',
-    details: 'Multimodal apps with vision and reasoning. High-performance production deployments with Gemini.'
+    description: 'Gemini 3 Pro & Deepthink',
+    details: 'Multimodal apps with vision and reasoning. High-performance production deployments with Gemini 3.'
   },
   {
     name: 'Meta',

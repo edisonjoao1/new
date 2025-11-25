@@ -9,7 +9,7 @@ const capabilities = [
   {
     number: '01',
     title: 'Mobile AI',
-    description: 'Native iOS and cross-platform apps. Integrated with GPT-4o, Claude, and custom models.',
+    description: 'Native iOS and cross-platform apps. Integrated with GPT-5.1, Claude Opus 4.5, and Gemini 3.',
     icon: Smartphone,
     gradient: 'from-blue-500 to-cyan-500',
     details: 'SheGPT shipped in 6 days using OpenAI Realtime API. 100K+ users across health, fitness, and productivity apps.',

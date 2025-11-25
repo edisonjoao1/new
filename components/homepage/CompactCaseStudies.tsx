@@ -25,7 +25,7 @@ const caseStudies = [
   {
     client: 'Tech Founder',
     problem: 'MVP stuck in planning for 8 months',
-    solution: 'iOS app with GPT-4o integration',
+    solution: 'iOS app with GPT-5.1 integration',
     outcome: 'Live on App Store, 10K downloads',
     timeline: '18 days',
     gradient: 'from-green-500/10 to-emerald-500/10',

@@ -25,7 +25,7 @@ const services = [
   {
     icon: Plug,
     title: 'API Integration',
-    description: 'GPT-4o, Claude, Llama with RAG pipelines',
+    description: 'GPT-5.1, Claude Opus 4.5, Gemini 3 with RAG pipelines',
     gradient: 'from-green-500 to-emerald-500',
   },
 ]

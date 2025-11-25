@@ -4,9 +4,9 @@ import { motion } from 'framer-motion'
 import { Code } from 'lucide-react'
 
 const stack = [
-  { name: 'GPT-4o', category: 'AI Models' },
-  { name: 'Claude 3.5', category: 'AI Models' },
-  { name: 'Llama 3.1', category: 'AI Models' },
+  { name: 'GPT-5.1', category: 'AI Models' },
+  { name: 'Claude Opus 4.5', category: 'AI Models' },
+  { name: 'Gemini 3', category: 'AI Models' },
   { name: 'OpenAI Realtime', category: 'AI APIs' },
   { name: 'iOS/Swift', category: 'Mobile' },
   { name: 'React Native', category: 'Mobile' },

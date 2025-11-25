@@ -37,7 +37,7 @@ export default function HomePage() {
         "name": "What AI technologies does AI 4U Labs work with?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "We work with GPT-4o, Claude 3.5 Sonnet, Llama 3.1, OpenAI Realtime API, and custom models. We specialize in conversational AI, AI agents, and integrating LLMs into production applications."
+          "text": "We work with GPT-5.1, Claude Opus 4.5, Gemini 3, OpenAI Realtime API, and custom models. We specialize in conversational AI, AI agents, and integrating LLMs into production applications."
         }
       },
       {

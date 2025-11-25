@@ -25,7 +25,7 @@ const caseStudies = [
   {
     title: 'MVP Launch',
     problem: 'Idea stuck in planning for months',
-    solution: 'iOS app with GPT-4o',
+    solution: 'iOS app with GPT-5.1',
     result: 'Live on App Store',
     metric: 'Idea → Launch',
     timeline: 'Ready in 18 days',
