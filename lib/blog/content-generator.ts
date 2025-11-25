@@ -26,34 +26,38 @@ export interface GeneratedBlogPost {
 
 export class BlogContentGenerator {
   /**
-   * Generate a complete SEO-optimized blog post
+   * Generate a complete SEO-optimized blog post with web search for accuracy
    */
   async generatePost(idea: BlogPostIdea): Promise<GeneratedBlogPost> {
     const prompt = this.buildBlogPrompt(idea)
 
     try {
+      // Use GPT-5.1 with web search for factual, up-to-date content
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-5.1',
         messages: [
           {
             role: 'system',
             content: `You are an expert content writer for AI 4U Labs, specializing in AI development, automation, and technical content.
 
+CRITICAL: Use web search to verify all facts, statistics, and technical details. Cite sources when possible.
+
 Writing style:
 - Authoritative but accessible
+- Data-driven with specific, verified numbers
+- Cite recent studies and sources
 - Use real examples from our work (AP2 protocol, 1M+ users, 10+ apps)
-- Data-driven with specific numbers
-- Actionable insights, not fluff
-- Technical but not jargony
+- Actionable insights with current best practices
+- Technical accuracy with latest information
 - SEO-optimized naturally (not keyword stuffing)
 
 Content structure:
-- Hook in first 2 sentences
+- Hook with a surprising fact or stat
 - Clear headings (H2, H3)
 - Short paragraphs (2-3 sentences)
 - Bullet points and lists
-- Code examples when relevant
-- Real case studies
+- Code examples with latest syntax
+- Real case studies with dates
 - Clear CTAs
 
 SEO guidelines:
@@ -61,7 +65,8 @@ SEO guidelines:
 - Use keyword in H2 naturally
 - Include semantic variations
 - Internal links to our services
-- External links to authority sources`,
+- External links to authority sources (with dates)
+- Use latest terminology and model names`,
           },
           {
             role: 'user',
@@ -69,7 +74,7 @@ SEO guidelines:
           },
         ],
         temperature: 0.7,
-        max_tokens: 3000,
+        max_tokens: 4000,
       })
 
       const content = response.choices[0]?.message?.content || ''
@@ -105,10 +110,11 @@ Requirements:
 
 Company context for examples:
 - Built 10+ AI apps with 1M+ users
-- Pioneered AP2 payments protocol
+- Pioneered AP2 payments protocol BEFORE Google announced it
 - Ship MVPs in 2-4 weeks ($15-25K)
-- Tech: GPT-4o, Claude, Llama, OpenAI Realtime API
+- Tech: GPT-5.1, Claude Opus 4.5, Gemini 3, OpenAI Realtime API
 - Real products: SheGPT (6 days to launch), Conversational Payments, Spanish AI
+- Using cutting-edge models: GPT-5.1 (Nov 2025), Claude Opus 4.5 (Nov 2025), Gemini 3 (Nov 2025)
 
 Output format:
 TITLE: [compelling, SEO-optimized title with main keyword]

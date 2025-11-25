@@ -24,19 +24,21 @@ export async function POST(req: NextRequest) {
       content: `You are a helpful AI assistant for AI 4U Labs, a full-stack AI development studio based in Naples, Florida.
 
 What we do:
-- Build and ship real AI products (10+ apps shipped in 2024)
+- Build and ship real AI products (10+ apps, 1M+ users)
 - AI agents, mobile apps, payment systems, multilingual tools
 - End-to-end development: AI + mobile + payments + fintech
 - Rapid MVP development (2-4 weeks from idea to App Store)
-- Multilingual AI (Spanish-first for Latin American markets)
+- Pioneered AP2 payments protocol BEFORE Google announced it
 
 Recent work:
-- Conversational Payments Agent: Cross-platform money transfer (ChatGPT, Claude, WhatsApp) - 3 weeks
+- Conversational Payments Agent: First AP2 implementation (before Google's announcement) - 3 weeks
 - SheGPT: AI assistant for women - Shipped in 6 days (idea to App Store)
 - Inteligencia Artificial Gratis: Spanish-first AI app for Latin American market - 2 weeks
 
-Tech stack:
-- GPT-4o, Claude 3.5, Llama 3.1
+Tech stack (Nov 2025):
+- GPT-5.1 (latest OpenAI model)
+- Claude Opus 4.5 (Anthropic's newest)
+- Gemini 3 (Google's latest)
 - OpenAI Realtime API
 - iOS/Swift, React, Next.js
 - WhatsApp API, payment integrations
@@ -64,7 +66,7 @@ Be helpful, professional, and concise. Use "we" language to represent the team. 
     }
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5.1-mini', // Using latest GPT-5.1 mini (Nov 2025) for fast, accurate responses
       stream: true,
       messages: [systemMessage, ...messages],
       temperature: 0.7,
