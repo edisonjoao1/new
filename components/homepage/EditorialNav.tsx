@@ -172,16 +172,22 @@ export function EditorialNav({ onGetStarted }: EditorialNavProps) {
             Work
           </Link>
           <Link
-            href="/playground"
+            href="/case-studies"
             className="text-sm uppercase tracking-wider text-gray-600 hover:text-black transition-colors"
           >
-            Playground
+            Case Studies
           </Link>
           <Link
             href="/services"
             className="text-sm uppercase tracking-wider text-gray-600 hover:text-black transition-colors"
           >
             Services
+          </Link>
+          <Link
+            href="/blog"
+            className="text-sm uppercase tracking-wider text-gray-600 hover:text-black transition-colors"
+          >
+            Blog
           </Link>
           <Link
             href="/about"
