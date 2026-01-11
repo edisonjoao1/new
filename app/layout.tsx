@@ -2,7 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import { Analytics } from "@vercel/analytics/next"
+import { AnalyticsWrapper } from "@/components/AnalyticsWrapper"
 import { Suspense } from "react"
 import { Toaster } from "sonner"
 
@@ -142,19 +142,7 @@ export default function RootLayout({
             }),
           }}
         />
-        <Analytics
-          beforeSend={(event) => {
-            // Check if we're in the browser and user has set the exclude flag
-            if (typeof window !== 'undefined') {
-              // To exclude yourself: open browser console and run:
-              // localStorage.setItem('excludeFromAnalytics', 'true')
-              if (localStorage.getItem('excludeFromAnalytics') === 'true') {
-                return null; // Don't send the event
-              }
-            }
-            return event;
-          }}
-        />
+        <AnalyticsWrapper />
       </body>
     </html>
   )
