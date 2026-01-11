@@ -15,15 +15,16 @@ export const metadata: Metadata = {
     template: "%s | AI 4U Labs"
   },
   description:
-    "AI 4U Labs builds production-ready AI applications for startups and Fortune 500s. 10+ shipped products, 1M+ users. From AI agents to mobile apps, we turn ideas into live products in 2-4 weeks.",
+    "AI 4U Labs builds million-dollar apps with 90% less people, 10x faster. 30+ shipped products, 1M+ users. From AI agents to mobile apps, we turn ideas into live products in 2-4 weeks.",
   keywords: [
     "AI development",
     "custom AI applications",
     "AI consulting",
     "AI app development",
     "AI automation",
-    "GPT-4 integration",
-    "Claude AI development",
+    "GPT-5 integration",
+    "Claude Opus 4.5 development",
+    "Gemini 3.0 integration",
     "machine learning",
     "AI agents",
     "conversational AI",
@@ -33,11 +34,13 @@ export const metadata: Metadata = {
     "production AI systems",
     "AI for business",
     "AI 4U Labs",
+    "video AI",
+    "MCP servers",
   ],
   openGraph: {
     title: "AI 4U Labs | We Build Anything with AI",
     description:
-      "AI 4U Labs builds production-ready AI applications for startups and Fortune 500s. 10+ shipped products, 1M+ users. From AI agents to mobile apps, we turn ideas into live products in 2-4 weeks.",
+      "AI 4U Labs builds million-dollar apps with 90% less people, 10x faster. 30+ shipped products, 1M+ users. From AI agents to mobile apps, we turn ideas into live products in 2-4 weeks.",
     url: "https://ai4u.space",
     siteName: "AI 4U Labs",
     images: [
@@ -55,7 +58,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "AI 4U Labs | We Build Anything with AI",
     description:
-      "AI 4U Labs builds production-ready AI applications. 10+ shipped products, 1M+ users. AI agents, mobile apps, payment systems. 2-4 week MVP delivery.",
+      "AI 4U Labs builds million-dollar apps with 90% less people. 30+ shipped products, 1M+ users. AI agents, mobile apps, video AI. 2-4 week MVP delivery.",
     images: ["/og-image.png"],
     creator: "@ai4ulabs",
   },
@@ -106,7 +109,7 @@ export default function RootLayout({
                   contactPoint: {
                     "@type": "ContactPoint",
                     contactType: "Customer Service",
-                    email: "edison@ai4ulabs.com",
+                    email: "edison@ai4u.space",
                     availableLanguage: ["English", "Spanish"]
                   },
                   areaServed: {
@@ -114,7 +117,7 @@ export default function RootLayout({
                     name: "Worldwide"
                   },
                   slogan: "We Build Anything with AI",
-                  knowsAbout: ["Artificial Intelligence", "Machine Learning", "Mobile App Development", "AI Agents", "GPT-4", "Claude AI", "Payment Systems"],
+                  knowsAbout: ["Artificial Intelligence", "Machine Learning", "Mobile App Development", "AI Agents", "GPT-5", "Claude Opus 4.5", "Gemini 3.0", "Video AI", "MCP Servers", "Payment Systems"],
                   sameAs: [
                     "https://twitter.com/ai4ulabs",
                     "https://linkedin.com/company/ai4ulabs",
@@ -139,7 +142,19 @@ export default function RootLayout({
             }),
           }}
         />
-        <Analytics />
+        <Analytics
+          beforeSend={(event) => {
+            // Check if we're in the browser and user has set the exclude flag
+            if (typeof window !== 'undefined') {
+              // To exclude yourself: open browser console and run:
+              // localStorage.setItem('excludeFromAnalytics', 'true')
+              if (localStorage.getItem('excludeFromAnalytics') === 'true') {
+                return null; // Don't send the event
+              }
+            }
+            return event;
+          }}
+        />
       </body>
     </html>
   )
