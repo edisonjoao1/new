@@ -1,34 +1,14 @@
 import { NextResponse } from 'next/server'
 import { BetaAnalyticsDataClient } from '@google-analytics/data'
+import { AnalyticsAdminServiceClient } from '@google-analytics/admin'
 import { OAuth2Client } from 'google-auth-library'
 
-// All your GA4 property IDs
-const PROPERTY_IDS = [
-  { id: '170914780', name: 'foxie' },
-  { id: '207666379', name: 'ubss-8a0de' },
-  { id: '212918036', name: 'foxiegram-36486' },
-  { id: '238360078', name: 'foxie-s-gram' },
-  { id: '338170824', name: 'backtoit-bd128' },
-  { id: '355152962', name: 'acti-8078e' },
-  { id: '372035116', name: 'foxie website - GA4' },
-  { id: '454318012', name: 'budd-74c57' },
-  { id: '459749735', name: 'flutter-66d7d' },
-  { id: '470854408', name: 'live-5f8ee' },
-  { id: '485516557', name: 'image-c34f8' },
-  { id: '486642898', name: 'inteligencia-artificial-57923' },
-  { id: '488396770', name: 'inteligencia-artificial-6a543' },
-  { id: '489264320', name: 'meta-6cbb4' },
-  { id: '489713800', name: 'ai-brasil-efbf1' },
-  { id: '489973752', name: 'intelligence-artificiel-a25eb' },
-  { id: '490607972', name: 'love-79ab4' },
-  { id: '516377149', name: 'pet-health-scan' },
-  { id: '516390325', name: 'pet-health-scan-30111' },
-  { id: '516392560', name: 'days-together--love-tracker' },
-  { id: '516587460', name: 'relationship-62b68' },
-  { id: '517168745', name: 'unbiased-65e60' },
-  { id: '517994143', name: 'health-anxiety-e3780' },
-  { id: '518113043', name: 'new-year-new-you-f2e4e' },
-]
+// Website property ID (excluded from app totals)
+const WEBSITE_PROPERTY_ID = '372035116'
+
+// Cache for discovered properties (refreshes every 5 minutes)
+let propertiesCache: { properties: Array<{ id: string; name: string; isWebsite: boolean }>; timestamp: number } | null = null
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
 // Create OAuth2 client from refresh token
 function createAuthClient() {
@@ -43,6 +23,56 @@ function createAuthClient() {
   })
 
   return oauth2Client
+}
+
+// Auto-discover all GA4 properties from the account
+async function discoverProperties(authClient: OAuth2Client): Promise<Array<{ id: string; name: string; isWebsite: boolean }>> {
+  // Check cache first
+  if (propertiesCache && Date.now() - propertiesCache.timestamp < CACHE_TTL) {
+    return propertiesCache.properties
+  }
+
+  try {
+    const adminClient = new AnalyticsAdminServiceClient({
+      authClient: authClient as any,
+    })
+
+    const properties: Array<{ id: string; name: string; isWebsite: boolean }> = []
+
+    // List all account summaries to get properties
+    const [accountSummaries] = await adminClient.listAccountSummaries({})
+
+    for (const account of accountSummaries || []) {
+      for (const propertySummary of account.propertySummaries || []) {
+        const propertyId = propertySummary.property?.replace('properties/', '') || ''
+        const propertyName = propertySummary.displayName || propertyId
+
+        if (propertyId) {
+          properties.push({
+            id: propertyId,
+            name: propertyName,
+            isWebsite: propertyId === WEBSITE_PROPERTY_ID,
+          })
+        }
+      }
+    }
+
+    // Update cache
+    propertiesCache = {
+      properties,
+      timestamp: Date.now(),
+    }
+
+    console.log(`Discovered ${properties.length} GA4 properties`)
+    return properties
+  } catch (error) {
+    console.error('Error discovering properties:', error)
+    // If discovery fails and we have cached data, return it even if stale
+    if (propertiesCache) {
+      return propertiesCache.properties
+    }
+    throw error
+  }
 }
 
 async function fetchPropertyData(
@@ -230,11 +260,135 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+// Fetch top events breakdown
+async function fetchEventBreakdown(
+  client: BetaAnalyticsDataClient,
+  propertyIds: string[],
+  dateRange: { startDate: string; endDate: string }
+) {
+  const eventData: { [eventName: string]: number } = {}
+
+  await Promise.all(
+    propertyIds.map(async (propertyId) => {
+      try {
+        const [response] = await client.runReport({
+          property: `properties/${propertyId}`,
+          dateRanges: [dateRange],
+          dimensions: [{ name: 'eventName' }],
+          metrics: [{ name: 'eventCount' }],
+          limit: 50,
+        })
+
+        if (response.rows) {
+          response.rows.forEach((row) => {
+            const eventName = row.dimensionValues?.[0]?.value || 'Unknown'
+            const count = parseInt(row.metricValues?.[0]?.value || '0')
+            eventData[eventName] = (eventData[eventName] || 0) + count
+          })
+        }
+      } catch (error) {
+        console.error(`Error fetching events for ${propertyId}:`, error)
+      }
+    })
+  )
+
+  return Object.entries(eventData)
+    .map(([eventName, count]) => ({ eventName, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 20)
+}
+
+// Fetch comparison data (previous period)
+async function fetchComparisonData(
+  client: BetaAnalyticsDataClient,
+  properties: Array<{ id: string; name: string }>,
+  currentRange: { startDate: string; endDate: string },
+  previousRange: { startDate: string; endDate: string }
+) {
+  const [currentResults, previousResults] = await Promise.all([
+    Promise.all(
+      properties.map(p => fetchPropertyData(client, p.id, p.name, currentRange))
+    ),
+    Promise.all(
+      properties.map(p => fetchPropertyData(client, p.id, p.name, previousRange))
+    ),
+  ])
+
+  const current = {
+    users: currentResults.reduce((sum, r) => sum + r.activeUsers, 0),
+    sessions: currentResults.reduce((sum, r) => sum + r.sessions, 0),
+    events: currentResults.reduce((sum, r) => sum + r.eventCount, 0),
+    newUsers: currentResults.reduce((sum, r) => sum + r.newUsers, 0),
+  }
+
+  const previous = {
+    users: previousResults.reduce((sum, r) => sum + r.activeUsers, 0),
+    sessions: previousResults.reduce((sum, r) => sum + r.sessions, 0),
+    events: previousResults.reduce((sum, r) => sum + r.eventCount, 0),
+    newUsers: previousResults.reduce((sum, r) => sum + r.newUsers, 0),
+  }
+
+  const calculateChange = (curr: number, prev: number) => {
+    if (prev === 0) return curr > 0 ? 100 : 0
+    return ((curr - prev) / prev) * 100
+  }
+
+  return {
+    current,
+    previous,
+    changes: {
+      users: calculateChange(current.users, previous.users).toFixed(1),
+      sessions: calculateChange(current.sessions, previous.sessions).toFixed(1),
+      events: calculateChange(current.events, previous.events).toFixed(1),
+      newUsers: calculateChange(current.newUsers, previous.newUsers).toFixed(1),
+    }
+  }
+}
+
+// Helper to calculate date ranges
+function getDateRanges(period: string) {
+  const now = new Date()
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  let days: number
+  switch (period) {
+    case '7d': days = 7; break
+    case '30d': days = 30; break
+    case '90d': days = 90; break
+    default: days = 30
+  }
+
+  const currentStart = new Date(yesterday)
+  currentStart.setDate(currentStart.getDate() - days + 1)
+
+  const previousEnd = new Date(currentStart)
+  previousEnd.setDate(previousEnd.getDate() - 1)
+
+  const previousStart = new Date(previousEnd)
+  previousStart.setDate(previousStart.getDate() - days + 1)
+
+  const formatDateParam = (d: Date) => d.toISOString().split('T')[0]
+
+  return {
+    current: {
+      startDate: formatDateParam(currentStart),
+      endDate: formatDateParam(yesterday),
+    },
+    previous: {
+      startDate: formatDateParam(previousStart),
+      endDate: formatDateParam(previousEnd),
+    },
+    daysAgo: `${days}daysAgo`,
+  }
+}
+
 export async function GET(request: Request) {
   // Simple password protection via query param or header
   const { searchParams } = new URL(request.url)
   const password = searchParams.get('key') || request.headers.get('x-analytics-key')
   const propertyFilter = searchParams.get('property') // Optional: filter by single property
+  const period = searchParams.get('period') || '30d' // 7d, 30d, 90d
 
   if (password !== process.env.ANALYTICS_PASSWORD) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -247,36 +401,63 @@ export async function GET(request: Request) {
       authClient: authClient as any,
     })
 
-    // Filter properties if requested
-    const activeProperties = propertyFilter
-      ? PROPERTY_IDS.filter(p => p.id === propertyFilter)
-      : PROPERTY_IDS
+    // Auto-discover all properties
+    const allDiscoveredProperties = await discoverProperties(authClient)
 
-    const propertyIdList = activeProperties.map(p => p.id)
+    // Separate apps from website
+    const appProperties = allDiscoveredProperties.filter(p => !p.isWebsite)
+    const websiteProperty = allDiscoveredProperties.find(p => p.isWebsite)
+
+    // Get date ranges based on period
+    const periodRanges = getDateRanges(period)
+
+    // Filter properties if requested - but for totals, only use app properties
+    const isWebsiteFilter = propertyFilter === WEBSITE_PROPERTY_ID
+    const activeAppProperties = propertyFilter && !isWebsiteFilter
+      ? appProperties.filter(p => p.id === propertyFilter)
+      : appProperties
+
+    const appPropertyIds = activeAppProperties.map(p => p.id)
 
     // Fetch DAU, WAU, MAU for all properties in parallel
     const dateRanges = {
       dau: { startDate: 'yesterday', endDate: 'yesterday' },
       wau: { startDate: '7daysAgo', endDate: 'yesterday' },
-      mau: { startDate: '30daysAgo', endDate: 'yesterday' },
+      mau: { startDate: `${period === '90d' ? '90' : '30'}daysAgo`, endDate: 'yesterday' },
     }
 
-    const [dauResults, wauResults, mauResults, timeSeries, realtimeData, countryBreakdown] = await Promise.all([
+    const [
+      dauResults,
+      wauResults,
+      mauResults,
+      timeSeries,
+      realtimeData,
+      countryBreakdown,
+      eventBreakdown,
+      comparisonData,
+      websiteData,
+    ] = await Promise.all([
       Promise.all(
-        activeProperties.map(p => fetchPropertyData(analyticsClient, p.id, p.name, dateRanges.dau))
+        activeAppProperties.map(p => fetchPropertyData(analyticsClient, p.id, p.name, dateRanges.dau))
       ),
       Promise.all(
-        activeProperties.map(p => fetchPropertyData(analyticsClient, p.id, p.name, dateRanges.wau))
+        activeAppProperties.map(p => fetchPropertyData(analyticsClient, p.id, p.name, dateRanges.wau))
       ),
       Promise.all(
-        activeProperties.map(p => fetchPropertyData(analyticsClient, p.id, p.name, dateRanges.mau))
+        activeAppProperties.map(p => fetchPropertyData(analyticsClient, p.id, p.name, dateRanges.mau))
       ),
-      fetchTimeSeries(analyticsClient, propertyIdList),
-      fetchRealtimeData(analyticsClient, propertyIdList),
-      fetchCountryBreakdown(analyticsClient, propertyIdList),
+      fetchTimeSeries(analyticsClient, appPropertyIds),
+      fetchRealtimeData(analyticsClient, appPropertyIds),
+      fetchCountryBreakdown(analyticsClient, appPropertyIds),
+      fetchEventBreakdown(analyticsClient, appPropertyIds, periodRanges.current),
+      fetchComparisonData(analyticsClient, activeAppProperties, periodRanges.current, periodRanges.previous),
+      // Fetch website data separately (if it exists)
+      websiteProperty
+        ? fetchPropertyData(analyticsClient, websiteProperty.id, websiteProperty.name, dateRanges.mau)
+        : Promise.resolve({ propertyId: '', propertyName: '', activeUsers: 0, sessions: 0, pageViews: 0, eventCount: 0, newUsers: 0 }),
     ])
 
-    // Aggregate totals
+    // Aggregate totals (APPS ONLY - excludes website)
     const totals = {
       dau: dauResults.reduce((sum, r) => sum + r.activeUsers, 0),
       wau: wauResults.reduce((sum, r) => sum + r.activeUsers, 0),
@@ -294,8 +475,8 @@ export async function GET(request: Request) {
       dauWau: totals.wau > 0 ? ((totals.dau / totals.wau) * 100).toFixed(1) : '0',
     }
 
-    // Combine data per property
-    const properties = activeProperties.map((p, i) => ({
+    // Combine data per property (apps only for main list)
+    const properties = activeAppProperties.map((p, i) => ({
       id: p.id,
       name: p.name,
       dau: dauResults[i].activeUsers,
@@ -312,6 +493,16 @@ export async function GET(request: Request) {
     .filter(p => p.mau > 0) // Only include properties with activity
     .sort((a, b) => b.mau - a.mau) // Sort by MAU descending
 
+    // Website stats (separate from app totals)
+    const website = websiteProperty ? {
+      id: websiteProperty.id,
+      name: websiteProperty.name,
+      sessions: websiteData.sessions,
+      pageViews: websiteData.pageViews,
+      users: websiteData.activeUsers,
+      newUsers: websiteData.newUsers,
+    } : null
+
     return NextResponse.json({
       totals,
       ratios,
@@ -319,7 +510,12 @@ export async function GET(request: Request) {
       timeSeries,
       realtime: realtimeData,
       countries: countryBreakdown,
-      allProperties: PROPERTY_IDS, // For the filter dropdown
+      events: eventBreakdown,
+      comparison: comparisonData,
+      website,
+      period,
+      allProperties: allDiscoveredProperties.map(p => ({ id: p.id, name: p.name })), // Auto-discovered properties
+      totalPropertiesDiscovered: allDiscoveredProperties.length,
       generatedAt: new Date().toISOString(),
     })
   } catch (error) {

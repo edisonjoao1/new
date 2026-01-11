@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
   Users,
   TrendingUp,
+  TrendingDown,
   Activity,
   Eye,
   Zap,
@@ -15,7 +16,11 @@ import {
   Globe,
   Radio,
   ChevronDown,
-  Filter
+  Filter,
+  Download,
+  Calendar,
+  Minus,
+  MonitorSmartphone,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -28,6 +33,9 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  Cell,
+  PieChart,
+  Pie,
 } from 'recharts'
 
 interface AnalyticsData {
@@ -67,9 +75,27 @@ interface AnalyticsData {
     topCountries: Array<{ country: string; users: number }>
   }
   countries: Array<{ country: string; users: number }>
+  events: Array<{ eventName: string; count: number }>
+  comparison: {
+    current: { users: number; sessions: number; events: number; newUsers: number }
+    previous: { users: number; sessions: number; events: number; newUsers: number }
+    changes: { users: string; sessions: string; events: string; newUsers: string }
+  }
+  website: {
+    id: string
+    name: string
+    sessions: number
+    pageViews: number
+    users: number
+    newUsers: number
+  } | null
+  period: string
   allProperties: Array<{ id: string; name: string }>
+  totalPropertiesDiscovered: number
   generatedAt: string
 }
+
+const COLORS = ['#000000', '#374151', '#6B7280', '#9CA3AF', '#D1D5DB', '#E5E7EB', '#F3F4F6', '#F9FAFB']
 
 export default function AnalyticsPage() {
   const [password, setPassword] = useState('')
@@ -79,13 +105,16 @@ export default function AnalyticsPage() {
   const [error, setError] = useState('')
   const [selectedProperty, setSelectedProperty] = useState<string>('all')
   const [showPropertyDropdown, setShowPropertyDropdown] = useState(false)
+  const [period, setPeriod] = useState<string>('30d')
+  const [autoRefresh, setAutoRefresh] = useState(false)
 
-  const fetchData = async (key: string, property?: string) => {
+  const fetchData = useCallback(async (key: string, property?: string, periodParam?: string) => {
     setLoading(true)
     setError('')
     try {
-      const propertyParam = property && property !== 'all' ? `&property=${property}` : ''
-      const res = await fetch(`/api/analytics?key=${encodeURIComponent(key)}${propertyParam}`)
+      const propertyQuery = property && property !== 'all' ? `&property=${property}` : ''
+      const periodQuery = `&period=${periodParam || period}`
+      const res = await fetch(`/api/analytics?key=${encodeURIComponent(key)}${propertyQuery}${periodQuery}`)
       if (res.status === 401) {
         setError('Invalid password')
         setIsAuthenticated(false)
@@ -102,7 +131,7 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [period])
 
   useEffect(() => {
     // Check if already authenticated in session
@@ -112,6 +141,19 @@ export default function AnalyticsPage() {
     }
   }, [])
 
+  // Auto-refresh every 60 seconds if enabled
+  useEffect(() => {
+    if (!autoRefresh || !isAuthenticated) return
+    const storedKey = sessionStorage.getItem('analytics_key')
+    if (!storedKey) return
+
+    const interval = setInterval(() => {
+      fetchData(storedKey, selectedProperty, period)
+    }, 60000)
+
+    return () => clearInterval(interval)
+  }, [autoRefresh, isAuthenticated, selectedProperty, period, fetchData])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     fetchData(password)
@@ -120,7 +162,7 @@ export default function AnalyticsPage() {
   const handleRefresh = () => {
     const storedKey = sessionStorage.getItem('analytics_key')
     if (storedKey) {
-      fetchData(storedKey, selectedProperty)
+      fetchData(storedKey, selectedProperty, period)
     }
   }
 
@@ -129,8 +171,71 @@ export default function AnalyticsPage() {
     setShowPropertyDropdown(false)
     const storedKey = sessionStorage.getItem('analytics_key')
     if (storedKey) {
-      fetchData(storedKey, propertyId)
+      fetchData(storedKey, propertyId, period)
     }
+  }
+
+  const handlePeriodChange = (newPeriod: string) => {
+    setPeriod(newPeriod)
+    const storedKey = sessionStorage.getItem('analytics_key')
+    if (storedKey) {
+      fetchData(storedKey, selectedProperty, newPeriod)
+    }
+  }
+
+  const exportToCSV = () => {
+    if (!data) return
+
+    const headers = ['Project', 'DAU', 'WAU', 'MAU', 'Sessions', 'Page Views', 'Events', 'New Users', 'DAU/MAU']
+    const rows = data.properties.map(p => [
+      p.name,
+      p.dau,
+      p.wau,
+      p.mau,
+      p.sessions,
+      p.pageViews,
+      p.events,
+      p.newUsers,
+      `${p.dauMau}%`
+    ])
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `analytics-${period}-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    window.URL.revokeObjectURL(url)
+  }
+
+  const TrendIndicator = ({ value, suffix = '%' }: { value: string; suffix?: string }) => {
+    const num = parseFloat(value)
+    if (num > 0) {
+      return (
+        <span className="flex items-center text-green-600 text-sm">
+          <TrendingUp className="w-4 h-4 mr-1" />
+          +{value}{suffix}
+        </span>
+      )
+    } else if (num < 0) {
+      return (
+        <span className="flex items-center text-red-600 text-sm">
+          <TrendingDown className="w-4 h-4 mr-1" />
+          {value}{suffix}
+        </span>
+      )
+    }
+    return (
+      <span className="flex items-center text-gray-500 text-sm">
+        <Minus className="w-4 h-4 mr-1" />
+        0{suffix}
+      </span>
+    )
   }
 
   if (!isAuthenticated) {
@@ -182,18 +287,60 @@ export default function AnalyticsPage() {
   }
 
   const statCards = [
-    { label: 'DAU', value: data.totals.dau.toLocaleString(), icon: Users, color: 'from-blue-500 to-cyan-500' },
-    { label: 'WAU', value: data.totals.wau.toLocaleString(), icon: Activity, color: 'from-purple-500 to-pink-500' },
-    { label: 'MAU', value: data.totals.mau.toLocaleString(), icon: TrendingUp, color: 'from-orange-500 to-yellow-500' },
-    { label: 'Sessions', value: data.totals.totalSessions.toLocaleString(), icon: BarChart3, color: 'from-green-500 to-emerald-500' },
-    { label: 'Page Views', value: data.totals.totalPageViews.toLocaleString(), icon: Eye, color: 'from-red-500 to-pink-500' },
-    { label: 'Events', value: data.totals.totalEvents.toLocaleString(), icon: Zap, color: 'from-indigo-500 to-purple-500' },
-    { label: 'New Users', value: data.totals.totalNewUsers.toLocaleString(), icon: UserPlus, color: 'from-teal-500 to-cyan-500' },
+    {
+      label: 'DAU',
+      value: data.totals.dau.toLocaleString(),
+      icon: Users,
+      color: 'from-blue-500 to-cyan-500',
+      change: data.comparison.changes.users,
+    },
+    {
+      label: 'WAU',
+      value: data.totals.wau.toLocaleString(),
+      icon: Activity,
+      color: 'from-purple-500 to-pink-500',
+      change: null,
+    },
+    {
+      label: 'MAU',
+      value: data.totals.mau.toLocaleString(),
+      icon: TrendingUp,
+      color: 'from-orange-500 to-yellow-500',
+      change: null,
+    },
+    {
+      label: 'Sessions',
+      value: data.totals.totalSessions.toLocaleString(),
+      icon: BarChart3,
+      color: 'from-green-500 to-emerald-500',
+      change: data.comparison.changes.sessions,
+    },
+    {
+      label: 'Events',
+      value: data.totals.totalEvents.toLocaleString(),
+      icon: Zap,
+      color: 'from-indigo-500 to-purple-500',
+      change: data.comparison.changes.events,
+    },
+    {
+      label: 'New Users',
+      value: data.totals.totalNewUsers.toLocaleString(),
+      icon: UserPlus,
+      color: 'from-teal-500 to-cyan-500',
+      change: data.comparison.changes.newUsers,
+    },
   ]
 
   const selectedPropertyName = selectedProperty === 'all'
-    ? 'All Projects'
-    : data.allProperties.find(p => p.id === selectedProperty)?.name || 'All Projects'
+    ? 'All Apps'
+    : data.allProperties.find(p => p.id === selectedProperty)?.name || 'All Apps'
+
+  // Prepare bar chart data for top apps
+  const topAppsData = data.properties.slice(0, 8).map(p => ({
+    name: p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name,
+    mau: p.mau,
+    dau: p.dau,
+  }))
 
   return (
     <main className="bg-gray-50 text-black min-h-screen py-12 px-6">
@@ -206,12 +353,27 @@ export default function AnalyticsPage() {
         >
           <div>
             <div className="h-px w-16 bg-black mb-4" />
-            <h1 className="text-4xl md:text-5xl font-light tracking-tight">Analytics</h1>
+            <h1 className="text-4xl md:text-5xl font-light tracking-tight">App Analytics</h1>
             <p className="text-gray-500 font-light mt-2">
               Last updated: {new Date(data.generatedAt).toLocaleString()}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Period Selector */}
+            <div className="flex items-center bg-white border border-gray-200 rounded-full overflow-hidden">
+              {['7d', '30d', '90d'].map((p) => (
+                <button
+                  key={p}
+                  onClick={() => handlePeriodChange(p)}
+                  className={`px-4 py-2 text-sm font-light transition-colors ${
+                    period === p ? 'bg-black text-white' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  {p === '7d' ? '7 Days' : p === '30d' ? '30 Days' : '90 Days'}
+                </button>
+              ))}
+            </div>
+
             {/* Property Filter Dropdown */}
             <div className="relative">
               <button
@@ -228,7 +390,7 @@ export default function AnalyticsPage() {
                     onClick={() => handlePropertyChange('all')}
                     className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors font-light ${selectedProperty === 'all' ? 'bg-gray-50' : ''}`}
                   >
-                    All Projects
+                    All Apps
                   </button>
                   <div className="border-t border-gray-100" />
                   {data.allProperties.map((prop) => (
@@ -244,6 +406,29 @@ export default function AnalyticsPage() {
                 </div>
               )}
             </div>
+
+            {/* Auto-refresh toggle */}
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className={`px-4 py-2 rounded-full border transition-colors font-light text-sm ${
+                autoRefresh
+                  ? 'bg-green-50 border-green-200 text-green-700'
+                  : 'bg-white border-gray-200 hover:border-black'
+              }`}
+            >
+              {autoRefresh ? 'Auto-refresh ON' : 'Auto-refresh'}
+            </button>
+
+            {/* Export CSV */}
+            <Button
+              onClick={exportToCSV}
+              variant="outline"
+              className="rounded-full border-gray-200 hover:border-black"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              CSV
+            </Button>
+
             <Button
               onClick={handleRefresh}
               disabled={loading}
@@ -290,12 +475,12 @@ export default function AnalyticsPage() {
           </div>
         </motion.div>
 
-        {/* Main Stats */}
+        {/* Main Stats with Trend Indicators */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8"
         >
           {statCards.map((stat) => (
             <div
@@ -306,7 +491,10 @@ export default function AnalyticsPage() {
                 <stat.icon className="w-5 h-5 text-white" />
               </div>
               <div className="text-2xl md:text-3xl font-light mb-1">{stat.value}</div>
-              <div className="text-xs text-gray-500 uppercase tracking-wider font-light">{stat.label}</div>
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-gray-500 uppercase tracking-wider font-light">{stat.label}</div>
+                {stat.change && <TrendIndicator value={stat.change} />}
+              </div>
             </div>
           ))}
         </motion.div>
@@ -322,20 +510,16 @@ export default function AnalyticsPage() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xl font-light tracking-tight">User Activity Over Time</h2>
-                <p className="text-sm text-gray-500 font-light">Active users per day (last 30 days)</p>
+                <p className="text-sm text-gray-500 font-light">Active users per day</p>
               </div>
               <div className="flex items-center gap-4 text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-500">30 days</span>
+                  <span className="text-gray-500">Period</span>
                   <span className="font-medium">{data.totals.mau.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-500">7 days</span>
-                  <span className="font-medium">{data.totals.wau.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-500">1 day</span>
-                  <span className="font-medium">{data.totals.dau.toLocaleString()}</span>
+                  <span className="text-gray-500">vs prev</span>
+                  <TrendIndicator value={data.comparison.changes.users} />
                 </div>
               </div>
             </div>
@@ -384,22 +568,87 @@ export default function AnalyticsPage() {
           </div>
         </motion.div>
 
-        {/* Two Column Layout: Countries & Stickiness */}
+        {/* Two Column: Top Apps Bar Chart + Events Breakdown */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="grid md:grid-cols-2 gap-8 mb-8"
         >
+          {/* Top Apps Bar Chart */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <h2 className="text-xl font-light tracking-tight mb-6">Top Apps by MAU</h2>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topAppsData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 12, fill: '#9ca3af' }} />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    tick={{ fontSize: 11, fill: '#6b7280' }}
+                    width={100}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '12px',
+                    }}
+                  />
+                  <Bar dataKey="mau" fill="#000000" radius={[0, 4, 4, 0]} name="MAU" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Events Breakdown */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-light tracking-tight">Top Events</h2>
+              <span className="text-sm text-gray-400">{period}</span>
+            </div>
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {data.events.slice(0, 12).map((event, i) => {
+                const maxCount = data.events[0]?.count || 1
+                const percentage = (event.count / maxCount) * 100
+                return (
+                  <div key={event.eventName} className="flex items-center gap-3">
+                    <span className="w-6 text-sm text-gray-400 font-light">{i + 1}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-light text-sm truncate max-w-[200px]">{event.eventName}</span>
+                        <span className="text-sm text-gray-600">{event.count.toLocaleString()}</span>
+                      </div>
+                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-black to-gray-600 rounded-full transition-all duration-500"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Three Column Layout: Countries, Stickiness, Period Comparison */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="grid md:grid-cols-3 gap-8 mb-8"
+        >
           {/* Countries */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <div className="flex items-center gap-2 mb-6">
               <Globe className="w-5 h-5 text-gray-500" />
               <h2 className="text-xl font-light tracking-tight">Top Countries</h2>
-              <span className="text-sm text-gray-400 font-light">(30 days)</span>
             </div>
             <div className="space-y-3">
-              {data.countries.slice(0, 10).map((country, i) => {
+              {data.countries.slice(0, 8).map((country, i) => {
                 const maxUsers = data.countries[0]?.users || 1
                 const percentage = (country.users / maxUsers) * 100
                 return (
@@ -407,7 +656,7 @@ export default function AnalyticsPage() {
                     <span className="w-6 text-sm text-gray-400 font-light">{i + 1}</span>
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-light">{country.country}</span>
+                        <span className="font-light text-sm">{country.country}</span>
                         <span className="text-sm text-gray-600">{country.users.toLocaleString()}</span>
                       </div>
                       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -428,9 +677,9 @@ export default function AnalyticsPage() {
             <h2 className="text-xl font-light mb-6 tracking-tight">Stickiness Ratios</h2>
             <div className="space-y-6">
               {[
-                { label: 'DAU/MAU', value: data.ratios.dauMau, description: 'Daily engagement rate', benchmark: '10-20% avg, 30%+ excellent' },
-                { label: 'WAU/MAU', value: data.ratios.wauMau, description: 'Weekly engagement rate', benchmark: '40-50% good, 60%+ excellent' },
-                { label: 'DAU/WAU', value: data.ratios.dauWau, description: 'Daily to weekly conversion', benchmark: '25-30% typical' },
+                { label: 'DAU/MAU', value: data.ratios.dauMau, description: 'Daily engagement', benchmark: '20%+ excellent' },
+                { label: 'WAU/MAU', value: data.ratios.wauMau, description: 'Weekly engagement', benchmark: '50%+ excellent' },
+                { label: 'DAU/WAU', value: data.ratios.dauWau, description: 'Daily-to-weekly', benchmark: '30%+ typical' },
               ].map((ratio) => (
                 <div key={ratio.label}>
                   <div className="flex items-center justify-between mb-2">
@@ -454,6 +703,32 @@ export default function AnalyticsPage() {
               ))}
             </div>
           </div>
+
+          {/* Period Comparison */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <Calendar className="w-5 h-5 text-gray-500" />
+              <h2 className="text-xl font-light tracking-tight">vs Previous Period</h2>
+            </div>
+            <div className="space-y-4">
+              {[
+                { label: 'Users', current: data.comparison.current.users, previous: data.comparison.previous.users, change: data.comparison.changes.users },
+                { label: 'Sessions', current: data.comparison.current.sessions, previous: data.comparison.previous.sessions, change: data.comparison.changes.sessions },
+                { label: 'Events', current: data.comparison.current.events, previous: data.comparison.previous.events, change: data.comparison.changes.events },
+                { label: 'New Users', current: data.comparison.current.newUsers, previous: data.comparison.previous.newUsers, change: data.comparison.changes.newUsers },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                  <div>
+                    <div className="font-light">{item.label}</div>
+                    <div className="text-xs text-gray-400">
+                      {item.current.toLocaleString()} vs {item.previous.toLocaleString()}
+                    </div>
+                  </div>
+                  <TrendIndicator value={item.change} />
+                </div>
+              ))}
+            </div>
+          </div>
         </motion.div>
 
         {/* Projects Table */}
@@ -463,19 +738,18 @@ export default function AnalyticsPage() {
           transition={{ delay: 0.3 }}
         >
           <h2 className="text-xl font-light mb-4 tracking-tight">
-            Active Projects ({data.properties.length})
+            Active Apps ({data.properties.length})
           </h2>
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    <th className="text-left px-6 py-4 text-xs uppercase tracking-wider text-gray-500 font-medium">Project</th>
+                    <th className="text-left px-6 py-4 text-xs uppercase tracking-wider text-gray-500 font-medium">App</th>
                     <th className="text-right px-4 py-4 text-xs uppercase tracking-wider text-gray-500 font-medium">DAU</th>
                     <th className="text-right px-4 py-4 text-xs uppercase tracking-wider text-gray-500 font-medium">WAU</th>
                     <th className="text-right px-4 py-4 text-xs uppercase tracking-wider text-gray-500 font-medium">MAU</th>
                     <th className="text-right px-4 py-4 text-xs uppercase tracking-wider text-gray-500 font-medium">Sessions</th>
-                    <th className="text-right px-4 py-4 text-xs uppercase tracking-wider text-gray-500 font-medium">Page Views</th>
                     <th className="text-right px-4 py-4 text-xs uppercase tracking-wider text-gray-500 font-medium">Events</th>
                     <th className="text-right px-6 py-4 text-xs uppercase tracking-wider text-gray-500 font-medium">DAU/MAU</th>
                   </tr>
@@ -495,7 +769,6 @@ export default function AnalyticsPage() {
                       <td className="text-right px-4 py-4 font-light">{property.wau.toLocaleString()}</td>
                       <td className="text-right px-4 py-4 font-light">{property.mau.toLocaleString()}</td>
                       <td className="text-right px-4 py-4 font-light text-gray-500">{property.sessions.toLocaleString()}</td>
-                      <td className="text-right px-4 py-4 font-light text-gray-500">{property.pageViews.toLocaleString()}</td>
                       <td className="text-right px-4 py-4 font-light text-gray-500">{property.events.toLocaleString()}</td>
                       <td className="text-right px-6 py-4">
                         <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
@@ -516,6 +789,44 @@ export default function AnalyticsPage() {
           </div>
         </motion.div>
 
+        {/* Website Stats (Separate from app metrics) */}
+        {data.website && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="mt-8"
+          >
+            <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-100 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <MonitorSmartphone className="w-4 h-4 text-gray-500" />
+                <span className="text-sm text-gray-500 font-light">Website (not included in app totals)</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="text-lg font-light">{data.website.name}</div>
+                <div className="flex items-center gap-8">
+                  <div className="text-center">
+                    <div className="text-xl font-light">{data.website.users.toLocaleString()}</div>
+                    <div className="text-xs text-gray-500">Users</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-light">{data.website.sessions.toLocaleString()}</div>
+                    <div className="text-xs text-gray-500">Sessions</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-light">{data.website.pageViews.toLocaleString()}</div>
+                    <div className="text-xs text-gray-500">Page Views</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-light">{data.website.newUsers.toLocaleString()}</div>
+                    <div className="text-xs text-gray-500">New Users</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Footer */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -523,7 +834,7 @@ export default function AnalyticsPage() {
           transition={{ delay: 0.4 }}
           className="text-center mt-12 text-sm text-gray-400 font-light"
         >
-          Data from Google Analytics 4 &bull; Click on a project row to filter &bull; Refreshes on demand
+          Data from Google Analytics 4 &bull; {data.totalPropertiesDiscovered} properties auto-discovered &bull; Click row to filter &bull; {autoRefresh ? 'Auto-refreshing every 60s' : 'Manual refresh'}
         </motion.div>
       </div>
     </main>

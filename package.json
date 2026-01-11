@@ -10,6 +10,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@google-analytics/admin": "^9.0.1",
     "@google-analytics/data": "^5.2.1",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-avatar": "1.1.2",
