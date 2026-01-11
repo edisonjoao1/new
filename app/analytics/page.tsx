@@ -559,14 +559,6 @@ export default function AnalyticsPage() {
       sparkline: null,
     },
     {
-      label: 'Events',
-      value: data.totals.totalEvents.toLocaleString(),
-      icon: Zap,
-      color: 'from-indigo-500 to-purple-500',
-      change: data.comparison.changes.events,
-      sparkline: null,
-    },
-    {
       label: 'New Users',
       value: data.totals.totalNewUsers.toLocaleString(),
       icon: UserPlus,
@@ -966,7 +958,7 @@ export default function AnalyticsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8"
         >
           {statCards.map((stat) => (
             <div
@@ -986,120 +978,6 @@ export default function AnalyticsPage() {
               </div>
             </div>
           ))}
-        </motion.div>
-
-        {/* Revenue & Retention Row */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.12 }}
-          className="grid md:grid-cols-2 gap-8 mb-8"
-        >
-          {/* Revenue Card */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-green-500" />
-                <h2 className="text-xl font-light tracking-tight">Revenue</h2>
-              </div>
-              <span className="text-sm text-gray-400">{period}</span>
-            </div>
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div>
-                <div className="text-3xl font-light">${data.revenue.totalRevenue.toLocaleString()}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Revenue</div>
-              </div>
-              <div>
-                <div className="text-2xl font-light">{data.revenue.purchaseCount.toLocaleString()}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Purchases</div>
-              </div>
-              <div>
-                <div className="text-2xl font-light">${data.revenue.avgOrderValue.toFixed(2)}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Avg Order</div>
-              </div>
-            </div>
-            {data.revenue.timeSeries.length > 0 && (
-              <div className="h-32">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={data.revenue.timeSeries}>
-                    <defs>
-                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="displayDate" hide />
-                    <YAxis hide />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: darkMode ? '#1f2937' : 'white',
-                        border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                        borderRadius: '8px',
-                      }}
-                      formatter={(value: any) => [`$${value}`, 'Revenue']}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#10B981"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorRevenue)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
-
-          {/* Retention Cohorts */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <Repeat className="w-5 h-5 text-purple-500" />
-              <h2 className="text-xl font-light tracking-tight">User Retention</h2>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: 'Day 1', value: data.retention.d1, color: 'from-purple-500 to-purple-600' },
-                { label: 'Day 7', value: data.retention.d7, color: 'from-blue-500 to-blue-600' },
-                { label: 'Day 30', value: data.retention.d30, color: 'from-cyan-500 to-cyan-600' },
-              ].map((item) => (
-                <div key={item.label} className="text-center">
-                  <div className="relative inline-flex items-center justify-center mb-2">
-                    <svg className="w-24 h-24">
-                      <circle
-                        cx="48"
-                        cy="48"
-                        r="40"
-                        fill="none"
-                        stroke={darkMode ? '#374151' : '#e5e7eb'}
-                        strokeWidth="8"
-                      />
-                      <circle
-                        cx="48"
-                        cy="48"
-                        r="40"
-                        fill="none"
-                        stroke="url(#gradient)"
-                        strokeWidth="8"
-                        strokeLinecap="round"
-                        strokeDasharray={`${parseFloat(item.value) * 2.51} 251`}
-                        transform="rotate(-90 48 48)"
-                      />
-                      <defs>
-                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="#8B5CF6" />
-                          <stop offset="100%" stopColor="#06B6D4" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                    <span className="absolute text-2xl font-light">{item.value}%</span>
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 font-light">{item.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
         </motion.div>
 
         {/* User Activity Chart */}
@@ -1163,108 +1041,33 @@ export default function AnalyticsPage() {
 
         <div className="h-8" />
 
-        {/* Conversion Funnel */}
-        {data.funnel.length > 0 && (
-          <CollapsibleSection title="Conversion Funnel" icon={Target} defaultOpen={true}>
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                {data.funnel.map((stage, i) => {
-                  const maxCount = data.funnel[0]?.count || 1
-                  const width = (stage.count / maxCount) * 100
-                  return (
-                    <div key={stage.name}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-light text-sm">{stage.name}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm text-gray-600 dark:text-gray-400">{stage.count.toLocaleString()}</span>
-                          <span className="text-xs text-gray-400">({stage.rate.toFixed(1)}%)</span>
-                        </div>
-                      </div>
-                      <div className="h-8 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden relative">
-                        <div
-                          className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg transition-all duration-500"
-                          style={{ width: `${width}%` }}
-                        />
-                        {i > 0 && stage.dropoff > 0 && (
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-red-500">
-                            -{stage.dropoff.toFixed(1)}%
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="flex items-center justify-center">
-                <div className="text-center">
-                  <div className="text-5xl font-light mb-2">
-                    {data.funnel.length > 1 ? data.funnel[data.funnel.length - 1].rate.toFixed(1) : 0}%
-                  </div>
-                  <div className="text-gray-500 dark:text-gray-400 font-light">Overall Conversion</div>
-                  <div className="text-sm text-gray-400 mt-1">
-                    {data.funnel[0]?.name} → {data.funnel[data.funnel.length - 1]?.name}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CollapsibleSection>
-        )}
+        {/* Top Apps by MAU - Full Width */}
+        <CollapsibleSection title="Top Apps by MAU" icon={BarChart3} defaultOpen={true}>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={topAppsData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#f0f0f0'} horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 12, fill: darkMode ? '#9ca3af' : '#6b7280' }} />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  tick={{ fontSize: 11, fill: darkMode ? '#9ca3af' : '#6b7280' }}
+                  width={120}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: darkMode ? '#1f2937' : 'white',
+                    border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+                    borderRadius: '12px',
+                  }}
+                />
+                <Bar dataKey="mau" fill={darkMode ? '#fff' : '#000'} radius={[0, 4, 4, 0]} name="MAU" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CollapsibleSection>
 
         <div className="h-8" />
-
-        {/* Two Column: Top Apps + Events */}
-        <div className="grid md:grid-cols-2 gap-8 mb-8">
-          <CollapsibleSection title="Top Apps by MAU" icon={BarChart3} defaultOpen={true}>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topAppsData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#f0f0f0'} horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 12, fill: darkMode ? '#9ca3af' : '#6b7280' }} />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    tick={{ fontSize: 11, fill: darkMode ? '#9ca3af' : '#6b7280' }}
-                    width={100}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: darkMode ? '#1f2937' : 'white',
-                      border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '12px',
-                    }}
-                  />
-                  <Bar dataKey="mau" fill={darkMode ? '#fff' : '#000'} radius={[0, 4, 4, 0]} name="MAU" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CollapsibleSection>
-
-          <CollapsibleSection title="Top Events" icon={Zap} badge={period} defaultOpen={true}>
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {data.events.slice(0, 12).map((event, i) => {
-                const maxCount = data.events[0]?.count || 1
-                const percentage = (event.count / maxCount) * 100
-                return (
-                  <div key={event.eventName} className="flex items-center gap-3">
-                    <span className="w-6 text-sm text-gray-400 font-light">{i + 1}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-light text-sm truncate max-w-[200px]">{event.eventName}</span>
-                        <span className="text-sm text-gray-600 dark:text-gray-400">{event.count.toLocaleString()}</span>
-                      </div>
-                      <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-black dark:from-white to-gray-600 dark:to-gray-400 rounded-full transition-all duration-500"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </CollapsibleSection>
-        </div>
 
         {/* Three Column: Traffic Sources, Devices, Countries */}
         <div className="grid md:grid-cols-3 gap-8 mb-8">
@@ -1403,7 +1206,6 @@ export default function AnalyticsPage() {
               {[
                 { label: 'Users', current: data.comparison.current.users, previous: data.comparison.previous.users, change: data.comparison.changes.users },
                 { label: 'Sessions', current: data.comparison.current.sessions, previous: data.comparison.previous.sessions, change: data.comparison.changes.sessions },
-                { label: 'Events', current: data.comparison.current.events, previous: data.comparison.previous.events, change: data.comparison.changes.events },
                 { label: 'New Users', current: data.comparison.current.newUsers, previous: data.comparison.previous.newUsers, change: data.comparison.changes.newUsers },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between py-2 border-b border-gray-50 dark:border-gray-800 last:border-0">
@@ -1433,7 +1235,6 @@ export default function AnalyticsPage() {
                   <th className="text-right px-4 py-4 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">WAU</th>
                   <th className="text-right px-4 py-4 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">MAU</th>
                   <th className="text-right px-4 py-4 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">Sessions</th>
-                  <th className="text-right px-4 py-4 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">Events</th>
                   <th className="text-right px-6 py-4 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">DAU/MAU</th>
                 </tr>
               </thead>
@@ -1478,7 +1279,6 @@ export default function AnalyticsPage() {
                     <td className="text-right px-4 py-4 font-light">{property.wau.toLocaleString()}</td>
                     <td className="text-right px-4 py-4 font-light">{property.mau.toLocaleString()}</td>
                     <td className="text-right px-4 py-4 font-light text-gray-500 dark:text-gray-400">{property.sessions.toLocaleString()}</td>
-                    <td className="text-right px-4 py-4 font-light text-gray-500 dark:text-gray-400">{property.events.toLocaleString()}</td>
                     <td className="text-right px-6 py-4">
                       <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
                         parseFloat(property.dauMau) >= 20
