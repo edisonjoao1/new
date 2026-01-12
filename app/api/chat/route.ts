@@ -74,7 +74,7 @@ Why founders choose us:
 - Multilingual AI: 100K+ users in Spanish-speaking markets.
 - Full-stack team: AI + mobile + payments + video + voice. End-to-end.
 
-Contact: edison@ai4u.space
+Contact: hello@ai4u.space
 
 Be helpful, professional, and concise. Use "we" language to represent the team. Focus on how we can solve business problems with AI and ship real products fast. If asked about pricing or specific projects, encourage them to submit their idea through the form or contact directly.`
     }

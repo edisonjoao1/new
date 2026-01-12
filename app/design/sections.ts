@@ -255,7 +255,7 @@ export const sections: Section[] = [
       {
         title: 'Start Your Project',
         description: 'The workshop is ready. The guild stands by. What shall we build together?',
-        url: 'mailto:edison@ai4u.space',
+        url: 'mailto:hello@ai4u.space',
         urlType: 'email',
       },
       {

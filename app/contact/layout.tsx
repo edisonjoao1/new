@@ -4,7 +4,7 @@ import { generateMetadata as genMeta } from '@/lib/seo'
 export const metadata: Metadata = genMeta({
   title: 'Contact AI 4U Labs | Start Your AI Project',
   description:
-    'Get in touch to discuss your AI project. Free consultation. Typical response time: 24 hours. Email edison@ai4u.space or fill out the form.',
+    'Get in touch to discuss your AI project. Free consultation. Typical response time: 24 hours. Email hello@ai4u.space or fill out the form.',
   path: '/contact',
   keywords: [
     'contact AI 4U Labs',

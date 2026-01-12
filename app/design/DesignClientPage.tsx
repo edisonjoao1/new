@@ -549,7 +549,7 @@ export default function DesignClientPage() {
               transition={{ duration: 0.8, delay: 0.4 }}
             >
               <motion.a
-                href="mailto:edison@ai4u.space"
+                href="mailto:hello@ai4u.space"
                 className="inline-block bg-white text-black px-8 py-4 rounded-full text-lg font-medium hover:bg-white/90 transition-all duration-300"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
