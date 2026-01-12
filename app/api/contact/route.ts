@@ -4,8 +4,8 @@ import { z } from 'zod'
 
 const resend = new Resend(process.env.RESEND_API_KEY || 'dummy_key_for_build')
 
-// Use environment variable or fallback to Resend's shared domain (works without verification)
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'AI 4U Labs <onboarding@resend.dev>'
+// Use verified Resend domain for sending
+const FROM_EMAIL = 'AI 4U Labs <hello@mail.ai4u.space>'
 
 const contactSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),

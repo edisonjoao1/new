@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
 
     // Send confirmation email to the subscriber
     await resend.emails.send({
-      from: process.env.FROM_EMAIL || 'AI 4U Labs <onboarding@resend.dev>',
+      from: 'AI 4U Labs <hello@mail.ai4u.space>',
       to: email,
       subject: 'Welcome to AI 4U Labs Newsletter',
       html: `
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
     // Notify the team about new subscriber
     await resend.emails.send({
-      from: process.env.FROM_EMAIL || 'AI 4U Labs <onboarding@resend.dev>',
+      from: 'AI 4U Labs <hello@mail.ai4u.space>',
       to: contactEmail,
       subject: `New Newsletter Subscriber: ${email}`,
       html: `
