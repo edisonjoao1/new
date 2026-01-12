@@ -88,9 +88,12 @@ export function EditorialHero({ onGetStarted }: EditorialHeroProps) {
                 transition={{ duration: 0.8, delay: 0.6 }}
                 className="mb-12 max-w-xl"
               >
-                <p className="text-xl leading-relaxed text-gray-700 font-light mb-8">
+                <p className="text-xl leading-relaxed text-gray-700 font-light mb-4">
                   From mobile apps to payment systems to customer support—we ship AI products fast.
-                  For startups, Fortune 500s, and everyone in between. If you can imagine it, we can build it in weeks, not months.
+                  For startups, Fortune 500s, and everyone in between. If you can imagine it, we can build it in days, not months. Prototypes? Hours.
+                </p>
+                <p className="text-base text-gray-500 font-light mb-8">
+                  <span className="text-black font-medium">Don't believe us? Test us. If we miss our timeline, it's free.</span>
                 </p>
                 <div className="flex items-center gap-8 text-sm text-gray-500">
                   <div>
@@ -99,13 +102,14 @@ export function EditorialHero({ onGetStarted }: EditorialHeroProps) {
                   </div>
                   <div className="h-12 w-px bg-gray-200" />
                   <div>
-                    <div className="text-2xl font-light text-black mb-1">20+</div>
-                    <div className="uppercase tracking-wider text-xs">Since 2023</div>
+                    <div className="text-2xl font-light text-black mb-1">35+</div>
+                    <div className="uppercase tracking-wider text-xs">Apps Shipped</div>
                   </div>
                   <div className="h-12 w-px bg-gray-200" />
-                  <div>
-                    <div className="text-2xl font-light text-black mb-1">6 Days</div>
+                  <div className="group cursor-default">
+                    <div className="text-2xl font-light text-black mb-1">1 Day</div>
                     <div className="uppercase tracking-wider text-xs">Record</div>
+                    <div className="text-xs text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity mt-1">Challenge us</div>
                   </div>
                 </div>
               </motion.div>
@@ -163,7 +167,7 @@ export function EditorialHero({ onGetStarted }: EditorialHeroProps) {
                   {/* Image caption */}
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6">
                     <p className="text-white text-sm font-light">
-                      SheGPT — Shipped to App Store in 6 days
+                      SheGPT — Shipped to App Store in 1 day
                     </p>
                   </div>
 
@@ -187,7 +191,7 @@ export function EditorialHero({ onGetStarted }: EditorialHeroProps) {
                   <div className="absolute inset-0 bg-black/20" />
                   <div className="relative h-full flex flex-col items-center justify-center p-12 text-white text-center">
                     <div className="mb-8">
-                      <div className="text-6xl font-light mb-4">20+</div>
+                      <div className="text-6xl font-light mb-4">35+</div>
                       <div className="text-sm uppercase tracking-[0.3em] mb-2">Apps Shipped</div>
                       <div className="text-xs text-white/80 font-light">Since 2023</div>
                     </div>
@@ -200,7 +204,7 @@ export function EditorialHero({ onGetStarted }: EditorialHeroProps) {
                         <div className="text-xs uppercase tracking-wider text-white/80">Total Users</div>
                       </div>
                       <div>
-                        <div className="text-3xl font-light mb-1">6 Days</div>
+                        <div className="text-3xl font-light mb-1">1 Day</div>
                         <div className="text-xs uppercase tracking-wider text-white/80">Fastest MVP</div>
                       </div>
                       <div>

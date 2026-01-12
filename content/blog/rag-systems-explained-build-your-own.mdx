@@ -1,0 +1,365 @@
+---
+title: "RAG Systems Explained: Build Your Own Knowledge Base"
+excerpt: "A practical guide to building Retrieval-Augmented Generation (RAG) systems. Learn how to make AI that actually knows your data."
+date: "2025-08-14"
+category: "Guide"
+keywords: ["RAG", "vector database", "embeddings", "knowledge base AI", "document AI"]
+readingTime: 11
+author: "Edison Espinosa"
+---
+
+# RAG Systems Explained: Build Your Own Knowledge Base
+
+RAG (Retrieval-Augmented Generation) is how you make AI that knows your stuff. Here's how to build one.
+
+## What Is RAG?
+
+RAG combines two things:
+1. **Retrieval**: Find relevant information from your documents
+2. **Generation**: Use that information to answer questions
+
+Without RAG:
+> User: "What's our refund policy?"
+> AI: "I don't have information about your specific policies."
+
+With RAG:
+> User: "What's our refund policy?"
+> AI: "According to your policy document, refunds are available within 30 days of purchase with proof of receipt."
+
+## How RAG Works
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Query     │────▶│   Embed     │────▶│   Search    │────▶│  Generate   │
+│  "What's    │     │  Convert to │     │  Find       │     │  Answer     │
+│   policy?"  │     │  vector     │     │  similar    │     │  with       │
+│             │     │             │     │  docs       │     │  context    │
+└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
+```
+
+## Building a RAG System
+
+### Step 1: Document Ingestion
+
+First, get your documents into the system.
+
+```typescript
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+import { Pinecone } from "@pinecone-database/pinecone";
+
+async function ingestDocument(content: string, metadata: Record<string, any>) {
+  // Split into chunks
+  const splitter = new RecursiveCharacterTextSplitter({
+    chunkSize: 1000,
+    chunkOverlap: 200
+  });
+
+  const chunks = await splitter.createDocuments([content], [metadata]);
+
+  // Generate embeddings
+  const embeddings = new OpenAIEmbeddings();
+  const vectors = await embeddings.embedDocuments(chunks.map(c => c.pageContent));
+
+  // Store in vector database
+  const pinecone = new Pinecone();
+  const index = pinecone.Index("knowledge-base");
+
+  await index.upsert(
+    vectors.map((vector, i) => ({
+      id: `${metadata.docId}-${i}`,
+      values: vector,
+      metadata: {
+        content: chunks[i].pageContent,
+        ...metadata
+      }
+    }))
+  );
+}
+```
+
+### Step 2: Chunking Strategy
+
+How you split documents matters a lot.
+
+**Bad chunking**:
+```
+Chunk 1: "Our refund policy states that customers"
+Chunk 2: "may return items within 30 days."
+```
+Search for "refund policy" might miss the complete answer.
+
+**Good chunking**:
+```
+Chunk 1: "Refund Policy: Customers may return items within 30 days
+of purchase. Proof of receipt required. Refunds issued to original
+payment method within 5-7 business days."
+```
+Complete information in one chunk.
+
+**Our chunking rules**:
+- Keep semantic units together
+- Overlap between chunks (capture context at boundaries)
+- Include metadata (source, date, section)
+
+```typescript
+const splitter = new RecursiveCharacterTextSplitter({
+  chunkSize: 1000,     // Target size
+  chunkOverlap: 200,   // Context overlap
+  separators: [        // Split priorities
+    "\n## ",           // Markdown headers first
+    "\n### ",
+    "\n\n",            // Then paragraphs
+    "\n",              // Then lines
+    ". ",              // Then sentences
+    " "                // Finally words
+  ]
+});
+```
+
+### Step 3: Embeddings
+
+Embeddings convert text to vectors for similarity search.
+
+```typescript
+const embeddings = new OpenAIEmbeddings({
+  model: "text-embedding-3-large", // Best quality
+  dimensions: 1536
+});
+
+// Or for cost efficiency
+const embeddings = new OpenAIEmbeddings({
+  model: "text-embedding-3-small",
+  dimensions: 512
+});
+```
+
+### Step 4: Vector Storage
+
+Store embeddings for fast retrieval.
+
+**Pinecone** (managed, easy):
+```typescript
+const pinecone = new Pinecone();
+const index = pinecone.Index("my-index");
+
+// Upsert vectors
+await index.upsert(vectors);
+
+// Query
+const results = await index.query({
+  vector: queryVector,
+  topK: 5,
+  includeMetadata: true
+});
+```
+
+**PostgreSQL with pgvector** (self-hosted):
+```sql
+CREATE EXTENSION vector;
+
+CREATE TABLE documents (
+  id SERIAL PRIMARY KEY,
+  content TEXT,
+  embedding vector(1536),
+  metadata JSONB
+);
+
+CREATE INDEX ON documents USING ivfflat (embedding vector_cosine_ops);
+
+-- Query
+SELECT content, 1 - (embedding <=> query_embedding) AS similarity
+FROM documents
+ORDER BY embedding <=> query_embedding
+LIMIT 5;
+```
+
+### Step 5: Retrieval
+
+Find relevant chunks for a query.
+
+```typescript
+async function retrieve(query: string, topK: number = 5) {
+  // Embed the query
+  const queryVector = await embeddings.embedQuery(query);
+
+  // Search vector store
+  const results = await index.query({
+    vector: queryVector,
+    topK,
+    includeMetadata: true
+  });
+
+  return results.matches.map(match => ({
+    content: match.metadata.content,
+    score: match.score,
+    source: match.metadata.source
+  }));
+}
+```
+
+### Step 6: Generation
+
+Answer questions using retrieved context.
+
+```typescript
+async function answer(query: string) {
+  // Retrieve relevant chunks
+  const context = await retrieve(query, 5);
+
+  // Build prompt with context
+  const prompt = `Answer the question based on the provided context.
+
+Context:
+${context.map(c => c.content).join("\n\n")}
+
+Question: ${query}
+
+Answer based only on the context provided. If the answer isn't in the context, say "I don't have information about that."`;
+
+  // Generate answer
+  const response = await openai.chat.completions.create({
+    model: "gpt-5.2",
+    messages: [{ role: "user", content: prompt }]
+  });
+
+  return {
+    answer: response.choices[0].message.content,
+    sources: context.map(c => c.source)
+  };
+}
+```
+
+## Advanced RAG Techniques
+
+### Hybrid Search
+
+Combine vector similarity with keyword matching.
+
+```typescript
+async function hybridSearch(query: string) {
+  // Vector search
+  const vectorResults = await vectorSearch(query);
+
+  // Keyword search (BM25)
+  const keywordResults = await keywordSearch(query);
+
+  // Merge and rerank
+  const combined = mergeResults(vectorResults, keywordResults);
+
+  // Rerank with cross-encoder
+  const reranked = await rerank(query, combined);
+
+  return reranked;
+}
+```
+
+### Query Expansion
+
+Generate multiple queries for better recall.
+
+```typescript
+async function expandQuery(query: string): Promise<string[]> {
+  const response = await openai.chat.completions.create({
+    model: "gpt-5-mini",
+    messages: [{
+      role: "user",
+      content: `Generate 3 alternative phrasings for this search query: "${query}"`
+    }]
+  });
+
+  return [query, ...parseAlternatives(response)];
+}
+```
+
+### Contextual Compression
+
+Remove irrelevant parts of retrieved chunks.
+
+```typescript
+async function compressContext(query: string, chunks: string[]) {
+  const response = await openai.chat.completions.create({
+    model: "gpt-5-mini",
+    messages: [{
+      role: "user",
+      content: `Extract only the parts relevant to "${query}" from these passages:\n\n${chunks.join("\n\n")}`
+    }]
+  });
+
+  return response.choices[0].message.content;
+}
+```
+
+## Production RAG Checklist
+
+### Ingestion
+- [ ] Document format handling (PDF, Word, HTML, etc.)
+- [ ] Chunking strategy optimized for your content
+- [ ] Metadata extraction (dates, authors, categories)
+- [ ] Incremental updates (add/remove documents)
+- [ ] Error handling for malformed documents
+
+### Retrieval
+- [ ] Query preprocessing (spell check, normalization)
+- [ ] Appropriate similarity threshold
+- [ ] Metadata filtering support
+- [ ] Fallback for no results
+
+### Generation
+- [ ] Context length management
+- [ ] Citation of sources
+- [ ] Handling "I don't know"
+- [ ] Rate limiting
+- [ ] Cost monitoring
+
+### Evaluation
+- [ ] Retrieval accuracy testing
+- [ ] Answer quality evaluation
+- [ ] User feedback collection
+- [ ] A/B testing infrastructure
+
+## Common RAG Mistakes
+
+### 1. Chunks Too Small
+Problem: Relevant information split across chunks
+Solution: Larger chunks with semantic boundaries
+
+### 2. No Overlap
+Problem: Context lost at chunk boundaries
+Solution: 10-20% overlap between chunks
+
+### 3. Missing Metadata
+Problem: Can't filter or cite sources
+Solution: Always store source, date, section
+
+### 4. Ignoring "No Results"
+Problem: Hallucination when nothing relevant found
+Solution: Explicit handling of low-confidence retrievals
+
+### 5. One-Size-Fits-All Embeddings
+Problem: Different content types need different approaches
+Solution: Separate indexes or specialized embeddings
+
+## Cost Comparison
+
+| Component | Option | Monthly Cost (10K queries) |
+|-----------|--------|---------------------------|
+| Embeddings | text-embedding-3-small | $2 |
+| | text-embedding-3-large | $13 |
+| Vector DB | Pinecone (Free tier) | $0 |
+| | Pinecone (Standard) | $70+ |
+| | pgvector (self-hosted) | Infrastructure cost |
+| Generation | GPT-5-mini | $6 |
+| | GPT-5.2 | $125 |
+
+**Recommended starter stack**: text-embedding-3-small + Pinecone Free + GPT-5-mini = ~$8/month
+
+## Need a RAG System?
+
+We build production RAG systems for knowledge bases, customer support, and document Q&A.
+
+[Discuss Your RAG Project](/contact)
+
+---
+
+*AI 4U Labs builds production RAG systems. Let us help you make AI that knows your business.*

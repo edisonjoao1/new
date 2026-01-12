@@ -1,0 +1,271 @@
+---
+title: "Real-time Analytics: How We Built a 24-Property Dashboard in 1 Day"
+excerpt: "The inside story of building a Google Analytics dashboard that auto-discovers 24 properties, displays real-time metrics, and compares performance—shipped in one day."
+date: "2025-08-20"
+category: "Case Study"
+keywords: ["analytics dashboard", "Google Analytics", "GA4 API", "real-time analytics", "rapid development"]
+readingTime: 6
+author: "Edison Espinosa"
+---
+
+# Real-time Analytics: How We Built a 24-Property Dashboard in 1 Day
+
+We needed to monitor analytics across 24 GA4 properties. Existing tools were either too expensive or too limited. So we built our own—in one day.
+
+## The Problem
+
+Managing 24 Google Analytics properties means:
+- 24 different dashboards to check
+- No unified view
+- Hard to compare performance
+- Slow context switching
+
+Google's own interface isn't designed for this. Third-party tools wanted $500+/month.
+
+## The Solution
+
+A custom dashboard that:
+- Auto-discovers all accessible properties
+- Shows real-time visitor counts
+- Compares metrics across properties
+- Updates every 30 seconds
+- Dark mode (essential for dashboards)
+
+## Development Timeline
+
+### Hour 1-2: Setup and API Integration
+
+**Google Analytics Data API setup**:
+
+```typescript
+import { BetaAnalyticsDataClient } from "@google-analytics/data";
+import { AnalyticsAdminServiceClient } from "@google-analytics/admin";
+
+const analyticsData = new BetaAnalyticsDataClient();
+const analyticsAdmin = new AnalyticsAdminServiceClient();
+
+// Auto-discover all accessible properties
+async function discoverProperties() {
+  const [accountSummaries] = await analyticsAdmin.listAccountSummaries();
+
+  const properties = [];
+  for (const account of accountSummaries) {
+    for (const property of account.propertySummaries || []) {
+      properties.push({
+        id: property.property.replace("properties/", ""),
+        name: property.displayName,
+        account: account.displayName
+      });
+    }
+  }
+
+  return properties; // Found 24 properties
+}
+```
+
+### Hour 3-4: Real-time Metrics
+
+**Fetching real-time data**:
+
+```typescript
+async function getRealtimeMetrics(propertyId: string) {
+  const [response] = await analyticsData.runRealtimeReport({
+    property: `properties/${propertyId}`,
+    metrics: [
+      { name: "activeUsers" },
+      { name: "screenPageViews" }
+    ],
+    dimensions: [
+      { name: "country" }
+    ]
+  });
+
+  return {
+    activeUsers: parseInt(response.rows?.[0]?.metricValues?.[0]?.value || "0"),
+    pageViews: response.rows?.reduce((sum, row) =>
+      sum + parseInt(row.metricValues?.[1]?.value || "0"), 0
+    ) || 0
+  };
+}
+```
+
+**Historical comparison**:
+
+```typescript
+async function getHistoricalMetrics(propertyId: string, dateRange: string) {
+  const [response] = await analyticsData.runReport({
+    property: `properties/${propertyId}`,
+    dateRanges: [{ startDate: dateRange, endDate: "today" }],
+    metrics: [
+      { name: "activeUsers" },
+      { name: "sessions" },
+      { name: "screenPageViews" },
+      { name: "bounceRate" },
+      { name: "averageSessionDuration" }
+    ]
+  });
+
+  return parseReportResponse(response);
+}
+```
+
+### Hour 5-6: Frontend Dashboard
+
+**Property cards with real-time updates**:
+
+```typescript
+function PropertyCard({ property }: { property: Property }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["realtime", property.id],
+    queryFn: () => fetchRealtimeMetrics(property.id),
+    refetchInterval: 30000 // 30 seconds
+  });
+
+  return (
+    <div className="bg-zinc-900 rounded-xl p-6 border border-zinc-800">
+      <div className="flex justify-between items-start mb-4">
+        <h3 className="font-semibold text-white">{property.name}</h3>
+        <span className="text-xs text-zinc-500">{property.account}</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <MetricDisplay
+          label="Active Users"
+          value={data?.activeUsers || 0}
+          trend={data?.trend}
+        />
+        <MetricDisplay
+          label="Page Views"
+          value={data?.pageViews || 0}
+          trend={data?.pageViewTrend}
+        />
+      </div>
+
+      <RealtimeIndicator
+        isLive={!isLoading}
+        lastUpdate={data?.timestamp}
+      />
+    </div>
+  );
+}
+```
+
+### Hour 7-8: Comparison and Polish
+
+**Cross-property comparison**:
+
+```typescript
+function ComparisonView({ properties }: { properties: Property[] }) {
+  const [selectedMetric, setSelectedMetric] = useState("sessions");
+  const [dateRange, setDateRange] = useState("7daysAgo");
+
+  const { data } = useQuery({
+    queryKey: ["comparison", properties.map(p => p.id), selectedMetric, dateRange],
+    queryFn: () => fetchComparisonData(properties, selectedMetric, dateRange)
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-4">
+        <MetricSelector value={selectedMetric} onChange={setSelectedMetric} />
+        <DateRangeSelector value={dateRange} onChange={setDateRange} />
+      </div>
+
+      <ResponsiveContainer width="100%" height={400}>
+        <BarChart data={data}>
+          <XAxis dataKey="name" tick={{ fill: "#a1a1aa" }} />
+          <YAxis tick={{ fill: "#a1a1aa" }} />
+          <Bar dataKey="value" fill="#3b82f6" />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+```
+
+## Final Result
+
+**What we shipped**:
+- 24 properties discovered automatically
+- Real-time active user counts
+- 7-day, 30-day, and 90-day comparisons
+- Property search and filtering
+- Dark mode UI
+- Export to CSV
+
+**Cost**: $0 (GA4 API is free within quotas)
+
+**Time**: 8 hours from start to deployed
+
+## Technical Decisions
+
+### Why Next.js?
+
+- API routes for server-side GA calls
+- React for interactive UI
+- Vercel deployment in minutes
+- TypeScript for reliability
+
+### Why Recharts?
+
+- Simple API
+- Good performance with many data points
+- Easy dark mode styling
+- No complex configuration
+
+### Caching Strategy
+
+```typescript
+// Cache property list (changes rarely)
+const properties = await cache.get("properties", discoverProperties, 86400);
+
+// Cache historical data (OK to be slightly stale)
+const historical = await cache.get(
+  `historical:${propertyId}:${dateRange}`,
+  () => getHistoricalMetrics(propertyId, dateRange),
+  300 // 5 minutes
+);
+
+// No cache for real-time (needs to be fresh)
+const realtime = await getRealtimeMetrics(propertyId);
+```
+
+## Lessons Learned
+
+### 1. API Discovery Is Powerful
+
+The Admin API's `listAccountSummaries` found all 24 properties automatically. No manual configuration.
+
+### 2. Real-time Has Limits
+
+GA4 real-time data is approximate and has rate limits. Good enough for dashboards, not for precision.
+
+### 3. Comparison Is The Value
+
+Single-property metrics are available in GA4 UI. Cross-property comparison is where custom dashboards shine.
+
+### 4. Dark Mode Matters
+
+For dashboards you stare at, dark mode reduces eye strain. Worth the extra CSS.
+
+## What This Enables
+
+With unified analytics:
+- Spot underperforming properties immediately
+- Compare marketing effectiveness across products
+- Identify trends across the portfolio
+- Make data-driven decisions faster
+
+## Build Your Own Dashboard?
+
+We build custom analytics dashboards for:
+- Multi-property GA4 accounts
+- Business intelligence
+- Real-time monitoring
+- Custom metrics and KPIs
+
+[Discuss Your Analytics Project](/contact)
+
+---
+
+*AI 4U Labs builds production tools fast. This dashboard is one of 30+ projects we've shipped.*

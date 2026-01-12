@@ -8,15 +8,15 @@ const recentShips = [
     name: 'Conversational Payments Agent',
     description: 'Cross-platform money transfer system across ChatGPT, Claude, and WhatsApp',
     timeline: '3 weeks',
-    tech: ['GPT-5.1', 'Claude Opus 4.5', 'WhatsApp API'],
+    tech: ['GPT-5.2', 'Claude Opus 4.5', 'WhatsApp API'],
     badge: 'AI + Fintech',
     color: 'from-blue-500 to-cyan-500',
   },
   {
     name: 'SheGPT',
-    description: 'AI assistant for women - idea to App Store in 6 days',
-    timeline: '6 days',
-    tech: ['GPT-5.1', 'iOS/Swift', 'OpenAI Realtime'],
+    description: 'AI assistant for women - idea to App Store approved in 1 day',
+    timeline: '1 day',
+    tech: ['GPT-5.2', 'iOS/Swift', 'OpenAI Realtime'],
     badge: 'Mobile AI',
     color: 'from-pink-500 to-purple-500',
   },
@@ -24,7 +24,7 @@ const recentShips = [
     name: 'Inteligencia Artificial Gratis',
     description: 'Spanish-first AI app for Latin American market',
     timeline: '2 weeks',
-    tech: ['GPT-5.1', 'Gemini 3', 'iOS'],
+    tech: ['GPT-5.2', 'Gemini 3', 'iOS'],
     badge: 'Multilingual',
     color: 'from-orange-500 to-yellow-500',
   },
@@ -54,7 +54,7 @@ export function RecentlyShipped() {
             What we've shipped lately
           </h2>
           <p className="text-xl text-blue-200">
-            10+ AI apps launched this year. Here are the latest.
+            30+ AI apps shipped. Here are the latest.
           </p>
         </motion.div>
 
@@ -116,7 +116,7 @@ export function RecentlyShipped() {
           className="text-center mt-12"
         >
           <p className="text-blue-200">
-            <span className="font-bold text-white">10+ AI apps</span> shipped in 2024 •{' '}
+            <span className="font-bold text-white">30+ AI apps</span> shipped •{' '}
             <span className="font-bold text-white">1M+ users</span> across all products
           </p>
         </motion.div>

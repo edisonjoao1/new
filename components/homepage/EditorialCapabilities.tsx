@@ -12,7 +12,7 @@ const capabilities = [
     description: 'Native iOS and cross-platform apps. Integrated with GPT-5.1, Claude Opus 4.5, and Gemini 3.',
     icon: Smartphone,
     gradient: 'from-blue-500 to-cyan-500',
-    details: 'SheGPT shipped in 6 days using OpenAI Realtime API. 100K+ users across health, fitness, and productivity apps.',
+    details: 'SheGPT shipped in 1 day using OpenAI Realtime API. 100K+ users across health, fitness, and productivity apps.',
     examples: ['Voice AI', 'Image Recognition', 'Real-time Processing']
   },
   {
@@ -69,10 +69,15 @@ export function EditorialCapabilities() {
               </h2>
             </div>
             <div className="flex items-end">
-              <p className="text-xl leading-relaxed text-gray-600 font-light">
-                We specialize in shipping AI products to production.
-                From strategy to deployment, we handle the full stack.
-              </p>
+              <div>
+                <p className="text-xl leading-relaxed text-gray-600 font-light mb-4">
+                  We specialize in shipping AI products to production.
+                  From strategy to deployment, we handle the full stack. AI coding agents power our speed.
+                </p>
+                <p className="text-base text-indigo-600 font-medium">
+                  Don't believe our 1-day record? Test us—if we miss our timeline, it's free.
+                </p>
+              </div>
             </div>
           </div>
         </motion.div>

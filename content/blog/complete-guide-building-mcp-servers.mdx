@@ -1,0 +1,397 @@
+---
+title: "The Complete Guide to Building MCP Servers"
+excerpt: "A developer's guide to building Model Context Protocol (MCP) servers. Learn the architecture, implementation patterns, and best practices from building 15+ production MCP servers."
+date: "2025-04-18"
+category: "Tutorial"
+keywords: ["MCP servers", "Model Context Protocol", "AI integration", "Claude MCP", "LLM tools"]
+readingTime: 12
+author: "Edison Espinosa"
+---
+
+# The Complete Guide to Building MCP Servers
+
+We've built 15+ MCP servers in production. Here's everything you need to know to build your own.
+
+## What Is MCP?
+
+Model Context Protocol (MCP) is a standard for connecting AI models to external tools and data sources. Instead of building custom integrations for every AI application, MCP provides a unified interface.
+
+**Think of it as**: USB for AI. One protocol, many tools.
+
+## Why MCP Matters
+
+Before MCP:
+- Every AI integration was custom
+- Tools worked with one model but not others
+- Maintenance was a nightmare
+
+After MCP:
+- Build once, work with any MCP-compatible model
+- Standardized authentication and communication
+- Shared ecosystem of tools
+
+## MCP Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  AI Model   │────▶│ MCP Server  │────▶│   Service   │
+│ (Claude,    │◀────│             │◀────│ (DB, API,   │
+│  GPT, etc)  │     │             │     │  Files)     │
+└─────────────┘     └─────────────┘     └─────────────┘
+```
+
+**MCP Server** handles:
+- Tool definitions
+- Request/response formatting
+- Authentication
+- Error handling
+
+## Building Your First MCP Server
+
+### Project Setup
+
+```bash
+mkdir my-mcp-server
+cd my-mcp-server
+npm init -y
+npm install @modelcontextprotocol/sdk
+```
+
+### Basic Server Structure
+
+```typescript
+import { Server } from "@modelcontextprotocol/sdk/server";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio";
+
+const server = new Server({
+  name: "my-mcp-server",
+  version: "1.0.0",
+  capabilities: {
+    tools: {}
+  }
+});
+
+// Define tools here
+
+const transport = new StdioServerTransport();
+server.connect(transport);
+```
+
+### Adding Tools
+
+```typescript
+server.setRequestHandler("tools/list", async () => {
+  return {
+    tools: [
+      {
+        name: "get_weather",
+        description: "Get current weather for a location",
+        inputSchema: {
+          type: "object",
+          properties: {
+            location: {
+              type: "string",
+              description: "City name or coordinates"
+            }
+          },
+          required: ["location"]
+        }
+      }
+    ]
+  };
+});
+
+server.setRequestHandler("tools/call", async (request) => {
+  if (request.params.name === "get_weather") {
+    const location = request.params.arguments.location;
+    const weather = await fetchWeather(location);
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(weather)
+        }
+      ]
+    };
+  }
+});
+```
+
+## Real-World MCP Servers We've Built
+
+### 1. Database Query Server
+
+Allows AI to safely query databases with guardrails.
+
+**Key features**:
+- Read-only by default
+- Query validation before execution
+- Result size limits
+- Schema exploration tools
+
+```typescript
+const tools = [
+  {
+    name: "query_database",
+    description: "Execute a SQL query (read-only)",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        limit: { type: "number", default: 100 }
+      }
+    }
+  },
+  {
+    name: "list_tables",
+    description: "List all available tables"
+  },
+  {
+    name: "describe_table",
+    description: "Get schema for a specific table",
+    inputSchema: {
+      type: "object",
+      properties: {
+        table: { type: "string" }
+      }
+    }
+  }
+];
+```
+
+### 2. File System Server
+
+Controlled file access for AI assistants.
+
+**Key features**:
+- Sandboxed to specific directories
+- Read/write permissions configurable
+- File type restrictions
+- Operation logging
+
+### 3. API Integration Server
+
+Connect AI to any REST API.
+
+**Key features**:
+- Dynamic tool generation from OpenAPI specs
+- Authentication handling
+- Rate limiting
+- Response transformation
+
+## Best Practices
+
+### 1. Clear Tool Descriptions
+
+The AI only knows what you tell it. Be explicit.
+
+```typescript
+// Bad
+{
+  name: "search",
+  description: "Search things"
+}
+
+// Good
+{
+  name: "search_products",
+  description: "Search the product catalog by name, SKU, or category. Returns up to 20 results sorted by relevance. Use this when the user asks about product availability or specifications."
+}
+```
+
+### 2. Input Validation
+
+Never trust AI-generated inputs blindly.
+
+```typescript
+server.setRequestHandler("tools/call", async (request) => {
+  const { query } = request.params.arguments;
+
+  // Validate before executing
+  if (!isValidQuery(query)) {
+    return {
+      content: [{
+        type: "text",
+        text: "Invalid query format. Please provide a valid search term."
+      }],
+      isError: true
+    };
+  }
+
+  // Safe to proceed
+  return executeQuery(query);
+});
+```
+
+### 3. Error Handling
+
+Return useful errors the AI can work with.
+
+```typescript
+try {
+  const result = await riskyOperation();
+  return { content: [{ type: "text", text: result }] };
+} catch (error) {
+  return {
+    content: [{
+      type: "text",
+      text: `Operation failed: ${error.message}. Try: ${getSuggestion(error)}`
+    }],
+    isError: true
+  };
+}
+```
+
+### 4. Limit Blast Radius
+
+AI can be unpredictable. Contain the damage.
+
+```typescript
+// Limit query results
+const MAX_RESULTS = 100;
+const results = await query(sql, { limit: MAX_RESULTS });
+
+// Timeout long operations
+const result = await Promise.race([
+  longOperation(),
+  timeout(30000)
+]);
+
+// Rate limit
+if (await isRateLimited(userId)) {
+  return { content: [{ type: "text", text: "Rate limit exceeded" }], isError: true };
+}
+```
+
+## Security Considerations
+
+### Authentication
+
+```typescript
+server.setRequestHandler("tools/call", async (request) => {
+  // Verify request origin
+  const token = request.params.headers?.authorization;
+  if (!await verifyToken(token)) {
+    throw new Error("Unauthorized");
+  }
+
+  // Proceed with verified request
+});
+```
+
+### Sandboxing
+
+For file operations:
+```typescript
+const ALLOWED_PATHS = ["/home/user/documents"];
+
+function isPathAllowed(path: string): boolean {
+  const resolved = path.resolve(path);
+  return ALLOWED_PATHS.some(allowed => resolved.startsWith(allowed));
+}
+```
+
+### Audit Logging
+
+```typescript
+async function logOperation(operation: string, params: any, result: any) {
+  await db.insert("mcp_audit_log", {
+    timestamp: new Date(),
+    operation,
+    params: JSON.stringify(params),
+    result: JSON.stringify(result)
+  });
+}
+```
+
+## Testing MCP Servers
+
+### Unit Testing Tools
+
+```typescript
+import { describe, it, expect } from "vitest";
+
+describe("get_weather tool", () => {
+  it("returns weather for valid location", async () => {
+    const result = await server.handleRequest({
+      method: "tools/call",
+      params: {
+        name: "get_weather",
+        arguments: { location: "New York" }
+      }
+    });
+
+    expect(result.content[0].text).toContain("temperature");
+  });
+
+  it("handles invalid location gracefully", async () => {
+    const result = await server.handleRequest({
+      method: "tools/call",
+      params: {
+        name: "get_weather",
+        arguments: { location: "" }
+      }
+    });
+
+    expect(result.isError).toBe(true);
+  });
+});
+```
+
+### Integration Testing
+
+```typescript
+describe("MCP Server Integration", () => {
+  it("works with Claude", async () => {
+    const response = await claude.messages.create({
+      model: "claude-opus-4-5",
+      messages: [{ role: "user", content: "What's the weather in NYC?" }],
+      tools: await mcpServer.listTools()
+    });
+
+    expect(response.content).toBeDefined();
+  });
+});
+```
+
+## Deployment
+
+### Docker
+
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+CMD ["node", "dist/server.js"]
+```
+
+### Environment Configuration
+
+```typescript
+const config = {
+  db: {
+    host: process.env.DB_HOST,
+    readOnly: process.env.READ_ONLY === "true"
+  },
+  limits: {
+    maxResults: parseInt(process.env.MAX_RESULTS || "100"),
+    timeout: parseInt(process.env.TIMEOUT || "30000")
+  }
+};
+```
+
+## MCP Servers We Offer
+
+We build custom MCP servers for:
+- Database access (Postgres, MySQL, MongoDB)
+- API integrations (REST, GraphQL)
+- File systems and document stores
+- Custom business logic
+
+[Explore MCP Development Services](/services)
+
+---
+
+*AI 4U Labs has built 15+ production MCP servers. Let us build yours.*

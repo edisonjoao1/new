@@ -8,13 +8,13 @@ const products = [
   {
     name: 'SheGPT',
     tagline: 'AI assistant for women',
-    description: 'Voice-powered AI featuring OpenAI Realtime API. Shipped in 6 days from concept to App Store.',
+    description: 'Voice-powered AI featuring OpenAI Realtime API. Shipped in 1 day from concept to App Store approved.',
     users: '50K+',
     rating: 4.8,
     category: 'Mobile AI',
     gradient: 'from-pink-500 to-purple-500',
-    appStore: 'https://apps.apple.com',
-    highlight: '6 days to ship'
+    appStore: 'https://apps.apple.com/us/app/shegpt/id6744063469',
+    highlight: '1 day to ship'
   },
   {
     name: 'Inteligencia Artificial Gratis',
@@ -24,7 +24,7 @@ const products = [
     rating: 4.7,
     category: 'Multilingual',
     gradient: 'from-orange-500 to-yellow-500',
-    appStore: 'https://apps.apple.com',
+    appStore: 'https://apps.apple.com/us/app/inteligencia-artificial/id6742691248',
     highlight: '12 countries'
   },
   {

@@ -32,9 +32,9 @@ export class BlogContentGenerator {
     const prompt = this.buildBlogPrompt(idea)
 
     try {
-      // Use GPT-5.1 with web search for factual, up-to-date content
+      // Use GPT-5.2 with web search for factual, up-to-date content
       const response = await openai.chat.completions.create({
-        model: 'gpt-5.1',
+        model: 'gpt-5.2',
         messages: [
           {
             role: 'system',
@@ -109,12 +109,12 @@ Requirements:
 - Meta description (150-160 characters)
 
 Company context for examples:
-- Built 10+ AI apps with 1M+ users
+- Built 30+ AI apps with 1M+ users
 - Pioneered AP2 payments protocol BEFORE Google announced it
 - Ship MVPs in 2-4 weeks ($15-25K)
-- Tech: GPT-5.1, Claude Opus 4.5, Gemini 3, OpenAI Realtime API
-- Real products: SheGPT (6 days to launch), Conversational Payments, Spanish AI
-- Using cutting-edge models: GPT-5.1 (Nov 2025), Claude Opus 4.5 (Nov 2025), Gemini 3 (Nov 2025)
+- Tech: GPT-5.2, Claude Opus 4.5, Gemini 3.0, OpenAI Realtime API
+- Real products: SheGPT (1 day to launch), Conversational Payments, Spanish AI
+- Using cutting-edge models: GPT-5.2 (Jan 2026), Claude Opus 4.5 (Nov 2025), Gemini 3.0 (Dec 2025)
 
 Output format:
 TITLE: [compelling, SEO-optimized title with main keyword]
@@ -228,7 +228,7 @@ Return as JSON array:
 
     try {
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-mini',
         messages: [
           {
             role: 'system',
@@ -271,9 +271,9 @@ Return as JSON array:
         searchIntent: 'commercial',
       },
       {
-        title: 'GPT-4 vs Claude vs Llama: Which LLM Should You Use?',
-        description: 'A practical comparison of GPT-4, Claude, and Llama for production applications. Real performance data and cost analysis.',
-        keywords: ['GPT-4', 'Claude', 'Llama', 'LLM comparison'],
+        title: 'GPT-5 vs Claude Opus 4.5 vs Llama: Which LLM Should You Use?',
+        description: 'A practical comparison of GPT-5.2, Claude Opus 4.5, and Llama for production applications. Real performance data and cost analysis.',
+        keywords: ['GPT-5', 'Claude Opus 4.5', 'Llama', 'LLM comparison'],
         targetAudience: 'Technical decision makers',
         searchIntent: 'informational',
       },
@@ -302,7 +302,7 @@ Return the optimized full content in markdown.`
 
     try {
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-mini',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.6,
         max_tokens: 2500,

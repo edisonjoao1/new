@@ -8,13 +8,13 @@ import { useRef } from 'react'
 const ships = [
   {
     name: 'SheGPT',
-    tagline: 'Idea to App Store in 6 days',
+    tagline: 'Idea to App Store approved in 1 day',
     description: 'AI assistant for women. Voice conversations with OpenAI Realtime API. Proved we can ship lightning-fast.',
-    timeline: '6 days',
+    timeline: '1 day',
     users: '50K+',
     gradient: 'from-pink-500 via-purple-500 to-indigo-500',
     icon: '👩‍💻',
-    stat: { value: '6 days', label: 'Record MVP' },
+    stat: { value: '1 day', label: 'Record MVP' },
     year: '2024'
   },
   {

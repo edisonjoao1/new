@@ -39,7 +39,7 @@ export class ProposalGenerator {
 
     try {
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-5.2',
         messages: [
           {
             role: 'system',
@@ -47,18 +47,18 @@ export class ProposalGenerator {
 
 Your writing style:
 - Direct and value-focused
-- Show don't tell (reference our actual work: AP2 protocol, 10+ apps, 1M+ users)
+- Show don't tell (reference our actual work: AP2 protocol, 30+ apps, 1M+ users)
 - No generic buzzwords
 - Specific solutions, not vague promises
 - Professional but conversational
 
 AI 4U Labs background:
-- Built 10+ production AI apps with 1M+ users
+- Built 30+ production AI apps with 1M+ users
 - Pioneered AP2 payments protocol before Google's announcement
 - Ship MVPs in 2-4 weeks ($15-25K fixed price)
-- Fastest ship: 6 days from idea to App Store (SheGPT)
+- Fastest ship: 1 day from idea to App Store approved
 - Full-stack: AI agents, mobile apps, payments, multilingual
-- Tech: GPT-4o, Claude 3.5, Llama, OpenAI Realtime API
+- Tech: GPT-5.2, Claude Opus 4.5, Llama, OpenAI Realtime API
 - We actually ship, not just consult`,
           },
           {
@@ -115,7 +115,7 @@ Structure:
 2. Opening (reference something specific about their company)
 3. Credibility (1-2 relevant case studies from our portfolio)
 4. Value prop (2-3 specific solutions for THEIR pain points)
-5. Social proof (mention 10+ apps, 1M+ users, 2-4 week delivery)
+5. Social proof (mention 30+ apps, 1M+ users, 2-4 week delivery)
 6. Clear CTA (${callToAction})
 
 Key Solutions to Consider:
@@ -151,7 +151,7 @@ VALUE: [estimated project value or impact]`
     const solutions: Record<string, string[]> = {
       automation: [
         'AI workflow automation to eliminate manual processes',
-        'Document processing with GPT-4 Vision',
+        'Document processing with GPT-5.2 Vision',
         'Customer support automation with AI agents',
       ],
       'ai-agents': [
@@ -171,7 +171,7 @@ VALUE: [estimated project value or impact]`
       ],
       general: [
         'Custom AI application tailored to their workflow',
-        'LLM integration (GPT-4, Claude, Llama)',
+        'LLM integration (GPT-5, Claude, Llama)',
         'End-to-end AI solution from concept to production',
       ],
     }
@@ -234,11 +234,11 @@ VALUE: [estimated project value or impact]`
       subject: `AI Solutions for ${company.name}`,
       body: `Hi there,
 
-I noticed ${company.name} is in the ${company.industry} space. We're AI 4U Labs – we've shipped 10+ AI products with 1M+ users.
+I noticed ${company.name} is in the ${company.industry} space. We're AI 4U Labs – we've shipped 30+ AI products with 1M+ users.
 
 We recently built:
 - Conversational payments system (pioneered AP2 protocol)
-- SheGPT: AI assistant (6 days to App Store)
+- SheGPT: AI assistant (1 day to App Store)
 - Spanish-first AI for Latin American market
 
 Based on your industry, we could help with:
@@ -251,7 +251,7 @@ Interested in a quick call to explore how AI could streamline your operations?
 Best,
 Edison
 AI 4U Labs
-edison@ai4ulabs.com`,
+edison@ai4u.space`,
       proposedSolutions: company.opportunities.slice(0, 3),
       estimatedValue: '$15-50K',
     }
@@ -282,7 +282,7 @@ Tone: Friendly and respectful of their time.`
 
     try {
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-mini',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
         max_tokens: 300,

@@ -9,7 +9,7 @@ const projects = [
     number: '01',
     title: 'SheGPT',
     category: 'Mobile AI',
-    stat: '6 Days',
+    stat: '1 Day',
     statLabel: 'Idea to App Store',
     description: 'AI assistant for women featuring OpenAI Realtime voice conversations. A demonstration of our rapid MVP capability.',
     image: 'from-pink-100 to-purple-100',

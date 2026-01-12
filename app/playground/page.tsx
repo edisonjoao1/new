@@ -14,7 +14,7 @@ const demos = [
     icon: MessageSquare,
     gradient: 'from-pink-500 to-purple-500',
     category: 'Voice AI',
-    url: 'https://apps.apple.com/us/app/shegpt-ai-assistant-for-women/id6738421847',
+    url: 'https://apps.apple.com/us/app/shegpt/id6744063469',
     features: ['Natural Speech', 'Real-time Processing', 'Context Aware', 'Emotion Detection'],
     stats: { users: '50K+', rating: '4.8', speed: '< 1s response' }
   },
@@ -91,7 +91,7 @@ const demos = [
     icon: MessageSquare,
     gradient: 'from-orange-500 to-yellow-500',
     category: 'Multilingual',
-    url: 'https://apps.apple.com',
+    url: 'https://apps.apple.com/us/app/inteligencia-artificial/id6742691248',
     features: ['Spanish-First', 'Cultural Context', '12 Countries', '100K+ users'],
     stats: { users: '100K+', rating: '4.7', speed: 'Instant' }
   }

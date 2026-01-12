@@ -1,0 +1,480 @@
+---
+title: "AI Agent Development with OpenAI Conversations API"
+excerpt: "Build production AI agents using OpenAI's Conversations API. Learn the architecture, implementation patterns, and best practices from our real projects."
+date: "2025-12-08"
+category: "Tutorial"
+keywords: ["AI agents", "OpenAI Conversations API", "chatbot development", "conversational AI", "GPT agents"]
+readingTime: 10
+author: "Edison Espinosa"
+---
+
+# AI Agent Development with OpenAI Conversations API
+
+The Conversations API is how you build AI agents that remember context and take actions. Here's the complete guide.
+
+## Why Conversations API?
+
+Before Conversations API:
+- Each request was stateless
+- You had to manage context yourself
+- Token limits forced context truncation
+
+After Conversations API:
+- OpenAI manages conversation history
+- Context persists indefinitely
+- You focus on agent logic, not infrastructure
+
+## Getting Started
+
+### Basic Setup
+
+```typescript
+import OpenAI from "openai";
+
+const openai = new OpenAI();
+
+// Create a new conversation
+async function createConversation() {
+  const conversation = await openai.conversations.create({
+    model: "gpt-5.2"
+  });
+
+  return conversation.id; // conv_xxx
+}
+```
+
+### Sending Messages
+
+```typescript
+async function sendMessage(conversationId: string, message: string) {
+  const response = await openai.responses.create({
+    model: "gpt-5.2",
+    conversation: conversationId,
+    input: message,
+    store: true // Persist to conversation
+  });
+
+  return response.output_text;
+}
+```
+
+### Complete Flow
+
+```typescript
+class ConversationAgent {
+  private openai = new OpenAI();
+  private conversationId: string | null = null;
+
+  async start() {
+    const conversation = await this.openai.conversations.create({
+      model: "gpt-5.2"
+    });
+    this.conversationId = conversation.id;
+    return this.conversationId;
+  }
+
+  async chat(message: string): Promise<string> {
+    if (!this.conversationId) {
+      await this.start();
+    }
+
+    const response = await this.openai.responses.create({
+      model: "gpt-5.2",
+      conversation: this.conversationId,
+      input: message,
+      store: true
+    });
+
+    return response.output_text;
+  }
+
+  async end() {
+    if (this.conversationId) {
+      await this.openai.conversations.delete(this.conversationId);
+      this.conversationId = null;
+    }
+  }
+}
+
+// Usage
+const agent = new ConversationAgent();
+console.log(await agent.chat("Hello, I need help with my order"));
+console.log(await agent.chat("My order number is #12345"));
+console.log(await agent.chat("What's the status?")); // Agent remembers order number
+```
+
+## Adding Tools
+
+Make agents that can take actions, not just talk.
+
+### Defining Tools
+
+```typescript
+const tools = [
+  {
+    type: "function",
+    name: "get_order_status",
+    description: "Get the status of a customer order",
+    parameters: {
+      type: "object",
+      properties: {
+        order_id: {
+          type: "string",
+          description: "The order ID to look up"
+        }
+      },
+      required: ["order_id"]
+    }
+  },
+  {
+    type: "function",
+    name: "cancel_order",
+    description: "Cancel a customer order",
+    parameters: {
+      type: "object",
+      properties: {
+        order_id: { type: "string" },
+        reason: { type: "string" }
+      },
+      required: ["order_id", "reason"]
+    }
+  }
+];
+```
+
+### Handling Tool Calls
+
+```typescript
+async function chatWithTools(conversationId: string, message: string) {
+  const response = await openai.responses.create({
+    model: "gpt-5.2",
+    conversation: conversationId,
+    input: message,
+    tools,
+    store: true
+  });
+
+  // Check for tool calls
+  if (response.output.some(o => o.type === "function_call")) {
+    const results = await executeToolCalls(response.output);
+    return await submitToolResults(conversationId, results);
+  }
+
+  return response.output_text;
+}
+
+async function executeToolCalls(outputs: any[]) {
+  const results = [];
+
+  for (const output of outputs) {
+    if (output.type === "function_call") {
+      const { name, arguments: args, call_id } = output;
+
+      let result;
+      switch (name) {
+        case "get_order_status":
+          result = await getOrderStatus(args.order_id);
+          break;
+        case "cancel_order":
+          result = await cancelOrder(args.order_id, args.reason);
+          break;
+        default:
+          result = { error: "Unknown function" };
+      }
+
+      results.push({
+        type: "function_call_output",
+        call_id,
+        output: JSON.stringify(result)
+      });
+    }
+  }
+
+  return results;
+}
+
+async function submitToolResults(conversationId: string, results: any[]) {
+  const response = await openai.responses.create({
+    model: "gpt-5.2",
+    conversation: conversationId,
+    input: results,
+    store: true
+  });
+
+  return response.output_text;
+}
+```
+
+## Real-World Agent: Customer Support
+
+Here's a complete customer support agent with tools.
+
+```typescript
+class CustomerSupportAgent {
+  private openai = new OpenAI();
+  private conversationId: string | null = null;
+
+  private tools = [
+    {
+      type: "function",
+      name: "lookup_customer",
+      description: "Look up customer information by email",
+      parameters: {
+        type: "object",
+        properties: {
+          email: { type: "string" }
+        },
+        required: ["email"]
+      }
+    },
+    {
+      type: "function",
+      name: "get_orders",
+      description: "Get a customer's order history",
+      parameters: {
+        type: "object",
+        properties: {
+          customer_id: { type: "string" }
+        },
+        required: ["customer_id"]
+      }
+    },
+    {
+      type: "function",
+      name: "initiate_refund",
+      description: "Start a refund for an order",
+      parameters: {
+        type: "object",
+        properties: {
+          order_id: { type: "string" },
+          amount: { type: "number" },
+          reason: { type: "string" }
+        },
+        required: ["order_id", "reason"]
+      }
+    },
+    {
+      type: "function",
+      name: "escalate_to_human",
+      description: "Escalate conversation to human agent",
+      parameters: {
+        type: "object",
+        properties: {
+          reason: { type: "string" },
+          priority: { type: "string", enum: ["low", "medium", "high"] }
+        },
+        required: ["reason"]
+      }
+    }
+  ];
+
+  private systemPrompt = `You are a helpful customer support agent for an e-commerce company.
+
+Guidelines:
+- Be friendly and professional
+- Use tools to look up real information before answering
+- Never make up order statuses or amounts
+- If you can't resolve an issue, escalate to a human
+- For refunds over $100, always escalate to human for approval
+- Collect email first to look up customer information`;
+
+  async start(): Promise<string> {
+    const conversation = await this.openai.conversations.create({
+      model: "gpt-5.2"
+    });
+
+    this.conversationId = conversation.id;
+
+    // Set system context
+    await this.openai.responses.create({
+      model: "gpt-5.2",
+      conversation: this.conversationId,
+      input: [{ type: "text", text: this.systemPrompt, role: "system" }],
+      store: true
+    });
+
+    return this.conversationId;
+  }
+
+  async respond(message: string): Promise<string> {
+    if (!this.conversationId) {
+      await this.start();
+    }
+
+    let response = await this.openai.responses.create({
+      model: "gpt-5.2",
+      conversation: this.conversationId,
+      input: message,
+      tools: this.tools,
+      store: true
+    });
+
+    // Handle tool calls in a loop
+    while (response.output.some(o => o.type === "function_call")) {
+      const results = await this.executeTools(response.output);
+
+      response = await this.openai.responses.create({
+        model: "gpt-5.2",
+        conversation: this.conversationId,
+        input: results,
+        tools: this.tools,
+        store: true
+      });
+    }
+
+    return response.output_text;
+  }
+
+  private async executeTools(outputs: any[]): Promise<any[]> {
+    const results = [];
+
+    for (const output of outputs) {
+      if (output.type !== "function_call") continue;
+
+      const { name, arguments: args, call_id } = output;
+      let result;
+
+      switch (name) {
+        case "lookup_customer":
+          result = await this.lookupCustomer(args.email);
+          break;
+        case "get_orders":
+          result = await this.getOrders(args.customer_id);
+          break;
+        case "initiate_refund":
+          result = await this.initiateRefund(args);
+          break;
+        case "escalate_to_human":
+          result = await this.escalate(args);
+          break;
+      }
+
+      results.push({
+        type: "function_call_output",
+        call_id,
+        output: JSON.stringify(result)
+      });
+    }
+
+    return results;
+  }
+
+  // Tool implementations
+  private async lookupCustomer(email: string) {
+    // Your database lookup
+    return { customer_id: "cust_123", name: "John Doe", email };
+  }
+
+  private async getOrders(customerId: string) {
+    // Your database lookup
+    return [
+      { order_id: "ord_456", status: "delivered", amount: 79.99 },
+      { order_id: "ord_789", status: "processing", amount: 149.99 }
+    ];
+  }
+
+  private async initiateRefund(args: any) {
+    // Your refund logic
+    return { success: true, refund_id: "ref_123" };
+  }
+
+  private async escalate(args: any) {
+    // Your escalation logic
+    return { escalated: true, ticket_id: "tkt_123" };
+  }
+}
+
+// Usage
+const agent = new CustomerSupportAgent();
+console.log(await agent.respond("Hi, I need help with an order"));
+console.log(await agent.respond("My email is john@example.com"));
+console.log(await agent.respond("I want to return order #ord_456"));
+```
+
+## Best Practices
+
+### 1. Structured System Prompts
+
+```typescript
+const systemPrompt = `# Role
+You are a [specific role] for [company/product].
+
+# Capabilities
+- You CAN: [list capabilities]
+- You CANNOT: [list limitations]
+
+# Guidelines
+1. [Guideline 1]
+2. [Guideline 2]
+
+# Escalation
+Escalate when:
+- [Condition 1]
+- [Condition 2]`;
+```
+
+### 2. Graceful Error Handling
+
+```typescript
+async function safeToolExecution(fn: () => Promise<any>) {
+  try {
+    return await fn();
+  } catch (error) {
+    return {
+      error: true,
+      message: error.message,
+      suggestion: "Please try again or provide different information"
+    };
+  }
+}
+```
+
+### 3. Conversation Limits
+
+```typescript
+class LimitedAgent {
+  private messageCount = 0;
+  private maxMessages = 50;
+
+  async respond(message: string) {
+    this.messageCount++;
+
+    if (this.messageCount > this.maxMessages) {
+      return "This conversation has reached its limit. Please start a new chat.";
+    }
+
+    // Normal response...
+  }
+}
+```
+
+### 4. Logging for Debugging
+
+```typescript
+async function respond(message: string) {
+  console.log(`[${new Date().toISOString()}] User: ${message}`);
+
+  const response = await agent.respond(message);
+
+  console.log(`[${new Date().toISOString()}] Agent: ${response.substring(0, 100)}...`);
+
+  return response;
+}
+```
+
+## Production Considerations
+
+- **Rate limiting**: OpenAI has conversation limits
+- **Cost monitoring**: Conversations accumulate tokens
+- **Cleanup**: Delete old conversations to manage storage
+- **Fallbacks**: Have backup models/responses for failures
+
+## Need an AI Agent?
+
+We build production AI agents with the Conversations API.
+
+[Discuss Your Agent Project](/contact)
+
+---
+
+*AI 4U Labs builds production AI agents. 30+ applications shipped, including conversational payments and customer support systems.*

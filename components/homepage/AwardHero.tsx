@@ -77,7 +77,7 @@ export function AwardHero({ onGetStarted }: AwardHeroProps) {
         >
           <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
           <span className="text-sm font-medium text-gray-300">
-            10+ AI products shipped in 2024
+            30+ AI products shipped
           </span>
         </motion.div>
 
@@ -115,7 +115,7 @@ export function AwardHero({ onGetStarted }: AwardHeroProps) {
         >
           {[
             { value: "1M+", label: "Users" },
-            { value: "6 days", label: "Fastest ship" },
+            { value: "1 day", label: "Fastest ship" },
             { value: "3 weeks", label: "Avg MVP" }
           ].map((stat, i) => (
             <div key={i} className="flex flex-col items-center group">

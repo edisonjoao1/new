@@ -104,7 +104,7 @@ export function ImpactHero({ onGetStarted }: ImpactHeroProps) {
               transition={{ duration: 2, repeat: Infinity }}
             />
             <span className="text-base font-semibold text-white relative z-10">
-              10+ products shipped • 1M+ users • 6 days record
+              35+ products shipped • 1M+ users • 1 day record
             </span>
           </motion.div>
         </motion.div>
@@ -170,7 +170,7 @@ export function ImpactHero({ onGetStarted }: ImpactHeroProps) {
           className="mb-16"
         >
           <p className="text-2xl md:text-3xl lg:text-4xl text-gray-400 font-light leading-relaxed max-w-5xl mx-auto">
-            <span className="text-white font-medium">SheGPT in 6 days.</span> Conversational payments in 3 weeks.
+            <span className="text-white font-medium">SheGPT in 1 day.</span> Conversational payments in 3 weeks.
             <br />
             <span className="text-gray-500">We build AI products that actually work. Fast.</span>
           </p>
@@ -228,10 +228,10 @@ export function ImpactHero({ onGetStarted }: ImpactHeroProps) {
           className="mt-24 flex flex-wrap items-center justify-center gap-x-16 gap-y-8"
         >
           {[
-            { value: "6 days", label: "Fastest ship", icon: "🚀" },
+            { value: "1 day", label: "Fastest ship", icon: "🚀", note: "Don't believe it? Test us." },
             { value: "1M+", label: "Users", icon: "👥" },
             { value: "3 weeks", label: "Avg MVP", icon: "⚡" },
-            { value: "10+", label: "Apps in 2024", icon: "✨" }
+            { value: "30+", label: "Apps shipped", icon: "✨" }
           ].map((stat, i) => (
             <motion.div
               key={i}
@@ -261,6 +261,11 @@ export function ImpactHero({ onGetStarted }: ImpactHeroProps) {
               <div className="text-sm text-gray-500 uppercase tracking-wider font-semibold">
                 {stat.label}
               </div>
+              {stat.note && (
+                <div className="text-xs text-indigo-400 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  {stat.note}
+                </div>
+              )}
             </motion.div>
           ))}
         </motion.div>

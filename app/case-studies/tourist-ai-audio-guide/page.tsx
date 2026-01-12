@@ -3,7 +3,7 @@ import TouristClientPage from './TouristClientPage'
 
 export const metadata: Metadata = {
   title: 'Tourist AI Audio Guide Case Study | Voice AI Development',
-  description: 'How we built an AI-powered audio tour guide app with GPT-4 narration and OpenAI TTS in 3 weeks. Real-time voice synthesis, 8 cities, sub-200ms latency.',
+  description: 'How we built an AI-powered audio tour guide app with GPT-5.2 narration and OpenAI TTS in 3 weeks. Real-time voice synthesis, 8 cities, sub-200ms latency.',
   keywords: [
     'AI tour guide app',
     'voice AI development',
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title: 'Tourist AI Audio Guide | AI 4U Labs Case Study',
-    description: 'AI-powered audio tour guide with real-time GPT-4 narration built in 3 weeks.',
+    description: 'AI-powered audio tour guide with real-time GPT-5.2 narration built in 3 weeks.',
     url: 'https://ai4u.space/case-studies/tourist-ai-audio-guide',
     siteName: 'AI 4U Labs',
     images: [{ url: '/case-studies/tourist-og.png', width: 1200, height: 630 }],

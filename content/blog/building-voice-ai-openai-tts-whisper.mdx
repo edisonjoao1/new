@@ -1,0 +1,415 @@
+---
+title: "Building Voice AI: OpenAI TTS + Whisper Integration"
+excerpt: "A complete guide to building voice-enabled AI applications using OpenAI's TTS and Whisper APIs. From real-time conversations to async processing."
+date: "2026-01-08"
+category: "Tutorial"
+keywords: ["voice AI", "OpenAI TTS", "Whisper", "speech recognition", "text to speech"]
+readingTime: 9
+author: "Edison Espinosa"
+---
+
+# Building Voice AI: OpenAI TTS + Whisper Integration
+
+Voice is the most natural interface. Here's how to build voice-enabled AI applications that actually work.
+
+## The Voice AI Stack
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│    Audio     │────▶│   Whisper    │────▶│    LLM       │
+│    Input     │     │ (Speech→Text)│     │  (Process)   │
+└──────────────┘     └──────────────┘     └──────────────┘
+                                                 │
+┌──────────────┐     ┌──────────────┐            │
+│    Audio     │◀────│     TTS      │◀───────────┘
+│    Output    │     │ (Text→Speech)│
+└──────────────┘     └──────────────┘
+```
+
+## Speech-to-Text with Whisper
+
+### Basic Transcription
+
+```typescript
+import OpenAI from "openai";
+import fs from "fs";
+
+const openai = new OpenAI();
+
+async function transcribe(audioPath: string): Promise<string> {
+  const transcription = await openai.audio.transcriptions.create({
+    file: fs.createReadStream(audioPath),
+    model: "whisper-1",
+    response_format: "text"
+  });
+
+  return transcription;
+}
+
+// Usage
+const text = await transcribe("./recording.mp3");
+console.log(text);
+```
+
+### With Timestamps
+
+```typescript
+async function transcribeWithTimestamps(audioPath: string) {
+  const transcription = await openai.audio.transcriptions.create({
+    file: fs.createReadStream(audioPath),
+    model: "whisper-1",
+    response_format: "verbose_json",
+    timestamp_granularities: ["word"]
+  });
+
+  return transcription.words; // Array of { word, start, end }
+}
+```
+
+### Language Detection
+
+```typescript
+async function transcribeWithLanguage(audioPath: string) {
+  const transcription = await openai.audio.transcriptions.create({
+    file: fs.createReadStream(audioPath),
+    model: "whisper-1",
+    response_format: "verbose_json"
+  });
+
+  return {
+    text: transcription.text,
+    language: transcription.language, // Detected language
+    duration: transcription.duration
+  };
+}
+```
+
+### Streaming from Browser
+
+```typescript
+// Frontend: Record and send audio
+async function recordAndSend() {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const mediaRecorder = new MediaRecorder(stream);
+  const chunks: Blob[] = [];
+
+  mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+
+  mediaRecorder.onstop = async () => {
+    const blob = new Blob(chunks, { type: "audio/webm" });
+    const formData = new FormData();
+    formData.append("audio", blob);
+
+    const response = await fetch("/api/transcribe", {
+      method: "POST",
+      body: formData
+    });
+
+    const { text } = await response.json();
+    console.log(text);
+  };
+
+  mediaRecorder.start();
+  setTimeout(() => mediaRecorder.stop(), 5000); // 5 seconds
+}
+```
+
+```typescript
+// Backend: Process audio
+import { NextRequest } from "next/server";
+
+export async function POST(request: NextRequest) {
+  const formData = await request.formData();
+  const audio = formData.get("audio") as File;
+
+  const buffer = Buffer.from(await audio.arrayBuffer());
+  const file = new File([buffer], "audio.webm", { type: "audio/webm" });
+
+  const transcription = await openai.audio.transcriptions.create({
+    file,
+    model: "whisper-1"
+  });
+
+  return Response.json({ text: transcription.text });
+}
+```
+
+## Text-to-Speech with TTS
+
+### Basic Speech Generation
+
+```typescript
+async function speak(text: string): Promise<Buffer> {
+  const response = await openai.audio.speech.create({
+    model: "tts-1",
+    voice: "alloy",
+    input: text
+  });
+
+  return Buffer.from(await response.arrayBuffer());
+}
+
+// Save to file
+const audio = await speak("Hello, how can I help you today?");
+fs.writeFileSync("output.mp3", audio);
+```
+
+### Voice Options
+
+```typescript
+type Voice = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
+
+const voiceDescriptions: Record<Voice, string> = {
+  alloy: "Neutral, balanced",
+  echo: "Warm, conversational",
+  fable: "British, expressive",
+  onyx: "Deep, authoritative",
+  nova: "Energetic, friendly",
+  shimmer: "Clear, optimistic"
+};
+
+async function speakWithVoice(text: string, voice: Voice): Promise<Buffer> {
+  const response = await openai.audio.speech.create({
+    model: "tts-1-hd", // Higher quality
+    voice,
+    input: text,
+    speed: 1.0 // 0.25 to 4.0
+  });
+
+  return Buffer.from(await response.arrayBuffer());
+}
+```
+
+### Streaming TTS
+
+For real-time playback, stream the audio:
+
+```typescript
+async function streamSpeech(text: string) {
+  const response = await openai.audio.speech.create({
+    model: "tts-1",
+    voice: "alloy",
+    input: text,
+    response_format: "mp3"
+  });
+
+  // Response is already a stream
+  return response;
+}
+
+// In API route
+export async function GET(request: NextRequest) {
+  const text = request.nextUrl.searchParams.get("text");
+
+  const response = await openai.audio.speech.create({
+    model: "tts-1",
+    voice: "alloy",
+    input: text!
+  });
+
+  return new Response(response.body, {
+    headers: {
+      "Content-Type": "audio/mpeg",
+      "Transfer-Encoding": "chunked"
+    }
+  });
+}
+```
+
+## Complete Voice Agent
+
+Putting it all together:
+
+```typescript
+class VoiceAgent {
+  private openai = new OpenAI();
+  private conversationId: string | null = null;
+
+  async start() {
+    const conversation = await this.openai.conversations.create({
+      model: "gpt-5.2"
+    });
+    this.conversationId = conversation.id;
+  }
+
+  async processVoice(audioBuffer: Buffer): Promise<Buffer> {
+    // 1. Transcribe user audio
+    const file = new File([audioBuffer], "audio.webm", { type: "audio/webm" });
+    const transcription = await this.openai.audio.transcriptions.create({
+      file,
+      model: "whisper-1"
+    });
+
+    console.log(`User said: ${transcription.text}`);
+
+    // 2. Get AI response
+    if (!this.conversationId) await this.start();
+
+    const response = await this.openai.responses.create({
+      model: "gpt-5.2",
+      conversation: this.conversationId,
+      input: transcription.text,
+      store: true
+    });
+
+    console.log(`Agent says: ${response.output_text}`);
+
+    // 3. Convert response to speech
+    const speech = await this.openai.audio.speech.create({
+      model: "tts-1",
+      voice: "nova",
+      input: response.output_text
+    });
+
+    return Buffer.from(await speech.arrayBuffer());
+  }
+}
+```
+
+## Real-Time Conversations
+
+For true real-time, use OpenAI's Realtime API:
+
+```typescript
+import { RealtimeClient } from "@openai/realtime-api-beta";
+
+const client = new RealtimeClient({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+// Configure
+client.updateSession({
+  instructions: "You are a helpful assistant. Keep responses brief.",
+  voice: "alloy",
+  turn_detection: { type: "server_vad" }
+});
+
+// Connect
+await client.connect();
+
+// Stream audio in
+client.appendInputAudio(audioBuffer);
+
+// Handle responses
+client.on("conversation.item.completed", ({ item }) => {
+  if (item.type === "message" && item.role === "assistant") {
+    const audioContent = item.content.find(c => c.type === "audio");
+    if (audioContent) {
+      playAudio(audioContent.audio); // Base64 audio
+    }
+  }
+});
+```
+
+## Mobile Integration (iOS)
+
+We built SheGPT with voice in 1 day. Here's the Swift pattern:
+
+```swift
+import AVFoundation
+import OpenAI
+
+class VoiceAssistant: ObservableObject {
+    private let openai = OpenAI(apiToken: "...")
+    private let audioEngine = AVAudioEngine()
+    private let speechRecognizer = SFSpeechRecognizer()
+
+    @Published var isListening = false
+    @Published var response = ""
+
+    func listen() async throws {
+        isListening = true
+
+        // Record audio
+        let audioFile = try await recordAudio()
+
+        // Transcribe
+        let transcription = try await openai.audio.transcriptions.create(
+            file: audioFile,
+            model: "whisper-1"
+        )
+
+        // Get response
+        let completion = try await openai.chat.completions.create(
+            model: "gpt-5.2",
+            messages: [
+                .user(content: transcription.text)
+            ]
+        )
+
+        response = completion.choices[0].message.content
+
+        // Speak response
+        try await speak(response)
+
+        isListening = false
+    }
+
+    private func speak(_ text: String) async throws {
+        let speech = try await openai.audio.speech.create(
+            model: "tts-1",
+            voice: .nova,
+            input: text
+        )
+
+        let player = AVAudioPlayer(data: speech.data)
+        player.play()
+    }
+}
+```
+
+## Cost Optimization
+
+### Whisper Costs
+- $0.006 per minute of audio
+- 10 hours/day = ~$1.80/day
+
+### TTS Costs
+| Model | Per 1M characters |
+|-------|------------------|
+| tts-1 | $15 |
+| tts-1-hd | $30 |
+
+### Optimization Strategies
+
+1. **Client-side VAD**: Only send audio when speech is detected
+2. **Compress audio**: Whisper handles various formats efficiently
+3. **Cache common responses**: TTS the same phrases? Cache them
+4. **Use tts-1 for most cases**: HD only for premium features
+
+```typescript
+// Cache TTS responses
+const ttsCache = new Map<string, Buffer>();
+
+async function cachedSpeak(text: string): Promise<Buffer> {
+  const key = text.toLowerCase().trim();
+
+  if (ttsCache.has(key)) {
+    return ttsCache.get(key)!;
+  }
+
+  const audio = await speak(text);
+  ttsCache.set(key, audio);
+  return audio;
+}
+```
+
+## Production Checklist
+
+- [ ] Audio format validation (Whisper supports: mp3, wav, webm, etc.)
+- [ ] File size limits (max 25MB for Whisper)
+- [ ] Timeout handling for long audio
+- [ ] Graceful degradation when APIs fail
+- [ ] Rate limiting per user
+- [ ] Cost monitoring and alerts
+- [ ] Logging for debugging
+
+## Building a Voice App?
+
+We specialize in voice AI applications.
+
+[Discuss Your Voice AI Project](/contact)
+
+---
+
+*AI 4U Labs builds production voice AI. SheGPT shipped in 1 day with full voice support.*

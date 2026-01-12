@@ -196,6 +196,12 @@ export function EditorialNav({ onGetStarted }: EditorialNavProps) {
             About
           </Link>
           <Link
+            href="/design"
+            className="text-sm uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-colors"
+          >
+            Design
+          </Link>
+          <Link
             href="/contact"
             className="text-sm uppercase tracking-wider text-gray-600 hover:text-black transition-colors"
           >

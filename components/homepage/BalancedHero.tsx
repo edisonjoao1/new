@@ -74,7 +74,7 @@ export function BalancedHero({ onGetStarted }: BalancedHeroProps) {
           <p className="text-xl md:text-2xl text-gray-600 font-medium mb-8 max-w-3xl mx-auto leading-relaxed">
             AI agents. Mobile apps. Payment systems. Multilingual tools.
             <br />
-            <span className="text-gray-500">End-to-end. Fast. 10+ apps shipped.</span>
+            <span className="text-gray-500">End-to-end. Fast. 30+ apps shipped.</span>
           </p>
 
           {/* Stats row */}
@@ -86,7 +86,7 @@ export function BalancedHero({ onGetStarted }: BalancedHeroProps) {
           >
             <div className="flex items-center gap-3 px-4 py-2 bg-white/50 backdrop-blur-sm rounded-full border border-gray-200/50">
               <Zap className="w-5 h-5 text-yellow-500" />
-              <span className="font-semibold text-gray-900">10+</span>
+              <span className="font-semibold text-gray-900">30+</span>
               <span className="text-gray-600">apps shipped this year</span>
             </div>
             <div className="flex items-center gap-3 px-4 py-2 bg-white/50 backdrop-blur-sm rounded-full border border-gray-200/50">
@@ -96,7 +96,7 @@ export function BalancedHero({ onGetStarted }: BalancedHeroProps) {
             </div>
             <div className="flex items-center gap-3 px-4 py-2 bg-white/50 backdrop-blur-sm rounded-full border border-gray-200/50">
               <Rocket className="w-5 h-5 text-green-500" />
-              <span className="font-semibold text-gray-900">6 days</span>
+              <span className="font-semibold text-gray-900">1 day</span>
               <span className="text-gray-600">fastest ship</span>
             </div>
           </motion.div>

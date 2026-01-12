@@ -9,7 +9,7 @@ const aiLabs = [
     name: 'OpenAI',
     color: 'from-emerald-500 to-teal-500',
     description: 'GPT-5.1, Realtime API',
-    details: 'Built SheGPT with Realtime API in 6 days. Production apps using GPT-5.1, GPT-5.1 mini, and DALL-E 3.'
+    details: 'Built SheGPT with Realtime API in 1 day. Production apps using GPT-5.2, GPT-5-mini, and DALL-E 3.'
   },
   {
     name: 'Anthropic',
@@ -193,13 +193,27 @@ export function AILabsShowcase() {
             <div className="text-sm uppercase tracking-wider text-gray-500 font-light">Models</div>
           </div>
           <div>
-            <div className="text-4xl font-light text-black mb-2">20+</div>
-            <div className="text-sm uppercase tracking-wider text-gray-500 font-light">Apps Since 2023</div>
+            <div className="text-4xl font-light text-black mb-2">35+</div>
+            <div className="text-sm uppercase tracking-wider text-gray-500 font-light">Apps in Production</div>
           </div>
           <div>
             <div className="text-4xl font-light text-black mb-2">1M+</div>
             <div className="text-sm uppercase tracking-wider text-gray-500 font-light">API Calls/Day</div>
           </div>
+        </motion.div>
+
+        {/* AI Coding Agents callout */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="mt-12 p-6 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-200 text-center"
+        >
+          <p className="text-gray-600 font-light">
+            We use <span className="text-black font-medium">AI coding agents</span> daily—Claude Code, Cursor, and custom tools that let us ship faster than any traditional team.
+            <span className="text-indigo-600 font-medium ml-1">If we don't deliver on time, it's free.</span>
+          </p>
         </motion.div>
       </div>
     </section>

@@ -130,7 +130,7 @@ export const STATS: Stat[] = [
 
 export const COMPANY_INFO = {
   name: "AI 4U Labs",
-  email: "edison@ai4ulabs.com",
+  email: "edison@ai4u.space",
   phone: "+1 (239) 555-0123",
   location: "Naples, Florida",
   founded: "2023",

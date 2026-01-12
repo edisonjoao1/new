@@ -12,7 +12,7 @@ const demos = [
     icon: MessageSquare,
     gradient: 'from-pink-500 to-purple-500',
     type: 'Live Demo',
-    url: 'https://apps.apple.com/us/app/shegpt-ai-assistant-for-women/id6738421847',
+    url: 'https://apps.apple.com/us/app/shegpt/id6744063469',
     features: ['Natural Speech', 'Real-time Processing', 'Context Aware']
   },
   {

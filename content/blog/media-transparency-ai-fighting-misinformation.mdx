@@ -1,0 +1,233 @@
+---
+title: "Media Transparency AI: Fighting Misinformation with Technology"
+excerpt: "How we built Pulse Wire, an AI platform that tracks media ownership, detects hypocrisy, and scores propaganda—giving readers tools to understand what they're reading."
+date: "2025-10-22"
+category: "Case Study"
+keywords: ["media transparency", "misinformation AI", "media bias", "propaganda detection", "Pulse Wire"]
+readingTime: 8
+author: "Edison Espinosa"
+---
+
+# Media Transparency AI: Fighting Misinformation with Technology
+
+Every news article has an agenda. Pulse Wire helps you see it.
+
+## The Problem
+
+Media manipulation is everywhere:
+- Ownership hidden behind corporate structures
+- Outlets saying one thing, doing another
+- Propaganda disguised as news
+- Readers with no tools to evaluate sources
+
+Trust in media is at historic lows. But most people can't spend hours researching every source.
+
+## The Solution: Pulse Wire
+
+An AI platform that provides:
+1. **Ownership Tracking**: Who actually controls this outlet?
+2. **Hypocrisy Detection**: When outlets contradict themselves
+3. **Propaganda Scoring**: How manipulative is this content?
+4. **Story Newsstand**: Same story, different sources, side by side
+
+**The goal**: Not to tell people what to think, but to give them information to decide for themselves.
+
+## Feature Deep Dives
+
+### Follow the Money
+
+Every major outlet has complex ownership:
+- Parent companies
+- Board members with conflicts
+- Advertisers with influence
+- Political connections
+
+**What Pulse Wire shows**:
+```
+Outlet: Example News Network
+├── Parent: MegaCorp Holdings
+│   ├── Owner: Investment Firm A (37%)
+│   └── Owner: Investment Firm B (28%)
+├── Major Advertisers: Pharma Co, Tech Giant
+├── Board Connections: Senator X, Industry Lobbyist Y
+└── Political Donations: $2.3M to Party Z
+```
+
+**Why it matters**: When an outlet covers their parent company's industry, you should know.
+
+### Hypocrisy Checker
+
+The AI compares:
+- Current coverage vs. historical positions
+- Treatment of similar events for different parties
+- Stated editorial policies vs. actual content
+
+**Example output**:
+```
+Contradiction Detected:
+- 2023: "Budget deficits threaten national security"
+- 2025: "Deficit spending necessary for growth"
+- Context: Change correlates with administration change
+```
+
+### Propaganda Analysis
+
+Not all persuasion is propaganda. The AI distinguishes:
+
+| Technique | Example | Score Impact |
+|-----------|---------|--------------|
+| Emotional manipulation | "Devastating betrayal" | +15 |
+| False dichotomy | "Either you support X or you hate Y" | +20 |
+| Cherry-picked data | Citing outlier studies | +10 |
+| Anonymous sources | "Sources say" without context | +5 |
+| Loaded language | Neutral: "said" vs. Loaded: "admitted" | +5 |
+
+**Output**: Propaganda score from 0-100 with specific examples highlighted.
+
+### Story Newsstand
+
+Same event, multiple perspectives:
+- Left-leaning coverage
+- Right-leaning coverage
+- International coverage
+- Wire services (AP, Reuters)
+
+**Why it helps**: See what's emphasized, omitted, and framed differently.
+
+## The Technology
+
+### Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  News Feed  │────▶│  Ingestion  │────▶│  Analysis   │
+│  Sources    │     │  Pipeline   │     │  Engine     │
+└─────────────┘     └─────────────┘     └─────────────┘
+                                              │
+┌─────────────┐     ┌─────────────┐           │
+│  Web App    │◀────│  API Layer  │◀──────────┘
+│  (Next.js)  │     │             │
+└─────────────┘     └─────────────┘
+```
+
+### AI Components
+
+**GPT-5.2 for**:
+- Content analysis
+- Contradiction detection
+- Propaganda technique identification
+
+**Custom fine-tuned models for**:
+- Source reliability scoring
+- Bias classification
+- Entity extraction
+
+### Data Sources
+
+- News APIs (NewsAPI, GDELT)
+- Ownership databases (SEC filings, corporate records)
+- Historical archives (Wayback Machine API)
+- Political donation records (FEC data)
+
+### Propaganda Detection Prompt
+
+```typescript
+const prompt = `Analyze this article for propaganda techniques:
+
+${articleText}
+
+Identify specific instances of:
+1. Emotional manipulation - appeals to fear, anger, hope without evidence
+2. False dichotomies - presenting only two options when more exist
+3. Cherry-picked evidence - using outliers, ignoring contradicting data
+4. Loaded language - words that carry implicit judgments
+5. Unsubstantiated claims - assertions without evidence or sources
+6. Appeal to authority - citing credentials instead of evidence
+7. Bandwagon - "everyone knows" or "most people think"
+
+For each technique found, provide:
+- Exact quote from the article
+- Technique name
+- Severity (1-10)
+- Brief explanation
+
+Return as JSON.`;
+```
+
+## Challenges We Solved
+
+### 1. Ownership Data Is Hidden
+
+Corporate structures are designed to obscure.
+
+**Solution**: Multiple data sources, entity resolution, and inference from public filings.
+
+### 2. Bias Is Subjective
+
+What one person calls bias, another calls truth.
+
+**Solution**: Focus on measurable patterns, not ideology. Compare coverage, don't rate "correctness."
+
+### 3. Scale
+
+Thousands of articles per day from hundreds of sources.
+
+**Solution**: Tiered analysis—quick scoring for all, deep analysis for flagged content.
+
+### 4. Accuracy Matters
+
+False accusations of propaganda cause real harm.
+
+**Solution**: Confidence scores, human review for edge cases, transparency about methodology.
+
+## Impact
+
+Early results:
+
+| Metric | Value |
+|--------|-------|
+| Articles analyzed | 50,000+/month |
+| Sources tracked | 500+ outlets |
+| Ownership chains mapped | 2,000+ |
+| User accuracy rating | 87% agree with analysis |
+
+### User Feedback
+
+> "I read the same outlet for years. Pulse Wire showed me they flip positions depending on who's in power. Eye-opening." — User
+
+> "I don't always agree with the analysis, but having the ownership information changed how I read news." — User
+
+## Ethical Considerations
+
+### What We Don't Do
+
+- **Rate truth**: We don't say what's true/false
+- **Block content**: We inform, not censor
+- **Take political sides**: Analysis applies equally to all
+
+### What We're Careful About
+
+- **Transparency**: Our methodology is documented
+- **Appeals**: Users can dispute analysis
+- **Bias in AI**: We audit our own models for bias
+
+## Business Model
+
+Currently free for public use. Future:
+- API access for researchers
+- Enterprise media monitoring
+- Newsroom tools
+
+## Build Similar Tools?
+
+We help organizations build:
+- Content analysis systems
+- Media monitoring platforms
+- Bias detection tools
+- Research infrastructure
+
+[Discuss Your Project](/contact)
+
+---
+
+*AI 4U Labs builds AI for transparency and accountability. Pulse Wire is one of 30+ production apps we've shipped.*

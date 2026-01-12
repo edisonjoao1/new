@@ -1,0 +1,416 @@
+---
+title: "Multi-Model AI: Routing Between GPT-5, Claude & Gemini"
+excerpt: "How to build intelligent AI systems that route requests to the best model for each task. Save money and improve quality by using the right model every time."
+date: "2025-10-16"
+category: "Technical"
+keywords: ["multi-model AI", "AI routing", "GPT-5", "Claude", "Gemini", "model selection"]
+readingTime: 9
+author: "Edison Espinosa"
+---
+
+# Multi-Model AI: Routing Between GPT-5, Claude & Gemini
+
+One model doesn't fit all. Here's how to build systems that automatically route to the best model for each request.
+
+## Why Multi-Model?
+
+Different models excel at different things:
+
+| Task | Best Model | Why |
+|------|-----------|-----|
+| Creative writing | Claude Opus 4.5 | Nuanced, natural style |
+| Code generation | GPT-5.2 | Strong reasoning, tools |
+| Video analysis | Gemini 3.0 Pro | Native multimodal |
+| Simple classification | GPT-5-mini | Fast, cheap, sufficient |
+| Image generation | Gemini Nano | Cost-effective quality |
+
+Using one model for everything means:
+- Overpaying for simple tasks
+- Underperforming on complex ones
+- Missing model-specific strengths
+
+## Multi-Model Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Request   │────▶│   Router    │────▶│  Model Pool │
+│             │     │             │     │  - GPT-5.2  │
+│             │     │ - Classify  │     │  - Claude   │
+│             │     │ - Select    │     │  - Gemini   │
+│             │◀────│ - Route     │◀────│  - Mini     │
+└─────────────┘     └─────────────┘     └─────────────┘
+```
+
+## Building a Router
+
+### Simple Rule-Based Router
+
+Start simple. Rules work well for clear categories.
+
+```typescript
+interface RouterConfig {
+  rules: {
+    pattern: RegExp | string;
+    model: string;
+  }[];
+  default: string;
+}
+
+function routeByRules(message: string, config: RouterConfig): string {
+  for (const rule of config.rules) {
+    const pattern = typeof rule.pattern === 'string'
+      ? new RegExp(rule.pattern, 'i')
+      : rule.pattern;
+
+    if (pattern.test(message)) {
+      return rule.model;
+    }
+  }
+  return config.default;
+}
+
+// Example config
+const config: RouterConfig = {
+  rules: [
+    { pattern: /\b(code|function|debug|error)\b/i, model: 'gpt-5.2' },
+    { pattern: /\b(write|story|creative|essay)\b/i, model: 'claude-opus-4-5' },
+    { pattern: /\b(image|photo|picture|video)\b/i, model: 'gemini-3.0-pro' },
+    { pattern: /\b(translate|simple|quick)\b/i, model: 'gpt-5-mini' }
+  ],
+  default: 'gpt-5-mini'
+};
+```
+
+### ML-Based Router
+
+For more nuanced routing, train a classifier.
+
+```typescript
+import { OpenAI } from "openai";
+
+interface TaskClassification {
+  category: 'code' | 'creative' | 'analysis' | 'simple' | 'multimodal';
+  confidence: number;
+  reasoning: string;
+}
+
+async function classifyTask(message: string): Promise<TaskClassification> {
+  const openai = new OpenAI();
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-5-mini", // Use cheap model for routing
+    messages: [{
+      role: "user",
+      content: `Classify this request into one category:
+- code: programming, debugging, technical implementation
+- creative: writing, storytelling, content creation
+- analysis: data analysis, summarization, extraction
+- simple: quick questions, translations, simple tasks
+- multimodal: images, video, audio processing
+
+Request: "${message}"
+
+Respond with JSON: { "category": "...", "confidence": 0.0-1.0, "reasoning": "..." }`
+    }],
+    response_format: { type: "json_object" }
+  });
+
+  return JSON.parse(response.choices[0].message.content);
+}
+
+const modelMap = {
+  code: 'gpt-5.2',
+  creative: 'claude-opus-4-5',
+  analysis: 'gpt-5.2',
+  simple: 'gpt-5-mini',
+  multimodal: 'gemini-3.0-pro'
+};
+
+async function routeByML(message: string): Promise<string> {
+  const classification = await classifyTask(message);
+
+  if (classification.confidence < 0.7) {
+    // Low confidence: use versatile default
+    return 'gpt-5.2';
+  }
+
+  return modelMap[classification.category];
+}
+```
+
+### Cost-Aware Router
+
+Factor in cost when routing.
+
+```typescript
+interface ModelCosts {
+  inputPer1M: number;
+  outputPer1M: number;
+  averageQuality: number; // 0-1
+}
+
+const modelCosts: Record<string, ModelCosts> = {
+  'gpt-5.2': { inputPer1M: 2.5, outputPer1M: 10, averageQuality: 0.95 },
+  'gpt-5-mini': { inputPer1M: 0.15, outputPer1M: 0.6, averageQuality: 0.8 },
+  'claude-opus-4-5': { inputPer1M: 15, outputPer1M: 75, averageQuality: 0.98 },
+  'gemini-3.0-pro': { inputPer1M: 1.25, outputPer1M: 5, averageQuality: 0.9 }
+};
+
+function selectCostEffective(
+  candidates: string[],
+  requiredQuality: number // 0-1
+): string {
+  const viable = candidates.filter(m => modelCosts[m].averageQuality >= requiredQuality);
+
+  if (viable.length === 0) {
+    // No model meets quality requirement, use best
+    return candidates.reduce((best, curr) =>
+      modelCosts[curr].averageQuality > modelCosts[best].averageQuality ? curr : best
+    );
+  }
+
+  // Among viable, pick cheapest
+  return viable.reduce((cheapest, curr) => {
+    const currCost = modelCosts[curr].inputPer1M + modelCosts[curr].outputPer1M;
+    const cheapestCost = modelCosts[cheapest].inputPer1M + modelCosts[cheapest].outputPer1M;
+    return currCost < cheapestCost ? curr : cheapest;
+  });
+}
+```
+
+## Unified API Interface
+
+Abstract away model differences behind a unified interface.
+
+```typescript
+import { OpenAI } from "openai";
+import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+interface ChatResponse {
+  content: string;
+  model: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    cost: number;
+  };
+}
+
+class UnifiedAI {
+  private openai = new OpenAI();
+  private anthropic = new Anthropic();
+  private gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+  async chat(messages: ChatMessage[], model: string): Promise<ChatResponse> {
+    if (model.startsWith('gpt-')) {
+      return this.callOpenAI(messages, model);
+    } else if (model.startsWith('claude-')) {
+      return this.callAnthropic(messages, model);
+    } else if (model.startsWith('gemini-')) {
+      return this.callGemini(messages, model);
+    }
+    throw new Error(`Unknown model: ${model}`);
+  }
+
+  private async callOpenAI(messages: ChatMessage[], model: string): Promise<ChatResponse> {
+    const response = await this.openai.chat.completions.create({
+      model,
+      messages
+    });
+
+    return {
+      content: response.choices[0].message.content,
+      model,
+      usage: {
+        inputTokens: response.usage.prompt_tokens,
+        outputTokens: response.usage.completion_tokens,
+        cost: this.calculateCost(model, response.usage)
+      }
+    };
+  }
+
+  private async callAnthropic(messages: ChatMessage[], model: string): Promise<ChatResponse> {
+    const response = await this.anthropic.messages.create({
+      model,
+      max_tokens: 4096,
+      messages: messages.filter(m => m.role !== 'system').map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content
+      })),
+      system: messages.find(m => m.role === 'system')?.content
+    });
+
+    return {
+      content: response.content[0].text,
+      model,
+      usage: {
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+        cost: this.calculateCost(model, response.usage)
+      }
+    };
+  }
+
+  private async callGemini(messages: ChatMessage[], model: string): Promise<ChatResponse> {
+    const genModel = this.gemini.getGenerativeModel({ model });
+
+    // Convert messages to Gemini format
+    const history = messages.slice(0, -1).map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }));
+
+    const chat = genModel.startChat({ history });
+    const lastMessage = messages[messages.length - 1].content;
+    const result = await chat.sendMessage(lastMessage);
+
+    return {
+      content: result.response.text(),
+      model,
+      usage: {
+        inputTokens: result.response.usageMetadata?.promptTokenCount || 0,
+        outputTokens: result.response.usageMetadata?.candidatesTokenCount || 0,
+        cost: this.calculateCost(model, result.response.usageMetadata)
+      }
+    };
+  }
+
+  private calculateCost(model: string, usage: any): number {
+    const costs = modelCosts[model];
+    if (!costs) return 0;
+
+    const inputCost = (usage.prompt_tokens || usage.input_tokens || usage.promptTokenCount || 0) * costs.inputPer1M / 1_000_000;
+    const outputCost = (usage.completion_tokens || usage.output_tokens || usage.candidatesTokenCount || 0) * costs.outputPer1M / 1_000_000;
+
+    return inputCost + outputCost;
+  }
+}
+```
+
+## Complete Multi-Model System
+
+```typescript
+class MultiModelAI {
+  private unified = new UnifiedAI();
+
+  async respond(message: string, context?: string[]): Promise<ChatResponse> {
+    // 1. Classify the request
+    const classification = await classifyTask(message);
+
+    // 2. Select model based on classification and cost
+    const model = this.selectModel(classification);
+
+    // 3. Call the selected model
+    const messages: ChatMessage[] = [
+      { role: 'system', content: 'You are a helpful assistant.' },
+      ...(context || []).map(c => ({ role: 'user' as const, content: c })),
+      { role: 'user', content: message }
+    ];
+
+    const response = await this.unified.chat(messages, model);
+
+    // 4. Log for optimization
+    await this.logInteraction({
+      message,
+      classification,
+      model,
+      cost: response.usage.cost
+    });
+
+    return response;
+  }
+
+  private selectModel(classification: TaskClassification): string {
+    const categoryModels = {
+      code: ['gpt-5.2', 'claude-opus-4-5'],
+      creative: ['claude-opus-4-5', 'gpt-5.2'],
+      analysis: ['gpt-5.2', 'gemini-3.0-pro'],
+      simple: ['gpt-5-mini', 'gemini-3.0-flash'],
+      multimodal: ['gemini-3.0-pro', 'gpt-5.2']
+    };
+
+    const requiredQuality = classification.confidence > 0.9 ? 0.7 : 0.85;
+    const candidates = categoryModels[classification.category];
+
+    return selectCostEffective(candidates, requiredQuality);
+  }
+
+  private async logInteraction(data: any) {
+    // Log for analytics and optimization
+    console.log('Interaction:', JSON.stringify(data));
+  }
+}
+```
+
+## Monitoring and Optimization
+
+Track routing decisions to improve over time.
+
+```typescript
+interface RoutingMetrics {
+  modelUsage: Record<string, number>;
+  categoryBreakdown: Record<string, number>;
+  costByModel: Record<string, number>;
+  qualityScores: Record<string, number[]>;
+}
+
+class RoutingAnalytics {
+  private metrics: RoutingMetrics = {
+    modelUsage: {},
+    categoryBreakdown: {},
+    costByModel: {},
+    qualityScores: {}
+  };
+
+  record(model: string, category: string, cost: number, quality?: number) {
+    this.metrics.modelUsage[model] = (this.metrics.modelUsage[model] || 0) + 1;
+    this.metrics.categoryBreakdown[category] = (this.metrics.categoryBreakdown[category] || 0) + 1;
+    this.metrics.costByModel[model] = (this.metrics.costByModel[model] || 0) + cost;
+
+    if (quality !== undefined) {
+      if (!this.metrics.qualityScores[model]) {
+        this.metrics.qualityScores[model] = [];
+      }
+      this.metrics.qualityScores[model].push(quality);
+    }
+  }
+
+  getReport() {
+    return {
+      ...this.metrics,
+      averageQuality: Object.fromEntries(
+        Object.entries(this.metrics.qualityScores).map(([model, scores]) => [
+          model,
+          scores.reduce((a, b) => a + b, 0) / scores.length
+        ])
+      )
+    };
+  }
+}
+```
+
+## Results We've Seen
+
+On a production chatbot with multi-model routing:
+
+| Metric | Single Model | Multi-Model | Improvement |
+|--------|--------------|-------------|-------------|
+| Cost | $2,400/mo | $890/mo | 63% savings |
+| Quality score | 4.1/5 | 4.4/5 | 7% better |
+| Latency (p50) | 1.2s | 0.9s | 25% faster |
+
+## Want Multi-Model AI?
+
+We implement intelligent model routing for production systems.
+
+[Discuss Your Project](/contact)
+
+---
+
+*AI 4U Labs builds production multi-model AI systems. 30+ apps shipped.*

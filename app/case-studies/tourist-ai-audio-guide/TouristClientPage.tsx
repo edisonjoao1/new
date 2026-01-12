@@ -135,7 +135,7 @@ export default function TouristClientPage() {
             >
               <h2 className="text-3xl lg:text-4xl font-light text-black mb-4">Our Solution</h2>
               <p className="text-xl text-gray-600 font-light mb-12 max-w-3xl">
-                A native iOS app with MVVM architecture, combining GPT-4o for dynamic narration and
+                A native iOS app with MVVM architecture, combining GPT-5.2 for dynamic narration and
                 OpenAI TTS for natural voice synthesis over immersive 3D maps.
               </p>
 
@@ -143,7 +143,7 @@ export default function TouristClientPage() {
                 {[
                   { icon: Map, title: 'Virtual Tours', desc: 'Pre-built routes through major cities' },
                   { icon: Navigation, title: 'Live Walks', desc: 'GPS-triggered POI discovery' },
-                  { icon: Mic, title: 'AI Narration', desc: 'GPT-4 generated stories' },
+                  { icon: Mic, title: 'AI Narration', desc: 'GPT-5.2 generated stories' },
                   { icon: Volume2, title: 'Natural Voice', desc: 'OpenAI TTS synthesis' },
                   { icon: Globe, title: '8 Cities', desc: 'NYC, Paris, London, Rome...' },
                   { icon: MapPin, title: '100+ POIs', desc: 'Curated points of interest' },
@@ -165,7 +165,7 @@ export default function TouristClientPage() {
                   {[
                     { category: 'UI Layer', items: ['SwiftUI Views', 'MapKit 3D', 'AVFoundation', 'Framer Motion'] },
                     { category: 'State Management', items: ['SessionManager', 'LocationService', 'ProfileManager', 'AudioEngine'] },
-                    { category: 'AI Services', items: ['GPT-4o-mini', 'OpenAI TTS', 'AIClient', 'Streaming'] },
+                    { category: 'AI Services', items: ['GPT-5-mini', 'OpenAI TTS', 'AIClient', 'Streaming'] },
                     { category: 'Data', items: ['POIRepository', 'Wikipedia Images', 'UserDefaults', 'JSON Tours'] }
                   ].map((stack, i) => (
                     <div key={i}>
@@ -306,7 +306,7 @@ export default function TouristClientPage() {
                   <div className="text-4xl font-light text-blue-600 mb-4">&lt;200ms</div>
                   <h3 className="text-xl font-medium text-black mb-2">Voice Latency</h3>
                   <p className="text-gray-600 font-light">
-                    From user action to audio playback. GPT-4 generates text, TTS converts to speech,
+                    From user action to audio playback. GPT-5.2 generates text, TTS converts to speech,
                     AudioEngine plays—all in under 200ms perceived latency.
                   </p>
                 </div>

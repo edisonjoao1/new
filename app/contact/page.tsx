@@ -90,10 +90,10 @@ export default function ContactPage() {
                       <p className="text-sm uppercase tracking-wider text-gray-500">Email</p>
                     </div>
                     <a
-                      href="mailto:edison@ai4ulabs.com"
+                      href="mailto:edison@ai4u.space"
                       className="text-2xl font-light text-black hover:text-gray-600 transition-colors"
                     >
-                      edison@ai4ulabs.com
+                      edison@ai4u.space
                     </a>
                   </div>
 

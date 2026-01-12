@@ -8,9 +8,9 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 
 const stats = [
-  { value: '20+', label: 'Apps shipped since 2023' },
+  { value: '30+', label: 'Apps shipped since 2023' },
   { value: '1M+', label: 'Users reached' },
-  { value: '6 days', label: 'Fastest MVP' },
+  { value: '1 day', label: 'Fastest MVP' },
   { value: '2-4 weeks', label: 'Typical delivery' }
 ]
 
@@ -50,12 +50,12 @@ const journey = [
   {
     year: 'This Year',
     title: 'Rapid growth',
-    description: 'Shipped 10+ AI-powered apps to production, reaching over 1M users across health, fitness, finance, and education.'
+    description: 'Shipped 30+ AI-powered apps to production, reaching over 1M users across health, fitness, finance, and education.'
   },
   {
     year: 'Q1',
     title: 'SheGPT launch',
-    description: 'Proved our rapid MVP capability by going from idea to App Store in just 6 days with OpenAI Realtime API.'
+    description: 'Proved our rapid MVP capability by going from idea to App Store approved in just 1 day with OpenAI Realtime API.'
   },
   {
     year: 'Q2',
@@ -252,7 +252,7 @@ export default function AboutPage() {
                 Our journey
               </h2>
               <p className="text-xl text-gray-600 max-w-2xl font-light">
-                From zero to 20+ shipped products since 2023.
+                From zero to 30+ shipped products since 2023.
               </p>
             </motion.div>
 

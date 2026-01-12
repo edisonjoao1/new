@@ -29,7 +29,7 @@ export default function HomePage() {
         "name": "How fast can AI 4U Labs ship an AI product?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "We ship production-ready MVPs in 2-4 weeks. Our fastest delivery was 6 days from idea to App Store. We focus on rapid iteration with real users rather than endless planning."
+          "text": "We ship production-ready MVPs in 2-4 weeks with 90% less people than traditional teams. Our fastest delivery was 1 day from idea to App Store approved. Prototypes can be even faster—hours, not days. Don't believe us? Test us. If we don't meet our committed timeline, we build your app for free."
         }
       },
       {
@@ -37,7 +37,7 @@ export default function HomePage() {
         "name": "What AI technologies does AI 4U Labs work with?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "We work with GPT-5.1, Claude Opus 4.5, Gemini 3, OpenAI Realtime API, and custom models. We specialize in conversational AI, AI agents, and integrating LLMs into production applications."
+          "text": "We work with GPT-5.2, Claude Opus 4.5, Gemini 3.0, OpenAI Conversations API, and custom models. We've built 15+ MCP servers and specialize in video AI, voice AI, conversational agents, and multi-model orchestration."
         }
       },
       {
@@ -45,7 +45,7 @@ export default function HomePage() {
         "name": "How much does an AI MVP cost?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Rapid MVPs are fixed-price at $15-25K for 2-4 week delivery. This includes full-stack development, production deployment, user testing, analytics setup, and scale-ready architecture."
+          "text": "Rapid MVPs are fixed-price at $15-25K for 2-4 week delivery. This includes full-stack development, production deployment, user testing, analytics setup, and scale-ready architecture. We offer 13 specialized services from $5K-$25K."
         }
       },
       {
@@ -53,7 +53,7 @@ export default function HomePage() {
         "name": "Does AI 4U Labs build mobile apps?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes, we build native iOS apps and cross-platform applications with AI integration. We've shipped 10+ AI mobile apps to the App Store with 1M+ total users."
+          "text": "Yes, we build native iOS apps and cross-platform applications with AI integration. We've shipped 35+ AI apps to the App Store with 1M+ total users, including Pet Health Scan with real-time video analysis."
         }
       },
       {
@@ -61,7 +61,15 @@ export default function HomePage() {
         "name": "What makes AI 4U Labs different from other AI agencies?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "We actually ship. 10+ live products, 1M+ users, not just prototypes or slides. We pioneered the AP2 protocol implementation before Google's announcement. Fast execution, production-ready code, real impact."
+          "text": "We build million-dollar apps with 90% less people, 10x faster. 35+ live products, 1M+ users, not just prototypes or slides. We pioneered the AP2 protocol before Google's announcement and built a 24-property analytics dashboard in one day."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can AI 4U Labs build video AI applications?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, we specialize in video AI using Gemini 3.0. Pet Health Scan uses real-time video analysis to detect pet gait abnormalities. We also build image generation, object detection, and visual diagnostics systems."
         }
       }
     ]
@@ -74,7 +82,8 @@ export default function HomePage() {
     "provider": {
       "@type": "Organization",
       "name": "AI 4U Labs",
-      "url": "https://ai4u.space"
+      "url": "https://ai4u.space",
+      "description": "Building million-dollar apps with 90% less people. 35+ apps shipped, 1M+ users reached."
     },
     "areaServed": {
       "@type": "Place",
@@ -89,7 +98,7 @@ export default function HomePage() {
           "itemOffered": {
             "@type": "Service",
             "name": "Rapid AI MVP Development",
-            "description": "Production-ready AI MVPs in 2-4 weeks. Full-stack development, deployment, and testing."
+            "description": "Production-ready AI MVPs in 2-4 weeks. What takes other teams months, we ship in weeks."
           },
           "priceSpecification": {
             "@type": "PriceSpecification",
@@ -101,16 +110,32 @@ export default function HomePage() {
           "@type": "Offer",
           "itemOffered": {
             "@type": "Service",
-            "name": "Mobile AI App Development",
-            "description": "Native iOS and cross-platform AI applications with GPT-4, Claude, and custom models."
+            "name": "Video & Image AI",
+            "description": "Real-time video analysis with Gemini 3.0. Pet Health Scan-level capabilities: gait detection, visual diagnostics."
           }
         },
         {
           "@type": "Offer",
           "itemOffered": {
             "@type": "Service",
-            "name": "AI Automation & Integration",
-            "description": "Workflow automation, document processing, and AI API integration for existing systems."
+            "name": "MCP Server Development",
+            "description": "15+ MCP servers built. Extend any AI with custom tools, databases, APIs, and business logic."
+          }
+        },
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "AI Agent Development",
+            "description": "Multi-model orchestration with GPT-5.2, Claude Opus 4.5, and Gemini 3.0. Like Pulse Wire's 5-agent newsroom."
+          }
+        },
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Analytics & BI Dashboards",
+            "description": "AI-powered predictive intelligence. Built a 24-property analytics dashboard in one day."
           }
         }
       ]

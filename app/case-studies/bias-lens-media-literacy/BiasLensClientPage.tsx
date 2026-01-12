@@ -46,7 +46,7 @@ export default function BiasLensClientPage() {
                 </p>
 
                 <p className="text-lg text-gray-600 font-light leading-relaxed mb-8">
-                  A news aggregation app that uses GPT-4 to detect political bias, identify loaded language,
+                  A news aggregation app that uses GPT-5.2 to detect political bias, identify loaded language,
                   and help users consume media more consciously—without being preachy.
                 </p>
 
@@ -231,7 +231,7 @@ export default function BiasLensClientPage() {
                 <div className="bg-gray-50 p-8 rounded-2xl">
                   <h3 className="text-xl font-medium text-black mb-4">1. Article Scoring</h3>
                   <p className="text-gray-600 font-light mb-4">
-                    When a user taps &quot;Analyze Article,&quot; we fetch the full content and send it to GPT-4 with a structured prompt.
+                    When a user taps &quot;Analyze Article,&quot; we fetch the full content and send it to GPT-5.2 with a structured prompt.
                     The response includes an article score (-3 to +3), confidence level, and human-readable explanation.
                   </p>
                   <div className="bg-white p-4 rounded-lg border border-gray-200">
@@ -244,7 +244,7 @@ export default function BiasLensClientPage() {
                 <div className="bg-gray-50 p-8 rounded-2xl">
                   <h3 className="text-xl font-medium text-black mb-4">2. Loaded Phrase Detection</h3>
                   <p className="text-gray-600 font-light mb-4">
-                    GPT-4 identifies specific phrases that carry implicit bias—emotional language, partisan framing,
+                    GPT-5.2 identifies specific phrases that carry implicit bias—emotional language, partisan framing,
                     or misleading characterizations—with explanations for each.
                   </p>
                   <div className="bg-white p-4 rounded-lg border border-gray-200">
@@ -286,7 +286,7 @@ export default function BiasLensClientPage() {
                 {[
                   { category: 'Frontend', items: ['Swift 5.9', 'SwiftUI', '@Observable', 'SwiftData'] },
                   { category: 'Data Layer', items: ['RSS Parsing', 'FeedCache', 'Disk Persistence', 'NetworkMonitor'] },
-                  { category: 'AI Services', items: ['GPT-4o', 'OpenAI API', 'ArchiveService', 'NLP Analysis'] },
+                  { category: 'AI Services', items: ['GPT-5.2', 'OpenAI API', 'ArchiveService', 'NLP Analysis'] },
                   { category: 'Features', items: ['Progressive Loading', 'Offline Support', 'Haptic Feedback', 'Pull-to-Refresh'] }
                 ].map((stack, i) => (
                   <div key={i}>

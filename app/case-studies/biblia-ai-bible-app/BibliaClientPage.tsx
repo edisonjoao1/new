@@ -47,7 +47,7 @@ export default function BibliaClientPage() {
                 </p>
 
                 <p className="text-lg text-gray-600 font-light leading-relaxed mb-8">
-                  A modern iOS application combining the complete Reina-Valera 1960 Bible with GPT-4 powered
+                  A modern iOS application combining the complete Reina-Valera 1960 Bible with GPT-5.2 powered
                   study tools, making scripture accessible and engaging for Spanish-speaking Christians worldwide.
                 </p>
 
@@ -78,7 +78,7 @@ export default function BibliaClientPage() {
                       <Brain className="w-5 h-5 text-amber-600" />
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-black">GPT-4 Powered</div>
+                      <div className="text-sm font-medium text-black">GPT-5.2 Powered</div>
                       <div className="text-xs text-gray-500">AI Bible Assistant</div>
                     </div>
                   </div>
@@ -138,7 +138,7 @@ export default function BibliaClientPage() {
             >
               <h2 className="text-3xl lg:text-4xl font-light text-black mb-4">Our Solution</h2>
               <p className="text-xl text-gray-600 font-light mb-12 max-w-3xl">
-                We built a native iOS app using SwiftUI with GPT-4o-mini integration, combining beautiful design
+                We built a native iOS app using SwiftUI with GPT-5-mini integration, combining beautiful design
                 with powerful AI capabilities.
               </p>
 
@@ -168,7 +168,7 @@ export default function BibliaClientPage() {
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
                   {[
                     { category: 'Frontend', items: ['Swift 5.9', 'SwiftUI', 'iOS 17+', 'Combine'] },
-                    { category: 'AI/Backend', items: ['GPT-4o-mini', 'OpenAI API', 'Streaming', 'JSON Mode'] },
+                    { category: 'AI/Backend', items: ['GPT-5-mini', 'OpenAI API', 'Streaming', 'JSON Mode'] },
                     { category: 'Data', items: ['UserDefaults', 'JSON (5MB)', '31K verses', 'Local-first'] },
                     { category: 'Features', items: ['Haptics', 'Share Sheet', 'Notifications', 'Dark Mode'] }
                   ].map((stack, i) => (
@@ -207,7 +207,7 @@ export default function BibliaClientPage() {
                   },
                   {
                     title: 'Verse Explanations',
-                    description: 'When users tap on any verse, GPT-4 generates a concise explanation covering historical context, theological meaning, and practical application.',
+                    description: 'When users tap on any verse, GPT-5.2 generates a concise explanation covering historical context, theological meaning, and practical application.',
                     example: 'Juan 3:16 → Explains God\'s love, eternal life, and what it means to "believe"'
                   },
                   {

@@ -12,6 +12,8 @@ export interface BlogPost {
   readingTime: number
   content: string
   author?: string
+  image?: string  // Optional custom image URL - if not provided, getBlogImage() auto-selects
+  featured?: boolean
 }
 
 /**
@@ -63,6 +65,8 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
       readingTime: data.readingTime || calculateReadingTime(content),
       content,
       author: data.author || 'AI 4U Labs',
+      image: data.image,  // Optional custom image
+      featured: data.featured || false,
     }
   } catch (error) {
     console.error(`Failed to load post ${slug}:`, error)

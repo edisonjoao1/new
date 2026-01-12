@@ -24,8 +24,8 @@ export class EmailSender {
   private replyTo: string
 
   constructor(options: EmailOptions = {}) {
-    this.fromEmail = options.from || 'Edison @ AI 4U Labs <edison@ai4ulabs.com>'
-    this.replyTo = options.replyTo || 'edison@ai4ulabs.com'
+    this.fromEmail = options.from || 'Edison @ AI 4U Labs <edison@ai4u.space>'
+    this.replyTo = options.replyTo || 'edison@ai4u.space'
   }
 
   /**
@@ -201,7 +201,7 @@ ${proposal.body}
     <p>
       <strong>Edison Espinosa</strong><br>
       Founder, AI 4U Labs<br>
-      📧 edison@ai4ulabs.com<br>
+      📧 edison@ai4u.space<br>
       🌐 <a href="https://ai4u.space">ai4u.space</a>
     </p>
   </div>
@@ -213,7 +213,7 @@ ${proposal.body}
     </p>
     <p style="font-size: 11px; color: #999;">
       You're receiving this because we identified potential AI opportunities for ${company.name}.
-      Not interested? <a href="mailto:edison@ai4ulabs.com?subject=Unsubscribe">Let us know</a>.
+      Not interested? <a href="mailto:edison@ai4u.space?subject=Unsubscribe">Let us know</a>.
     </p>
   </div>
 </body>
@@ -315,7 +315,7 @@ ${content}
   <p style="margin-top: 20px;">
     <strong>Edison Espinosa</strong><br>
     AI 4U Labs<br>
-    edison@ai4ulabs.com
+    edison@ai4u.space
   </p>
 </body>
 </html>

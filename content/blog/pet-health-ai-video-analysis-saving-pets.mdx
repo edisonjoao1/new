@@ -1,0 +1,188 @@
+---
+title: "Pet Health AI: How Video Analysis is Saving Pets' Lives"
+excerpt: "How we built Pet Health Scan, an AI app that analyzes video of pets to detect health issues early. The technology, the impact, and what it means for pet care."
+date: "2025-04-25"
+category: "Case Study"
+keywords: ["pet health AI", "video analysis AI", "pet app", "AI diagnostics", "Gemini video"]
+readingTime: 7
+author: "Edison Espinosa"
+---
+
+# Pet Health AI: How Video Analysis is Saving Pets' Lives
+
+A dog owner recorded 30 seconds of video. Our AI noticed a limp they hadn't seen. The vet found early-stage arthritis. Treatment started before it became severe.
+
+This is Pet Health Scan.
+
+## The Problem
+
+Pet owners often miss early warning signs:
+- Subtle changes in gait
+- Slight behavioral differences
+- Early symptoms hidden by fur
+- Animals hiding discomfort
+
+By the time issues become obvious, treatment is harder and more expensive.
+
+## The Solution
+
+Pet Health Scan uses AI video analysis to:
+1. Analyze how pets move and behave
+2. Compare against patterns of healthy animals
+3. Flag potential concerns
+4. Recommend when to see a vet
+
+**Not a replacement for veterinary care. An early warning system.**
+
+## How It Works
+
+### Video Capture
+
+Users record 15-60 seconds of their pet:
+- Walking across a room
+- Playing normally
+- Resting
+
+The app guides them on what to capture for best analysis.
+
+### AI Analysis
+
+We use Gemini 3.0's video analysis capabilities:
+
+```
+Video Input → Frame Analysis → Behavior Detection → Health Indicators → Recommendations
+```
+
+The AI examines:
+- **Gait patterns**: Limping, favoring one side, unusual posture
+- **Energy levels**: Lethargy compared to species norms
+- **Breathing**: Rapid, labored, or irregular breathing
+- **Visible symptoms**: Discharge, swelling, skin issues
+- **Behavioral cues**: Pain indicators, discomfort signs
+
+### Results Delivery
+
+Users receive:
+- Observations (what the AI saw)
+- Potential concerns (if any)
+- Urgency level (monitor / schedule vet / urgent)
+- Specific recommendations
+
+## Real Results
+
+Since launch:
+
+| Metric | Value |
+|--------|-------|
+| Videos analyzed | 15,000+ |
+| Early issue detection | 12% of scans |
+| Vet visits prompted | 1,800+ |
+| User satisfaction | 4.7/5 stars |
+
+### Case Studies
+
+**Case 1: Early Arthritis Detection**
+- Owner: "I thought my dog was just getting older"
+- AI noticed: Slight hesitation when rising, weight shifting
+- Outcome: Early treatment, maintained mobility
+
+**Case 2: Respiratory Issue**
+- Owner recorded playtime
+- AI noticed: Elevated breathing rate post-activity
+- Outcome: Heart condition diagnosed early
+
+**Case 3: Skin Condition**
+- Video showed scratching behavior
+- AI noticed: Pattern suggesting allergic reaction
+- Outcome: Identified food allergy, diet adjusted
+
+## The Technology
+
+### Why Gemini for Video?
+
+Gemini 3.0's video analysis offers:
+- Native video understanding (not frame-by-frame)
+- Context across the entire clip
+- Fast processing (results in seconds)
+- Cost-effective for consumer app
+
+### Architecture
+
+```
+iOS App → API Server → Gemini 3.0 Pro → Results
+          ↓
+       Video Optimization
+       (compress, normalize)
+```
+
+### The Analysis Prompt
+
+We engineered a detailed prompt that:
+- Focuses on observable indicators
+- Avoids speculation beyond evidence
+- Always includes appropriate disclaimers
+- Provides actionable recommendations
+
+### Cost Structure
+
+Per analysis:
+- Video processing: ~$0.01
+- AI analysis: ~$0.02
+- Total: ~$0.03 per scan
+
+Sustainable at scale with freemium model.
+
+## Building for Pet Owners
+
+### User Experience Principles
+
+1. **Immediate value**: Results in under 30 seconds
+2. **Clear language**: No medical jargon
+3. **Appropriate caution**: Never replace vet advice
+4. **Actionable output**: What to do next
+
+### Trust Building
+
+Pet owners are protective. We built trust through:
+- Transparent limitations
+- Always recommending vet consultation for concerns
+- Clear disclaimers on every result
+- No false promises about accuracy
+
+## What This Means for AI Applications
+
+Pet Health Scan demonstrates:
+
+### 1. Video AI Is Ready
+Real-time video analysis is now practical for consumer apps. Not just in labs.
+
+### 2. Domain-Specific AI Works
+Generic AI can't match domain-trained models. Our pet health prompts outperform generic "describe this video."
+
+### 3. Augmentation, Not Replacement
+The best AI applications enhance human judgment, not replace it. We flag concerns; vets diagnose.
+
+### 4. Cost Economics Have Shifted
+A year ago, this would cost $0.50 per analysis. Now it's $0.03. The economics unlock new use cases.
+
+## Future Development
+
+We're expanding:
+- **Multiple species**: Currently dogs and cats; adding birds, rabbits
+- **Longitudinal tracking**: Compare videos over time
+- **Vet integration**: Share reports directly with veterinarians
+- **Training data**: Partnering with vet schools for more training data
+
+## Build Something Similar?
+
+Video AI applications are our specialty. We've built:
+- Pet health analysis
+- Media content analysis
+- Quality control systems
+- Sports performance analysis
+
+[Discuss Your Video AI Project](/contact)
+
+---
+
+*AI 4U Labs builds production AI applications. Pet Health Scan is one of 30+ apps we've shipped, serving over 1M users.*

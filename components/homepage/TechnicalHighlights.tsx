@@ -6,9 +6,9 @@ import { Zap, Rocket, DollarSign, Shield } from 'lucide-react'
 const highlights = [
   {
     icon: Rocket,
-    stat: '6 Days',
+    stat: '1 Day',
     label: 'Fastest MVP',
-    description: 'SheGPT: From idea to App Store in less than a week using OpenAI Realtime API',
+    description: 'From idea to App Store approved in 24 hours using OpenAI Realtime API',
     gradient: 'from-blue-500 to-cyan-500'
   },
   {
@@ -27,9 +27,9 @@ const highlights = [
   },
   {
     icon: Shield,
-    stat: '20+',
+    stat: '35+',
     label: 'Production Apps',
-    description: 'MCP servers, ChatGPT apps, mobile AI, and conversational agents—all live since 2023',
+    description: 'MCP servers, ChatGPT apps, mobile AI, voice AI, wellness apps—all live since 2023',
     gradient: 'from-orange-500 to-amber-500'
   }
 ]

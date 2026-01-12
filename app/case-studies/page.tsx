@@ -9,20 +9,71 @@ import { useState } from 'react'
 
 const caseStudies = [
   {
+    slug: 'pulse-wire-media-transparency',
+    title: 'Pulse Wire - Media Transparency',
+    subtitle: 'AI-Powered News Analysis',
+    category: 'AI Analysis',
+    timeline: '4 weeks',
+    industry: 'Media Tech',
+    description: 'The kind of investigative journalism tool that newsrooms spend millions building over years—ownership tracking, hypocrisy detection, sentiment analysis. We shipped it in 4 weeks with 5 AI agents.',
+    results: [
+      { metric: '5', label: 'AI Agents' },
+      { metric: 'Real-time', label: 'Analysis' },
+      { metric: '100+', label: 'Stories' },
+      { metric: '4 weeks', label: 'Development' }
+    ],
+    tech: ['Next.js', 'Gemini 3.0', 'TypeScript', 'Framer Motion'],
+    gradient: 'from-red-500 to-rose-600',
+  },
+  {
+    slug: 'pet-health-scan',
+    title: 'Pet Health Scan - AI Vet Assistant',
+    subtitle: 'Video Analysis for Pet Health',
+    category: 'Video AI',
+    timeline: '3 weeks',
+    industry: 'Pet Tech',
+    description: 'Revolutionary iOS app using real-time video analysis to detect gait abnormalities and AI-powered image analysis for eyes, teeth, and skin checks. What used to require a team of veterinary AI specialists, built in weeks.',
+    results: [
+      { metric: '4', label: 'Check Types' },
+      { metric: 'Video', label: 'Analysis' },
+      { metric: '3-tier', label: 'Urgency' },
+      { metric: '3 weeks', label: 'Development' }
+    ],
+    tech: ['Swift', 'Gemini 3.0', 'GPT-5-mini', 'Vision AI'],
+    gradient: 'from-teal-500 to-emerald-600',
+  },
+  {
+    slug: 'analytics-dashboard',
+    title: 'AI Analytics Dashboard',
+    subtitle: 'Predictive Intelligence Platform',
+    category: 'AI + Analytics',
+    timeline: '1 day',
+    industry: 'Business Intelligence',
+    description: 'Enterprise analytics teams spend months building dashboards. We built an AI-powered platform with auto-discovery of 24 properties, predictive insights, and real-time intelligence—in one day.',
+    results: [
+      { metric: '24', label: 'Properties' },
+      { metric: 'AI', label: 'Predictions' },
+      { metric: 'Real-time', label: 'Data' },
+      { metric: '1 day', label: 'Development' }
+    ],
+    tech: ['Next.js', 'GA4 API', 'GPT-5-mini', 'Recharts'],
+    gradient: 'from-indigo-500 to-purple-600',
+  },
+  {
     slug: 'biblia-ai-bible-app',
     title: 'Biblia - AI Bible Study App',
     subtitle: 'Spanish-First Religious Tech',
     category: 'Mobile AI',
     timeline: '2 weeks',
     industry: 'Religious Tech',
-    description: 'Modern iOS Bible study application combining traditional scripture reading with AI-powered study tools for Spanish-speaking users.',
+    description: 'Competing apps raised millions and took years to build. We shipped a complete AI-powered Bible study platform with 31,000+ verses, reading plans, and 8 AI tools in just 2 weeks.',
     results: [
       { metric: '31,000+', label: 'Verses' },
       { metric: '5', label: 'Reading Plans' },
       { metric: '8', label: 'AI Tools' },
       { metric: '2 weeks', label: 'To Launch' }
     ],
-    tech: ['Swift', 'SwiftUI', 'GPT-4o-mini', 'OpenAI API'],
+    tech: ['Swift', 'SwiftUI', 'GPT-5-mini', 'OpenAI API'],
     gradient: 'from-amber-500 to-orange-600',
   },
   {
@@ -32,14 +83,14 @@ const caseStudies = [
     category: 'Voice AI',
     timeline: '3 weeks',
     industry: 'Travel Tech',
-    description: 'AI-powered audio tour guide providing real-time, personalized narrations as users explore cities worldwide.',
+    description: 'What audio tour companies like Lonely Planet spend years and large teams building—real-time AI narration across 8 cities with sub-200ms latency. Built in 3 weeks.',
     results: [
       { metric: '8', label: 'Cities' },
       { metric: '<200ms', label: 'Latency' },
       { metric: '100+', label: 'POIs' },
       { metric: '3 weeks', label: 'Development' }
     ],
-    tech: ['Swift', 'GPT-4o', 'OpenAI TTS', 'MapKit'],
+    tech: ['Swift', 'GPT-5.2', 'OpenAI TTS', 'MapKit'],
     gradient: 'from-blue-500 to-cyan-600',
   },
   {
@@ -49,14 +100,14 @@ const caseStudies = [
     category: 'AI Analysis',
     timeline: '4 weeks',
     industry: 'Media Tech',
-    description: 'News aggregation app using AI to detect political bias, analyze loaded language, and promote balanced media consumption.',
+    description: 'The kind of media analysis tool that takes research labs years to develop—real-time bias detection with 96% accuracy across 20+ sources. Shipped in 4 weeks.',
     results: [
       { metric: '20+', label: 'Sources' },
       { metric: '96%', label: 'Accuracy' },
       { metric: 'Real-time', label: 'Analysis' },
       { metric: '4 weeks', label: 'Development' }
     ],
-    tech: ['Swift', 'SwiftData', 'GPT-4o', 'NLP'],
+    tech: ['Swift', 'SwiftData', 'GPT-5.2', 'NLP'],
     gradient: 'from-purple-500 to-violet-600',
   },
   {
@@ -66,7 +117,7 @@ const caseStudies = [
     category: 'AI + Fintech',
     timeline: '6 weeks',
     industry: 'Fintech',
-    description: 'Pioneering agent-to-payments protocol enabling AI to make purchases on behalf of users with cryptographic authorization.',
+    description: 'First pre-AP2 implementation—the kind of fintech infrastructure that normally requires massive engineering teams and years of security audits. Biometric security, 50+ countries, 6 weeks.',
     results: [
       { metric: 'First', label: 'Pre-AP2' },
       { metric: '50+', label: 'Countries' },
@@ -79,11 +130,11 @@ const caseStudies = [
   {
     slug: 'envioplata-remittance',
     title: 'EnvioPlata - Remittance Platform',
-    subtitle: 'AI-Powered Money Transfer',
+    subtitle: 'Xoom-Level Money Transfer',
     category: 'Fintech',
     timeline: '4 weeks',
     industry: 'Fintech',
-    description: 'International money transfer app enabling US-to-Latin America remittances with real-time rates and minimal fees.',
+    description: 'Built what took Xoom, Remitly, and Wise years to develop—a full-featured international remittance platform with real-time rates, minimal fees, and 16-country coverage. Shipped in 4 weeks.',
     results: [
       { metric: '16', label: 'Countries' },
       { metric: '$2.99', label: 'Flat Fee' },
@@ -127,8 +178,8 @@ export default function CaseStudiesPage() {
               </div>
               <div className="flex items-end">
                 <p className="text-xl leading-relaxed text-gray-600 font-light">
-                  Deep dives into our development process, technical decisions, and the real-world impact
-                  of our AI solutions. From concept to App Store in weeks, not months.
+                  Building million-dollar apps with 90% less people. Full-stack AI development
+                  plus world-class design—what used to take teams of 100, we ship in weeks.
                 </p>
               </div>
             </div>
@@ -136,10 +187,10 @@ export default function CaseStudiesPage() {
             {/* Stats Bar */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-16 pt-16 border-t border-gray-200">
               {[
-                { value: '20+', label: 'Apps Shipped' },
-                { value: '1M+', label: 'Users Reached' },
-                { value: '6 days', label: 'Fastest MVP' },
-                { value: '2-4 weeks', label: 'Typical Timeline' }
+                { value: '30+', label: 'Apps Shipped' },
+                { value: '90%', label: 'Less Resources' },
+                { value: '1 day', label: 'Fastest MVP' },
+                { value: '1M+', label: 'Users Reached' }
               ].map((stat, i) => (
                 <motion.div
                   key={i}

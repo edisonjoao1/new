@@ -4,6 +4,9 @@ import { z } from 'zod'
 
 const resend = new Resend(process.env.RESEND_API_KEY || 'dummy_key_for_build')
 
+// Use environment variable or fallback to Resend's shared domain (works without verification)
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'AI 4U Labs <onboarding@resend.dev>'
+
 const ideaSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
@@ -35,8 +38,8 @@ export async function POST(req: NextRequest) {
     `
 
     const { data, error } = await resend.emails.send({
-      from: 'AI 4U Labs <noreply@ai4ulabs.com>',
-      to: [process.env.CONTACT_EMAIL || 'edison@ai4ulabs.com'],
+      from: FROM_EMAIL,
+      to: [process.env.CONTACT_EMAIL || 'edison@ai4u.space'],
       replyTo: validatedData.email,
       subject: `New Project Idea: ${validatedData.name}${validatedData.company ? ` from ${validatedData.company}` : ''}`,
       html: emailHtml,

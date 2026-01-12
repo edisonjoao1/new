@@ -82,14 +82,14 @@ export function generateMetadata({
 export const seoContent = {
   tagline: 'We Build Anything with AI',
   description:
-    'AI 4U Labs builds production-ready AI applications for startups and Fortune 500s. 10+ shipped products, 1M+ users. From AI agents to mobile apps, we turn ideas into live products in 2-4 weeks.',
+    'AI 4U Labs builds production-ready AI applications for startups and Fortune 500s. 30+ shipped products, 1M+ users. From AI agents to mobile apps, we turn ideas into live products in 2-4 weeks.',
   keywords: [
     'AI development',
     'custom AI applications',
     'AI consulting',
     'AI app development',
     'AI automation',
-    'GPT-4 integration',
+    'GPT-5 integration',
     'Claude AI development',
     'machine learning',
     'AI agents',
