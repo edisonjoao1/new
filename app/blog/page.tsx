@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { getBlogImage, getCategoryGradient, getPlaceholderColor } from '@/lib/blog/images'
+import { NewsletterSignup } from '@/components/NewsletterSignup'
 
 interface BlogPost {
   slug: string
@@ -322,6 +323,19 @@ export default function BlogPage() {
             </section>
           </>
         )}
+
+        {/* Newsletter Section */}
+        <section className="max-w-[1600px] mx-auto px-12 pb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="max-w-2xl mx-auto"
+          >
+            <NewsletterSignup />
+          </motion.div>
+        </section>
 
         {/* CTA Section */}
         <section className="max-w-[1600px] mx-auto px-12 pb-24">

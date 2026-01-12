@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { COMPANY_INFO } from '@/lib/constants'
+import { NewsletterSignup } from '@/components/NewsletterSignup'
 
 export function EditorialFooter() {
   return (
@@ -10,7 +11,7 @@ export function EditorialFooter() {
         {/* Top section */}
         <div className="grid lg:grid-cols-12 gap-16 mb-24">
           {/* Brand */}
-          <div className="lg:col-span-5">
+          <div className="lg:col-span-4">
             <div className="flex items-center gap-4 mb-8">
               {/* Stacked bars logo */}
               <div className="flex flex-col gap-[3px] w-7">
@@ -25,14 +26,16 @@ export function EditorialFooter() {
 
               <span className="text-2xl font-light tracking-tight">AI 4U</span>
             </div>
-            <p className="text-lg font-light text-gray-400 leading-relaxed max-w-md">
+            <p className="text-lg font-light text-gray-400 leading-relaxed max-w-md mb-8">
               A full-stack AI development studio based in Naples, Florida.
               We build and ship AI products to production.
             </p>
+            {/* Newsletter in brand column */}
+            <NewsletterSignup variant="dark" />
           </div>
 
           {/* Links */}
-          <div className="lg:col-span-7">
+          <div className="lg:col-span-8">
             <div className="grid md:grid-cols-3 gap-12">
               {/* Company */}
               <div>

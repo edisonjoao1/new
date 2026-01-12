@@ -9,11 +9,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
+import { ProjectMatcher } from '@/components/ProjectMatcher'
 
 export default function ContactPage() {
   const [isPlanOpen, setIsPlanOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -29,7 +31,10 @@ export default function ContactPage() {
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          categories: selectedCategories,
+        }),
       })
 
       if (!response.ok) throw new Error('Failed to send')
@@ -178,6 +183,12 @@ export default function ContactPage() {
                         className="bg-white border-gray-300 text-black placeholder:text-gray-400 h-12 rounded-xl focus:border-black focus:ring-black font-light"
                       />
                     </div>
+
+                    {/* Project Matcher */}
+                    <ProjectMatcher
+                      onSelectionChange={setSelectedCategories}
+                      className="mb-2"
+                    />
 
                     <div>
                       <label htmlFor="message" className="block text-sm uppercase tracking-wider text-gray-600 mb-3 font-light">

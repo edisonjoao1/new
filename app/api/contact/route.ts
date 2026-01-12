@@ -12,7 +12,20 @@ const contactSchema = z.object({
   email: z.string().email('Invalid email address'),
   company: z.string().optional(),
   message: z.string().min(10, 'Message must be at least 10 characters'),
+  categories: z.array(z.string()).optional(),
 })
+
+// Map category IDs to readable labels
+const categoryLabels: Record<string, string> = {
+  'chat-ai': 'Chat & Conversation AI',
+  'video-analysis': 'Video & Image Analysis',
+  'voice-ai': 'Voice AI & Audio',
+  analytics: 'Analytics & BI',
+  'mobile-app': 'Mobile AI App',
+  'media-analysis': 'Media & Content AI',
+  fintech: 'Payments & Fintech',
+  multilingual: 'Multi-language AI',
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,11 +39,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Format categories as readable list
+    const selectedCategories = validatedData.categories
+      ?.map((cat) => categoryLabels[cat] || cat)
+      .join(', ')
+
     const emailHtml = `
       <h2>New Contact Form Submission</h2>
       <p><strong>Name:</strong> ${validatedData.name}</p>
       <p><strong>Email:</strong> ${validatedData.email}</p>
       ${validatedData.company ? `<p><strong>Company:</strong> ${validatedData.company}</p>` : ''}
+      ${selectedCategories ? `<p><strong>Interested in:</strong> ${selectedCategories}</p>` : ''}
       <p><strong>Message:</strong></p>
       <p>${validatedData.message.replace(/\n/g, '<br>')}</p>
     `
