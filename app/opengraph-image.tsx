@@ -66,7 +66,7 @@ export default async function Image() {
               marginTop: '8px',
             }}
           >
-            30+ apps · 1M+ users · 2-4 week delivery
+            30+ apps · 1M+ users · 1 day - 2 week delivery
           </span>
         </div>
 
