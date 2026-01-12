@@ -43,14 +43,6 @@ export const metadata: Metadata = {
       "AI 4U Labs builds million-dollar apps with 90% less people, 10x faster. 30+ shipped products, 1M+ users. From AI agents to mobile apps, we turn ideas into live products in 2-4 weeks.",
     url: "https://ai4u.space",
     siteName: "AI 4U Labs",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "AI 4U Labs - We Build Anything with AI",
-      },
-    ],
     locale: "en_US",
     type: "website",
   },
@@ -59,7 +51,6 @@ export const metadata: Metadata = {
     title: "AI 4U Labs | We Build Anything with AI",
     description:
       "AI 4U Labs builds million-dollar apps with 90% less people. 30+ shipped products, 1M+ users. AI agents, mobile apps, video AI. 2-4 week MVP delivery.",
-    images: ["/og-image.png"],
     creator: "@ai4ulabs",
   },
   robots: {
