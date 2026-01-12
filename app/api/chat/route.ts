@@ -80,7 +80,7 @@ Be helpful, professional, and concise. Use "we" language to represent the team. 
     }
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-5-mini', // Using GPT-5-mini (Jan 2026) for fast, cost-effective responses
+      model: 'gpt-4o-mini', // Fast, cost-effective responses
       stream: true,
       messages: [systemMessage, ...messages],
       temperature: 0.7,
