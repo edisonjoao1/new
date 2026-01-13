@@ -1,10 +1,6 @@
-import { OpenAI } from 'openai'
-import { StreamingTextResponse } from 'ai'
+import { streamText } from 'ai'
+import { openai } from '@ai-sdk/openai'
 import { NextRequest } from 'next/server'
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-})
 
 export const runtime = 'edge'
 
@@ -28,7 +24,7 @@ What we do:
 - Building million-dollar apps with 90% less people, 10x faster
 - AI agents, mobile apps, payment systems, multilingual tools
 - End-to-end development: AI + mobile + payments + fintech
-- Rapid MVP development (2-4 weeks from idea to App Store, fastest 1 day)
+- Rapid MVP development (1 day - 2 weeks from idea to App Store)
 - Pioneered AP2 payments protocol BEFORE Google announced it
 
 Featured case studies:
@@ -48,7 +44,7 @@ Tech stack (Jan 2026):
 - Real-time video analysis, voice AI
 
 Our capabilities (13 services):
-- Rapid MVPs: 2-4 weeks, production-ready
+- Rapid MVPs: 1 day - 2 weeks, production-ready
 - Mobile AI Apps: Native iOS with AI integration
 - Video & Image AI: Gemini 3.0 powered video analysis
 - MCP Server Development: 15+ servers built
@@ -70,7 +66,7 @@ Key stats:
 
 Why founders choose us:
 - We actually ship: 30+ live apps with 1M+ users. Not slides.
-- 2-4 week MVPs: From idea to App Store. Fast execution.
+- 1 day - 2 week MVPs: From idea to App Store. Fast execution.
 - Multilingual AI: 100K+ users in Spanish-speaking markets.
 - Full-stack team: AI + mobile + payments + video + voice. End-to-end.
 
@@ -79,29 +75,14 @@ Contact: hello@ai4u.space
 Be helpful, professional, and concise. Use "we" language to represent the team. Focus on how we can solve business problems with AI and ship real products fast. If asked about pricing or specific projects, encourage them to submit their idea through the form or contact directly.`
     }
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini', // Fast, cost-effective responses
-      stream: true,
+    const result = await streamText({
+      model: openai('gpt-4o-mini'),
       messages: [systemMessage, ...messages],
       temperature: 0.7,
-      max_tokens: 500,
+      maxTokens: 500,
     })
 
-    // Convert OpenAI stream to ReadableStream for StreamingTextResponse
-    const encoder = new TextEncoder()
-    const stream = new ReadableStream({
-      async start(controller) {
-        for await (const chunk of response) {
-          const text = chunk.choices[0]?.delta?.content || ''
-          if (text) {
-            controller.enqueue(encoder.encode(text))
-          }
-        }
-        controller.close()
-      },
-    })
-
-    return new StreamingTextResponse(stream)
+    return result.toDataStreamResponse()
   } catch (error) {
     console.error('Chat API error:', error)
     return new Response(
