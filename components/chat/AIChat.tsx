@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useCallback, FormEvent, ChangeEvent } from 'react'
-import { X, Maximize2, Minimize2, Send, MessageSquare } from 'lucide-react'
+import { useState, useCallback, useRef, useEffect, FormEvent, ChangeEvent } from 'react'
+import { X, Minimize2, Send, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
+import ReactMarkdown from 'react-markdown'
 
 interface Message {
   id: string
@@ -21,8 +20,16 @@ export function AIChat() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
-  const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages, isLoading])
+
+  const handleInputChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
   }, [])
 
@@ -116,74 +123,84 @@ export function AIChat() {
   }, [isLoading])
 
   const quickActions = [
-    'What services do you offer?',
-    'How much does app development cost?',
-    'What is your turnaround time?',
-    'Tell me about recent projects',
+    'What do you build?',
+    'Show me recent projects',
+    'How fast can you ship?',
   ]
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit(e as unknown as FormEvent)
+    }
+  }
 
   return (
     <>
-      {/* Chat Button */}
+      {/* Floating Chat Button */}
       {!isOpen && (
-        <Button
+        <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 z-50"
-          size="icon"
+          className="fixed bottom-6 right-6 z-50 group"
         >
-          <MessageSquare className="h-6 w-6" />
-        </Button>
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full blur-lg opacity-60 group-hover:opacity-100 transition-opacity" />
+            <div className="relative h-14 w-14 rounded-full bg-black border border-white/20 flex items-center justify-center shadow-2xl">
+              <Sparkles className="h-6 w-6 text-white" />
+            </div>
+          </div>
+        </button>
       )}
 
       {/* Chat Window */}
       {isOpen && (
         <div
           className={cn(
-            'fixed bottom-6 right-6 z-50 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl transition-all duration-300',
-            isMinimized ? 'w-80 h-14' : 'w-96 h-[600px]'
+            'fixed bottom-6 right-6 z-50 bg-black/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl transition-all duration-300 overflow-hidden',
+            isMinimized ? 'w-72 h-12' : 'w-[380px] h-[520px]'
           )}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-slate-700 bg-gradient-to-r from-blue-900/50 to-cyan-900/50">
+          <div className="flex items-center justify-between px-4 h-12 border-b border-white/10">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <h3 className="font-semibold text-white">AI Assistant</h3>
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-sm font-medium text-white">AI 4U Labs</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
+            <div className="flex items-center gap-1">
+              <button
                 onClick={() => setIsMinimized(!isMinimized)}
-                className="h-8 w-8 text-slate-400 hover:text-white"
+                className="p-1.5 text-white/50 hover:text-white transition-colors"
               >
-                {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
+                <Minimize2 className="h-4 w-4" />
+              </button>
+              <button
                 onClick={() => setIsOpen(false)}
-                className="h-8 w-8 text-slate-400 hover:text-white"
+                className="p-1.5 text-white/50 hover:text-white transition-colors"
               >
                 <X className="h-4 w-4" />
-              </Button>
+              </button>
             </div>
           </div>
 
           {/* Chat Content */}
           {!isMinimized && (
-            <div className="flex flex-col h-[calc(100%-3.5rem)]">
-              <ScrollArea className="flex-1 p-4">
-                <div className="space-y-4">
+            <div className="flex flex-col h-[calc(100%-3rem)]">
+              <ScrollArea className="flex-1" ref={scrollRef}>
+                <div className="p-4 space-y-4">
                   {messages.length === 0 && (
-                    <div className="text-center text-slate-400 py-8">
-                      <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p className="mb-4">Hi! How can I help you today?</p>
+                    <div className="py-8">
+                      <div className="text-center mb-6">
+                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-white/10 mb-3">
+                          <Sparkles className="h-5 w-5 text-cyan-400" />
+                        </div>
+                        <p className="text-white/70 text-sm">How can we help you build?</p>
+                      </div>
                       <div className="space-y-2">
                         {quickActions.map((action, i) => (
                           <button
                             key={i}
                             onClick={() => sendQuickAction(action)}
-                            className="block w-full text-sm text-left px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors"
+                            className="w-full text-left text-sm px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white border border-white/5 hover:border-white/10 transition-all"
                           >
                             {action}
                           </button>
@@ -201,77 +218,74 @@ export function AIChat() {
                       )}
                     >
                       {message.role === 'assistant' && (
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white text-xs">
-                            AI
-                          </AvatarFallback>
-                        </Avatar>
+                        <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                          <span className="text-[10px] font-bold text-white">4U</span>
+                        </div>
                       )}
                       <div
                         className={cn(
-                          'max-w-[80%] rounded-lg px-4 py-2',
+                          'max-w-[85%] rounded-2xl px-4 py-2.5',
                           message.role === 'user'
                             ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white'
-                            : 'bg-slate-800 text-slate-200'
+                            : 'bg-white/5 border border-white/10 text-white/90'
                         )}
                       >
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                        {message.role === 'assistant' ? (
+                          <div className="text-sm prose prose-invert prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-strong:text-cyan-300 prose-headings:text-white">
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p className="text-sm">{message.content}</p>
+                        )}
                       </div>
-                      {message.role === 'user' && (
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-slate-700 text-white text-xs">
-                            You
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
                     </div>
                   ))}
 
                   {isLoading && (
                     <div className="flex gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white text-xs">
-                          AI
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="bg-slate-800 rounded-lg px-4 py-2">
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                        <span className="text-[10px] font-bold text-white">4U</span>
+                      </div>
+                      <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
                         <div className="flex gap-1">
-                          <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" />
-                          <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                          <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                          <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" />
+                          <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce [animation-delay:0.1s]" />
+                          <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce [animation-delay:0.2s]" />
                         </div>
                       </div>
                     </div>
                   )}
 
                   {error && (
-                    <div className="text-center text-red-400 text-sm p-2 bg-red-900/20 rounded-lg">
-                      Error: {error.message || 'Failed to send message. Please check your API key.'}
+                    <div className="text-center text-red-400 text-xs p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                      {error.message}
                     </div>
                   )}
                 </div>
               </ScrollArea>
 
               {/* Input */}
-              <form onSubmit={handleSubmit} className="p-4 border-t border-slate-700">
-                <div className="flex gap-2">
-                  <Input
+              <div className="p-3 border-t border-white/10">
+                <form onSubmit={handleSubmit} className="flex gap-2">
+                  <textarea
                     value={input}
                     onChange={handleInputChange}
-                    placeholder="Type your message..."
-                    className="flex-1 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                    onKeyDown={handleKeyDown}
+                    placeholder="Ask anything..."
+                    rows={1}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-cyan-500/50 resize-none"
                     disabled={isLoading}
                   />
                   <Button
                     type="submit"
                     size="icon"
                     disabled={isLoading || !input.trim()}
-                    className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                    className="h-10 w-10 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 disabled:opacity-30"
                   >
                     <Send className="h-4 w-4" />
                   </Button>
-                </div>
-              </form>
+                </form>
+              </div>
             </div>
           )}
         </div>
