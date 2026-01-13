@@ -82,7 +82,7 @@ Be helpful, professional, and concise. Use "we" language to represent the team. 
       maxTokens: 500,
     })
 
-    return result.toDataStreamResponse()
+    return result.toAIStreamResponse()
   } catch (error) {
     console.error('Chat API error:', error)
     return new Response(
