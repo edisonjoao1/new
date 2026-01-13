@@ -1,6 +1,9 @@
-import { streamText } from 'ai'
-import { openai } from '@ai-sdk/openai'
+import { OpenAI } from 'openai'
 import { NextRequest } from 'next/server'
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || '',
+})
 
 export const runtime = 'edge'
 
@@ -75,14 +78,38 @@ Contact: hello@ai4u.space
 Be helpful, professional, and concise. Use "we" language to represent the team. Focus on how we can solve business problems with AI and ship real products fast. If asked about pricing or specific projects, encourage them to submit their idea through the form or contact directly.`
     }
 
-    const result = await streamText({
-      model: openai('gpt-4o-mini'),
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      stream: true,
       messages: [systemMessage, ...messages],
       temperature: 0.7,
-      maxTokens: 500,
+      max_tokens: 500,
     })
 
-    return result.toAIStreamResponse()
+    // Create a stream in the AI SDK data stream protocol format
+    const encoder = new TextEncoder()
+    const stream = new ReadableStream({
+      async start(controller) {
+        for await (const chunk of response) {
+          const text = chunk.choices[0]?.delta?.content || ''
+          if (text) {
+            // AI SDK data stream protocol: 0: prefix for text chunks
+            const formatted = `0:${JSON.stringify(text)}\n`
+            controller.enqueue(encoder.encode(formatted))
+          }
+        }
+        // Send finish message
+        controller.enqueue(encoder.encode('d:{"finishReason":"stop"}\n'))
+        controller.close()
+      },
+    })
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'X-Vercel-AI-Data-Stream': 'v1',
+      },
+    })
   } catch (error) {
     console.error('Chat API error:', error)
     return new Response(
