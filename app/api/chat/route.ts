@@ -7,20 +7,7 @@ const openai = new OpenAI({
 
 export const runtime = 'edge'
 
-export async function POST(req: NextRequest) {
-  try {
-    if (!process.env.OPENAI_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const { messages } = await req.json()
-
-    const systemMessage = {
-      role: 'system' as const,
-      content: `You are a helpful AI assistant for AI 4U Labs, a full-stack AI development studio based in Naples, Florida.
+const SYSTEM_PROMPT = `You are a helpful AI assistant for AI 4U Labs, a full-stack AI development studio based in Naples, Florida.
 
 What we do:
 - Build and ship real AI products (30+ apps, 1M+ users)
@@ -76,40 +63,39 @@ Why founders choose us:
 Contact: hello@ai4u.space
 
 Be helpful, professional, and concise. Use "we" language to represent the team. Focus on how we can solve business problems with AI and ship real products fast. If asked about pricing or specific projects, encourage them to submit their idea through the form or contact directly.`
+
+export async function POST(req: NextRequest) {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: 'OpenAI API key not configured' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
     }
+
+    const { messages } = await req.json()
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
-      stream: true,
-      messages: [systemMessage, ...messages],
+      messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
       temperature: 0.7,
       max_tokens: 500,
     })
 
-    // Create a stream in the AI SDK data stream protocol format
-    const encoder = new TextEncoder()
-    const stream = new ReadableStream({
-      async start(controller) {
-        for await (const chunk of response) {
-          const text = chunk.choices[0]?.delta?.content || ''
-          if (text) {
-            // AI SDK data stream protocol: 0: prefix for text chunks
-            const formatted = `0:${JSON.stringify(text)}\n`
-            controller.enqueue(encoder.encode(formatted))
-          }
-        }
-        // Send finish message
-        controller.enqueue(encoder.encode('d:{"finishReason":"stop"}\n'))
-        controller.close()
-      },
-    })
+    const content = response.choices[0]?.message?.content || ''
 
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'X-Vercel-AI-Data-Stream': 'v1',
-      },
-    })
+    // Return in format useChat expects for non-streaming
+    return new Response(
+      JSON.stringify({
+        id: response.id,
+        role: 'assistant',
+        content: content,
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    )
   } catch (error) {
     console.error('Chat API error:', error)
     return new Response(

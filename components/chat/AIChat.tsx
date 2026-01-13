@@ -1,7 +1,6 @@
 "use client"
 
-import { useState } from 'react'
-import { useChat } from 'ai/react'
+import { useState, useCallback, FormEvent, ChangeEvent } from 'react'
 import { X, Maximize2, Minimize2, Send, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,13 +8,112 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export function AIChat() {
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
-    api: '/api/chat',
-  })
+  const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value)
+  }, [])
+
+  const handleSubmit = useCallback(async (e: FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
+
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: input.trim(),
+    }
+
+    setMessages(prev => [...prev, userMessage])
+    setInput('')
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to send message')
+      }
+
+      const data = await response.json()
+
+      const assistantMessage: Message = {
+        id: data.id || `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: data.content,
+      }
+
+      setMessages(prev => [...prev, assistantMessage])
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Something went wrong'))
+    } finally {
+      setIsLoading(false)
+    }
+  }, [input, isLoading, messages])
+
+  const sendQuickAction = useCallback(async (action: string) => {
+    if (isLoading) return
+
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: action,
+    }
+
+    setMessages(prev => [...prev, userMessage])
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: action }],
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to send message')
+      }
+
+      const data = await response.json()
+
+      const assistantMessage: Message = {
+        id: data.id || `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: data.content,
+      }
+
+      setMessages(prev => [...prev, assistantMessage])
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Something went wrong'))
+    } finally {
+      setIsLoading(false)
+    }
+  }, [isLoading])
 
   const quickActions = [
     'What services do you offer?',
@@ -84,10 +182,7 @@ export function AIChat() {
                         {quickActions.map((action, i) => (
                           <button
                             key={i}
-                            onClick={() => {
-                              handleInputChange({ target: { value: action } } as any)
-                              handleSubmit(new Event('submit') as any)
-                            }}
+                            onClick={() => sendQuickAction(action)}
                             className="block w-full text-sm text-left px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors"
                           >
                             {action}
