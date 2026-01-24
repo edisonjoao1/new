@@ -173,13 +173,14 @@ async function fetchTimeSeries(
 // Fetch realtime data
 async function fetchRealtimeData(
   client: BetaAnalyticsDataClient,
-  propertyIds: string[]
+  properties: Array<{ id: string; name: string }>
 ) {
   let totalActiveUsers = 0
   const countryData: { [country: string]: number } = {}
+  const appData: { [appName: string]: number } = {}
 
   await Promise.all(
-    propertyIds.map(async (propertyId) => {
+    properties.map(async ({ id: propertyId, name: propertyName }) => {
       try {
         const [response] = await client.runRealtimeReport({
           property: `properties/${propertyId}`,
@@ -187,13 +188,20 @@ async function fetchRealtimeData(
           metrics: [{ name: 'activeUsers' }],
         })
 
+        let propertyUsers = 0
         if (response.rows) {
           response.rows.forEach((row) => {
             const country = row.dimensionValues?.[0]?.value || 'Unknown'
             const users = parseInt(row.metricValues?.[0]?.value || '0')
             totalActiveUsers += users
+            propertyUsers += users
             countryData[country] = (countryData[country] || 0) + users
           })
+        }
+
+        // Track users per app (only if there are active users)
+        if (propertyUsers > 0) {
+          appData[propertyName] = propertyUsers
         }
       } catch (error) {
         // Realtime API might not be available for all properties
@@ -208,9 +216,15 @@ async function fetchRealtimeData(
     .sort((a, b) => b.users - a.users)
     .slice(0, 10)
 
+  // Sort apps by users
+  const activeByApp = Object.entries(appData)
+    .map(([app, users]) => ({ app, users }))
+    .sort((a, b) => b.users - a.users)
+
   return {
     activeUsers: totalActiveUsers,
     topCountries,
+    activeByApp,
   }
 }
 
@@ -742,7 +756,7 @@ export async function GET(request: Request) {
         activeAppProperties.map(p => fetchPropertyData(analyticsClient, p.id, p.name, dateRanges.mau))
       ),
       fetchTimeSeries(analyticsClient, appPropertyIds),
-      fetchRealtimeData(analyticsClient, appPropertyIds),
+      fetchRealtimeData(analyticsClient, activeAppProperties),
       fetchCountryBreakdown(analyticsClient, appPropertyIds),
       fetchEventBreakdown(analyticsClient, appPropertyIds, periodRanges.current),
       fetchComparisonData(analyticsClient, activeAppProperties, periodRanges.current, periodRanges.previous),

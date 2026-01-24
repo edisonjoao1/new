@@ -1,0 +1,356 @@
+{
+  "properties": {
+    "488396770": {
+      "propertyId": "488396770",
+      "appName": "inteligencia-artificial-6a543",
+      "displayName": "Inteligencia Artificial (Spanish)",
+      "description": "AI-powered chat assistant app for Spanish-speaking users, providing conversational AI capabilities",
+      "category": "ai-assistant",
+      "targetAudience": "Spanish-speaking users aged 18-45 seeking AI assistance for daily tasks, learning, and conversation",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["AI chat", "Spanish language support", "Daily assistance", "Learning companion"],
+      "kpiTargets": { "dauMau": 15, "d1Retention": 30, "d7Retention": 15 }
+    },
+    "489973752": {
+      "propertyId": "489973752",
+      "appName": "intelligence-artificiel-a25eb",
+      "displayName": "Intelligence Artificielle (French)",
+      "description": "AI-powered chat assistant app for French-speaking users, offering conversational AI in French",
+      "category": "ai-assistant",
+      "targetAudience": "French-speaking users in France, Canada, and Africa seeking AI assistance",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["AI chat", "French language support", "Cultural context", "Daily assistance"],
+      "kpiTargets": { "dauMau": 15, "d1Retention": 30, "d7Retention": 15 }
+    },
+    "516392560": {
+      "propertyId": "516392560",
+      "appName": "days-together--love-tracker",
+      "displayName": "Days Together - Love Tracker",
+      "description": "Relationship milestone tracker that counts days together, anniversaries, and special moments for couples",
+      "category": "relationships",
+      "targetAudience": "Couples aged 18-35 who want to track and celebrate their relationship milestones",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["Day counter", "Anniversary reminders", "Photo memories", "Milestone celebrations", "Widgets"],
+      "kpiTargets": { "dauMau": 25, "d1Retention": 40, "d7Retention": 25 }
+    },
+    "486642898": {
+      "propertyId": "486642898",
+      "appName": "inteligencia-artificial-57923",
+      "displayName": "Inteligencia Artificial (Alt)",
+      "description": "Alternative version of the Spanish AI assistant with different features or targeting",
+      "category": "ai-assistant",
+      "targetAudience": "Spanish-speaking users seeking AI-powered assistance and conversation",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["AI chat", "Spanish support", "Voice interaction", "Task assistance"],
+      "kpiTargets": { "dauMau": 15, "d1Retention": 30, "d7Retention": 15 }
+    },
+    "489713800": {
+      "propertyId": "489713800",
+      "appName": "ai-brasil-efbf1",
+      "displayName": "AI Brasil",
+      "description": "AI assistant app localized for Brazilian Portuguese speakers",
+      "category": "ai-assistant",
+      "targetAudience": "Brazilian users seeking AI assistance in Portuguese, aged 18-40",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["AI chat", "Brazilian Portuguese", "Cultural adaptation", "Local context"],
+      "kpiTargets": { "dauMau": 15, "d1Retention": 30, "d7Retention": 15 }
+    },
+    "516587460": {
+      "propertyId": "516587460",
+      "appName": "relationship-62b68",
+      "displayName": "Relationship App",
+      "description": "App for couples to strengthen their relationship through activities, questions, and shared experiences",
+      "category": "relationships",
+      "targetAudience": "Couples looking to deepen their connection and improve communication",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["Couple activities", "Conversation starters", "Date ideas", "Relationship tips"],
+      "kpiTargets": { "dauMau": 20, "d1Retention": 35, "d7Retention": 20 }
+    },
+    "517994143": {
+      "propertyId": "517994143",
+      "appName": "health-anxiety-e3780",
+      "displayName": "Health Anxiety Relief",
+      "description": "Mental health app helping users manage health anxiety and hypochondria through CBT techniques and reassurance",
+      "category": "health",
+      "targetAudience": "Adults aged 25-50 experiencing health anxiety seeking coping tools and support",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["CBT exercises", "Anxiety tracking", "Guided relaxation", "Symptom diary", "Professional resources"],
+      "kpiTargets": { "dauMau": 30, "d1Retention": 40, "d7Retention": 25 }
+    },
+    "170914780": {
+      "propertyId": "170914780",
+      "appName": "foxie",
+      "displayName": "Foxie",
+      "description": "Original Foxie app - the core product offering AI-powered features",
+      "category": "ai-assistant",
+      "targetAudience": "General users seeking AI assistance and productivity tools",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["AI chat", "Productivity tools", "Smart assistance"],
+      "kpiTargets": { "dauMau": 15, "d1Retention": 30, "d7Retention": 15 }
+    },
+    "518113043": {
+      "propertyId": "518113043",
+      "appName": "new-year-new-you-f2e4e",
+      "displayName": "New Year New You",
+      "description": "Goal-setting and habit-tracking app for New Year resolutions and personal improvement",
+      "category": "lifestyle",
+      "targetAudience": "Motivated individuals aged 20-45 setting New Year goals and building better habits",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["Goal setting", "Habit tracking", "Progress visualization", "Reminders", "Motivation quotes"],
+      "kpiTargets": { "dauMau": 35, "d1Retention": 45, "d7Retention": 30 }
+    },
+    "454318012": {
+      "propertyId": "454318012",
+      "appName": "budd-74c57",
+      "displayName": "Budd",
+      "description": "AI companion app for mental wellness, offering supportive conversations and check-ins",
+      "category": "health",
+      "targetAudience": "Users seeking emotional support and a friendly AI companion for mental wellness",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["AI companion", "Mood tracking", "Daily check-ins", "Supportive chat"],
+      "kpiTargets": { "dauMau": 25, "d1Retention": 35, "d7Retention": 20 }
+    },
+    "516390325": {
+      "propertyId": "516390325",
+      "appName": "pet-health-scan-30111",
+      "displayName": "Pet Health Scan",
+      "description": "AI-powered pet health scanner that analyzes photos to identify potential health issues in dogs and cats",
+      "category": "health",
+      "targetAudience": "Pet owners aged 25-55 concerned about their pet's health and seeking quick assessments",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["Photo health scan", "Symptom checker", "Vet finder", "Pet health tips", "Breed info"],
+      "kpiTargets": { "dauMau": 10, "d1Retention": 25, "d7Retention": 10 }
+    },
+    "485516557": {
+      "propertyId": "485516557",
+      "appName": "image-c34f8",
+      "displayName": "Image AI",
+      "description": "AI image generation and editing tool for creating and enhancing images",
+      "category": "ai-assistant",
+      "targetAudience": "Creative users and content creators seeking AI-powered image tools",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["AI image generation", "Photo editing", "Style transfer", "Enhancement"],
+      "kpiTargets": { "dauMau": 15, "d1Retention": 25, "d7Retention": 10 }
+    },
+    "520312708": {
+      "propertyId": "520312708",
+      "appName": "new-dads",
+      "displayName": "New Dads",
+      "description": "Support app for new and expecting fathers with tips, tracking, and community features",
+      "category": "lifestyle",
+      "targetAudience": "New fathers and expecting dads aged 25-40 seeking guidance and support",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["Parenting tips", "Baby milestone tracking", "Dad community", "Partner support tips"],
+      "kpiTargets": { "dauMau": 30, "d1Retention": 40, "d7Retention": 25 }
+    },
+    "516377149": {
+      "propertyId": "516377149",
+      "appName": "pet-health-scan",
+      "displayName": "Pet Health Scan (Original)",
+      "description": "Original version of the pet health scanning app",
+      "category": "health",
+      "targetAudience": "Pet owners seeking AI-powered health assessments for their pets",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["Pet health scanning", "AI diagnosis suggestions", "Vet recommendations"],
+      "kpiTargets": { "dauMau": 10, "d1Retention": 25, "d7Retention": 10 }
+    },
+    "372035116": {
+      "propertyId": "372035116",
+      "appName": "foxie website - GA4",
+      "displayName": "AI4U Labs Website",
+      "description": "Main company website showcasing services, portfolio, and company information",
+      "category": "other",
+      "targetAudience": "Potential clients and partners interested in AI development services",
+      "monetization": "other",
+      "platforms": ["web"],
+      "keyFeatures": ["Company portfolio", "Services showcase", "Contact forms", "Blog"],
+      "kpiTargets": { "dauMau": 5, "d1Retention": 10, "d7Retention": 5 }
+    },
+    "517168745": {
+      "propertyId": "517168745",
+      "appName": "unbiased-65e60",
+      "displayName": "Unbiased",
+      "description": "Media literacy and bias detection app helping users identify bias in news articles",
+      "category": "education",
+      "targetAudience": "News readers aged 25-55 seeking unbiased information and media literacy tools",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["Bias detection", "News analysis", "Multiple perspectives", "Fact checking"],
+      "kpiTargets": { "dauMau": 20, "d1Retention": 30, "d7Retention": 15 }
+    },
+    "490607972": {
+      "propertyId": "490607972",
+      "appName": "love-79ab4",
+      "displayName": "Love App",
+      "description": "Relationship and dating companion app with conversation tips and relationship advice",
+      "category": "relationships",
+      "targetAudience": "Singles and couples seeking relationship guidance and dating tips",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["Dating tips", "Conversation starters", "Relationship advice", "Compatibility insights"],
+      "kpiTargets": { "dauMau": 20, "d1Retention": 30, "d7Retention": 15 }
+    },
+    "489264320": {
+      "propertyId": "489264320",
+      "appName": "meta-6cbb4",
+      "displayName": "Meta App",
+      "description": "Experimental or meta-focused app",
+      "category": "other",
+      "targetAudience": "Tech-savvy users interested in experimental features",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["Experimental features"],
+      "kpiTargets": { "dauMau": 10, "d1Retention": 20, "d7Retention": 10 }
+    },
+    "470854408": {
+      "propertyId": "470854408",
+      "appName": "live-5f8ee",
+      "displayName": "Live App",
+      "description": "Live streaming or real-time interaction focused app",
+      "category": "entertainment",
+      "targetAudience": "Users interested in live content and real-time interactions",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["Live features", "Real-time interaction"],
+      "kpiTargets": { "dauMau": 20, "d1Retention": 30, "d7Retention": 15 }
+    },
+    "355152962": {
+      "propertyId": "355152962",
+      "appName": "acti-8078e",
+      "displayName": "Acti",
+      "description": "Activity tracking and productivity app",
+      "category": "productivity",
+      "targetAudience": "Users seeking to track activities and boost productivity",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["Activity tracking", "Productivity tools"],
+      "kpiTargets": { "dauMau": 25, "d1Retention": 35, "d7Retention": 20 }
+    },
+    "459749735": {
+      "propertyId": "459749735",
+      "appName": "flutter-66d7d",
+      "displayName": "Flutter App",
+      "description": "Cross-platform app built with Flutter framework",
+      "category": "other",
+      "targetAudience": "General users",
+      "monetization": "freemium",
+      "platforms": ["ios", "android"],
+      "keyFeatures": ["Cross-platform"],
+      "kpiTargets": { "dauMau": 15, "d1Retention": 25, "d7Retention": 15 }
+    },
+    "338170824": {
+      "propertyId": "338170824",
+      "appName": "backtoit-bd128",
+      "displayName": "Back To It",
+      "description": "Task reminder and bookmark app to help users return to incomplete tasks",
+      "category": "productivity",
+      "targetAudience": "Busy professionals who need reminders to complete tasks",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["Task reminders", "Bookmarks", "Quick save"],
+      "kpiTargets": { "dauMau": 30, "d1Retention": 40, "d7Retention": 25 }
+    },
+    "238360078": {
+      "propertyId": "238360078",
+      "appName": "foxie-s-gram",
+      "displayName": "Foxie's Gram",
+      "description": "Social or photo sharing feature of the Foxie ecosystem",
+      "category": "entertainment",
+      "targetAudience": "Foxie users interested in sharing and social features",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["Photo sharing", "Social features"],
+      "kpiTargets": { "dauMau": 20, "d1Retention": 30, "d7Retention": 15 }
+    },
+    "212918036": {
+      "propertyId": "212918036",
+      "appName": "foxiegram-36486",
+      "displayName": "Foxiegram",
+      "description": "Another iteration of the Foxie social/sharing features",
+      "category": "entertainment",
+      "targetAudience": "Social media users in the Foxie ecosystem",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["Social sharing", "Community"],
+      "kpiTargets": { "dauMau": 20, "d1Retention": 30, "d7Retention": 15 }
+    },
+    "207666379": {
+      "propertyId": "207666379",
+      "appName": "ubss-8a0de",
+      "displayName": "UBSS",
+      "description": "Utility or business-focused app",
+      "category": "utility",
+      "targetAudience": "Business users or general utility seekers",
+      "monetization": "freemium",
+      "platforms": ["ios"],
+      "keyFeatures": ["Utility features"],
+      "kpiTargets": { "dauMau": 15, "d1Retention": 25, "d7Retention": 15 }
+    }
+  },
+  "categoryBenchmarks": {
+    "ai-assistant": {
+      "avgDauMau": 12,
+      "avgD1Retention": 25,
+      "avgD7Retention": 12
+    },
+    "health": {
+      "avgDauMau": 20,
+      "avgD1Retention": 35,
+      "avgD7Retention": 18
+    },
+    "relationships": {
+      "avgDauMau": 25,
+      "avgD1Retention": 40,
+      "avgD7Retention": 22
+    },
+    "lifestyle": {
+      "avgDauMau": 22,
+      "avgD1Retention": 35,
+      "avgD7Retention": 18
+    },
+    "productivity": {
+      "avgDauMau": 30,
+      "avgD1Retention": 40,
+      "avgD7Retention": 25
+    },
+    "education": {
+      "avgDauMau": 15,
+      "avgD1Retention": 30,
+      "avgD7Retention": 15
+    },
+    "entertainment": {
+      "avgDauMau": 18,
+      "avgD1Retention": 28,
+      "avgD7Retention": 14
+    },
+    "utility": {
+      "avgDauMau": 15,
+      "avgD1Retention": 25,
+      "avgD7Retention": 12
+    },
+    "finance": {
+      "avgDauMau": 25,
+      "avgD1Retention": 35,
+      "avgD7Retention": 20
+    },
+    "other": {
+      "avgDauMau": 10,
+      "avgD1Retention": 20,
+      "avgD7Retention": 10
+    }
+  }
+}

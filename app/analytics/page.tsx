@@ -41,6 +41,8 @@ import {
   GitCompare,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import InsightsPanel from '@/components/analytics/InsightsPanel'
+import AIEvaluationPanel from '@/components/analytics/AIEvaluationPanel'
 import {
   AreaChart,
   Area,
@@ -96,6 +98,7 @@ interface AnalyticsData {
   realtime: {
     activeUsers: number
     topCountries: Array<{ country: string; users: number }>
+    activeByApp: Array<{ app: string; users: number }>
   }
   countries: Array<{ country: string; users: number }>
   events: Array<{ eventName: string; count: number }>
@@ -931,14 +934,38 @@ export default function AnalyticsPage() {
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               <span className="text-sm text-gray-500 dark:text-gray-400 font-light">Active users in last 30 minutes</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+              {/* Total Active Users */}
               <div className="flex items-center gap-4">
                 <div className="text-5xl font-light">{data.realtime.activeUsers}</div>
                 <Radio className="w-6 h-6 text-green-500" />
               </div>
+
+              {/* Active by App */}
+              {data.realtime.activeByApp && data.realtime.activeByApp.length > 0 && (
+                <div className="flex-1 max-w-md">
+                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Live by App</div>
+                  <div className="flex flex-wrap gap-2">
+                    {data.realtime.activeByApp.map((a) => (
+                      <div
+                        key={a.app}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full"
+                      >
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {a.app.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </span>
+                        <span className="text-sm font-semibold text-green-600 dark:text-green-400">{a.users}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Top Countries */}
               {data.realtime.topCountries.length > 0 && (
                 <div className="text-right">
-                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Top Countries (Realtime)</div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Top Countries</div>
                   <div className="space-y-1">
                     {data.realtime.topCountries.slice(0, 3).map((c) => (
                       <div key={c.country} className="flex items-center justify-end gap-2 text-sm">
@@ -978,6 +1005,35 @@ export default function AnalyticsPage() {
               </div>
             </div>
           ))}
+        </motion.div>
+
+        {/* AI Insights Panel */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="mb-8"
+        >
+          <InsightsPanel
+            analyticsKey={password}
+            propertyId={selectedProperty === 'all' ? null : selectedProperty}
+            period={period}
+            analyticsData={data}
+            isDark={darkMode}
+          />
+        </motion.div>
+
+        {/* AI Evaluation Panel - Firebase Conversation Analysis */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mb-8"
+        >
+          <AIEvaluationPanel
+            analyticsKey={password}
+            isDark={darkMode}
+          />
         </motion.div>
 
         {/* User Activity Chart */}
