@@ -349,6 +349,74 @@ Check that `ANALYTICS_PASSWORD` matches what you entered.
 - Ensure you have at least a few conversations to analyze
 - Check server logs for OpenAI API errors
 
+## Dynamic System Prompt (No App Release Required)
+
+The system prompt can be updated from the dashboard without releasing a new app version.
+
+### Public Endpoint
+
+```
+GET /api/app-config
+```
+
+**No authentication required** - designed for mobile apps to call on launch.
+
+**Response:**
+```json
+{
+  "systemPrompt": "Your current system prompt...",
+  "promptVersion": 5,
+  "updatedAt": "2026-01-24T10:30:00.000Z",
+  "features": {
+    "imageGeneration": true,
+    "voiceChat": true
+  }
+}
+```
+
+### iOS Integration
+
+```swift
+struct AppConfig: Codable {
+    let systemPrompt: String
+    let promptVersion: Int
+    let updatedAt: String
+}
+
+func fetchConfig() async {
+    guard let url = URL(string: "https://your-domain.com/api/app-config") else { return }
+
+    do {
+        let (data, _) = try await URLSession.shared.data(from: url)
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+        self.systemPrompt = config.systemPrompt
+
+        // Cache for offline
+        UserDefaults.standard.set(config.systemPrompt, forKey: "cached_prompt")
+    } catch {
+        // Use cached if fetch fails
+        self.systemPrompt = UserDefaults.standard.string(forKey: "cached_prompt") ?? defaultPrompt
+    }
+}
+```
+
+### Updating the Prompt
+
+1. Go to `/analytics/ai-evaluation`
+2. Click **"System Prompt"** tab
+3. Edit your prompt
+4. Add version notes (optional)
+5. Click **"Save New Version"**
+
+Changes go live immediately. The endpoint has a 5-minute CDN cache for performance.
+
+### Version History
+
+All prompt versions are saved automatically. You can:
+- View previous versions
+- Revert to any previous version
+- See notes for each version
+
 ## Environment Variables
 
 | Variable | Required | Description |
