@@ -1,74 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getFirestoreDb } from '@/lib/firebase/admin'
+import { PROMPT_TYPES, DEFAULT_PROMPTS, PROMPT_LABELS, type PromptType } from '@/app/api/app-config/route'
 
 const PROMPT_COLLECTION = 'system_prompts'
 const PROMPT_HISTORY_COLLECTION = 'system_prompt_history'
 
-// Default system prompt (from iOS app)
-const DEFAULT_PROMPT = `# Identidad y Comportamiento Base
-Eres ia, una inteligencia artificial desarrollada por Edison labs, especializada en conversaciones multilingües, análisis de imágenes y generación de imágenes. Eres amigable, servicial y culturalmente consciente.
-
-# Adaptación Lingüística (IMPORTANTE)
-- SIEMPRE responde en el mismo idioma que el usuario utiliza en su mensaje actual
-- Si el usuario escribe en español, responde SOLO en español
-- Si el usuario escribe en inglés, responde SOLO en inglés
-- Si el usuario escribe en portugués, responde SOLO en portugués si es posible
-- Mantén consistencia lingüística durante toda la conversación a menos que el usuario cambie de idioma
-
-# Imágenes: Análisis, Edición y Generación (MUY IMPORTANTE)
-
-## Análisis de Imágenes
-- Si el usuario comparte una imagen y pregunta "¿qué es esto?", "describe esto", o hace preguntas sobre ella → ANALIZA y describe lo que ves
-
-## Edición de Imágenes (CRÍTICO - cuando el usuario quiere MODIFICAR una imagen que compartió)
-
-Detecta solicitudes de edición como: "hazla más clara", "añade...", "quita...", "cambia el fondo", "ponme en...", "hazme con...", "cámbiame el pelo", "ponle...", "agrega...", "mejora...", etc.
-
-PROCESO PARA EDITAR:
-1. PRIMERO analiza la imagen compartida en detalle: género, edad aproximada, tono de piel, color/estilo de pelo, ropa, pose, expresión, fondo, iluminación
-2. LUEGO crea un prompt EN INGLÉS que DESCRIBE TODO lo que viste + los cambios solicitados
-
-EJEMPLOS DE PROMPTS CORRECTOS:
-
-- Usuario envía selfie de mujer morena con pelo largo negro, sonriendo, y dice "ponme en la playa":
-  → "Photo of a young woman with long black hair, tan skin, smiling warmly, same face and expression, now standing on a tropical beach with turquoise water and palm trees in background, golden hour lighting"
-
-- Usuario envía foto de hombre con barba, camisa azul, y dice "hazme rubio":
-  → "Photo of a man with beard, wearing blue shirt, same face and expression, but now with blonde hair, natural lighting, portrait style"
-
-- Usuario envía foto de pareja y dice "ponlos en París":
-  → "Photo of a couple, [describe their appearance in detail], same poses and expressions, now standing in front of the Eiffel Tower in Paris, romantic evening atmosphere"
-
-- Usuario envía foto y dice "hazla en estilo anime":
-  → "Anime style illustration of [describe person: gender, hair color/style, clothing, pose], vibrant colors, studio ghibli aesthetic"
-
-IMPORTANTE: Entre más detalles incluyas de la persona/escena original, mejor será el resultado.
-
-## Nueva Generación (crear imagen desde cero)
-- Para peticiones como "crea una imagen de...", "dibuja...", "genera..." SIN imagen compartida
-- USA image_generation con prompt detallado en inglés
-
-## Después de generar/editar
-- Describe brevemente el resultado en el idioma del usuario
-
-# Uso de Búsqueda Web para Información Precisa
-- Usa la herramienta de búsqueda web para verificar información factual reciente
-- Si encuentras discrepancias, prioriza la información más reciente de fuentes confiables
-
-# Estilo de Comunicación
-- Comunicación clara, cálida y precisa no tan larga
-- Usa un flujo conversacional natural que genere confianza
-
-# Funciones de la App
-- Si el usuario pregunta cómo copiar o compartir un mensaje, explica que pueden mantener presionado (tap and hold) cualquier mensaje para ver las opciones de copiar o compartir
-- Si preguntan sobre la conversación de voz, explica que es una conversación continua en tiempo real - solo tocan "Comenzar" una vez y pueden hablar naturalmente sin necesidad de parar y volver a iniciar`
-
 interface PromptVersion {
   id: string
+  type: PromptType
   version: number
   prompt: string
-  createdAt: Date
-  updatedAt: Date
+  createdAt: Date | string
+  updatedAt: Date | string
   notes?: string
   isActive: boolean
 }
@@ -79,83 +22,189 @@ export async function GET(request: NextRequest) {
   const key = searchParams.get('key')
   const history = searchParams.get('history') === 'true'
   const limit = parseInt(searchParams.get('limit') || '10')
+  const promptType = (searchParams.get('type') as PromptType) || 'main'
 
   const validKey = process.env.ANALYTICS_PASSWORD
   if (!key || key !== validKey) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // Validate prompt type
+  if (!PROMPT_TYPES.includes(promptType as any)) {
+    return NextResponse.json({ error: `Invalid prompt type. Valid types: ${PROMPT_TYPES.join(', ')}` }, { status: 400 })
+  }
+
   try {
     const db = getFirestoreDb()
 
-    // Get current active prompt
-    const activePromptSnapshot = await db
-      .collection(PROMPT_COLLECTION)
-      .where('isActive', '==', true)
-      .limit(1)
-      .get()
-
     let currentPrompt: PromptVersion | null = null
 
-    if (activePromptSnapshot.empty) {
-      // No prompt exists yet, create the default one
-      const defaultDoc = {
-        version: 1,
-        prompt: DEFAULT_PROMPT,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        notes: 'Initial prompt imported from iOS app',
-        isActive: true,
+    // Get current active prompt for this type
+    try {
+      const activePromptSnapshot = await db
+        .collection(PROMPT_COLLECTION)
+        .where('type', '==', promptType)
+        .where('isActive', '==', true)
+        .limit(1)
+        .get()
+
+      if (activePromptSnapshot.empty) {
+        // No prompt exists yet for this type, create the default one
+        const defaultDoc = {
+          type: promptType,
+          version: 1,
+          prompt: DEFAULT_PROMPTS[promptType],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          notes: `Initial ${PROMPT_LABELS[promptType]} prompt`,
+          isActive: true,
+        }
+
+        const docRef = await db.collection(PROMPT_COLLECTION).add(defaultDoc)
+        currentPrompt = { id: docRef.id, ...defaultDoc }
+
+        // Also save to history
+        await db.collection(PROMPT_HISTORY_COLLECTION).add({
+          promptId: docRef.id,
+          ...defaultDoc,
+        })
+      } else {
+        const doc = activePromptSnapshot.docs[0]
+        const data = doc.data()
+        currentPrompt = {
+          id: doc.id,
+          type: data.type || 'main',
+          version: data.version,
+          prompt: data.prompt,
+          createdAt: data.createdAt?.toDate?.() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
+          notes: data.notes,
+          isActive: data.isActive,
+        }
       }
-
-      const docRef = await db.collection(PROMPT_COLLECTION).add(defaultDoc)
-      currentPrompt = { id: docRef.id, ...defaultDoc }
-
-      // Also save to history
-      await db.collection(PROMPT_HISTORY_COLLECTION).add({
-        promptId: docRef.id,
-        ...defaultDoc,
-      })
-    } else {
-      const doc = activePromptSnapshot.docs[0]
-      const data = doc.data()
+    } catch (promptError: any) {
+      // If query fails (e.g., missing index), return the default prompt
+      console.warn('Failed to fetch prompt from DB, using default:', promptError?.message)
       currentPrompt = {
-        id: doc.id,
-        version: data.version,
-        prompt: data.prompt,
-        createdAt: data.createdAt?.toDate?.() || data.createdAt,
-        updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
-        notes: data.notes,
-        isActive: data.isActive,
+        id: 'default',
+        type: promptType,
+        version: 0,
+        prompt: DEFAULT_PROMPTS[promptType],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        notes: 'Using default (database query failed)',
+        isActive: true,
       }
     }
 
     // Get history if requested
     let promptHistory: PromptVersion[] = []
+    let historyError: string | null = null
     if (history) {
-      const historySnapshot = await db
-        .collection(PROMPT_HISTORY_COLLECTION)
-        .orderBy('createdAt', 'desc')
-        .limit(limit)
-        .get()
+      try {
+        // Try the optimized query (requires composite index)
+        const historySnapshot = await db
+          .collection(PROMPT_HISTORY_COLLECTION)
+          .where('type', '==', promptType)
+          .orderBy('createdAt', 'desc')
+          .limit(limit)
+          .get()
 
-      promptHistory = historySnapshot.docs.map(doc => {
-        const data = doc.data()
-        return {
-          id: doc.id,
-          version: data.version,
-          prompt: data.prompt,
-          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
-          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
-          notes: data.notes,
-          isActive: data.isActive,
+        promptHistory = historySnapshot.docs.map(doc => {
+          const data = doc.data()
+          return {
+            id: doc.id,
+            type: data.type || 'main',
+            version: data.version,
+            prompt: data.prompt,
+            createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+            updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+            notes: data.notes,
+            isActive: data.isActive,
+          }
+        })
+      } catch (indexError: any) {
+        // If index doesn't exist, fall back to simpler query
+        if (indexError?.code === 9 || indexError?.message?.includes('index')) {
+          console.warn('Firebase index missing for history query, using fallback')
+          historyError = 'History requires Firebase index. Create it at: https://console.firebase.google.com/project/inteligencia-artificial-6a543/firestore/indexes'
+
+          // Fallback: fetch without orderBy, sort in memory
+          try {
+            const fallbackSnapshot = await db
+              .collection(PROMPT_HISTORY_COLLECTION)
+              .where('type', '==', promptType)
+              .limit(50)
+              .get()
+
+            promptHistory = fallbackSnapshot.docs
+              .map(doc => {
+                const data = doc.data()
+                return {
+                  id: doc.id,
+                  type: data.type || 'main',
+                  version: data.version,
+                  prompt: data.prompt,
+                  createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+                  updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+                  notes: data.notes,
+                  isActive: data.isActive,
+                }
+              })
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              .slice(0, limit)
+          } catch (fallbackError) {
+            console.error('Fallback history query also failed:', fallbackError)
+          }
+        } else {
+          throw indexError
         }
-      })
+      }
+    }
+
+    // Also return all prompt types with their current versions for the UI
+    const allPromptsSummary: { type: PromptType; version: number; hasCustom: boolean }[] = []
+
+    for (const type of PROMPT_TYPES) {
+      try {
+        const typeSnapshot = await db
+          .collection(PROMPT_COLLECTION)
+          .where('type', '==', type)
+          .where('isActive', '==', true)
+          .limit(1)
+          .get()
+
+        if (!typeSnapshot.empty) {
+          const data = typeSnapshot.docs[0].data()
+          allPromptsSummary.push({
+            type: type,
+            version: data.version || 1,
+            hasCustom: true,
+          })
+        } else {
+          allPromptsSummary.push({
+            type: type,
+            version: 0,
+            hasCustom: false,
+          })
+        }
+      } catch (typeError) {
+        // If query fails, mark as no custom prompt
+        allPromptsSummary.push({
+          type: type,
+          version: 0,
+          hasCustom: false,
+        })
+      }
     }
 
     return NextResponse.json({
       current: currentPrompt,
       history: history ? promptHistory : undefined,
+      historyWarning: historyError || undefined,
+      allPrompts: allPromptsSummary,
+      promptTypes: PROMPT_TYPES,
+      promptLabels: PROMPT_LABELS,
     })
   } catch (error) {
     console.error('Failed to fetch system prompt:', error)
@@ -170,7 +219,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { key, prompt, notes } = body
+    const { key, prompt, notes, type: promptType = 'main' } = body
 
     const validKey = process.env.ANALYTICS_PASSWORD
     if (!key || key !== validKey) {
@@ -181,11 +230,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 })
     }
 
+    // Validate prompt type
+    if (!PROMPT_TYPES.includes(promptType as any)) {
+      return NextResponse.json({ error: `Invalid prompt type. Valid types: ${PROMPT_TYPES.join(', ')}` }, { status: 400 })
+    }
+
     const db = getFirestoreDb()
 
-    // Get current version number
+    // Get current version number for this type
     const currentSnapshot = await db
       .collection(PROMPT_COLLECTION)
+      .where('type', '==', promptType)
       .where('isActive', '==', true)
       .limit(1)
       .get()
@@ -204,11 +259,12 @@ export async function POST(request: NextRequest) {
 
     // Create new prompt version
     const newPromptDoc = {
+      type: promptType,
       version: currentVersion + 1,
       prompt: prompt.trim(),
       createdAt: new Date(),
       updatedAt: new Date(),
-      notes: notes || `Version ${currentVersion + 1}`,
+      notes: notes || `${PROMPT_LABELS[promptType as PromptType]} v${currentVersion + 1}`,
       isActive: true,
     }
 
@@ -223,7 +279,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       prompt: { id: docRef.id, ...newPromptDoc },
-      message: `Saved as version ${newPromptDoc.version}`,
+      message: `Saved ${PROMPT_LABELS[promptType as PromptType]} as version ${newPromptDoc.version}`,
     })
   } catch (error) {
     console.error('Failed to save system prompt:', error)
@@ -238,7 +294,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { key, versionId } = body
+    const { key, versionId, type: promptType = 'main' } = body
 
     const validKey = process.env.ANALYTICS_PASSWORD
     if (!key || key !== validKey) {
@@ -258,10 +314,12 @@ export async function PUT(request: NextRequest) {
     }
 
     const versionData = versionDoc.data()!
+    const revertType = versionData.type || promptType
 
-    // Deactivate current active prompt
+    // Deactivate current active prompt for this type
     const currentSnapshot = await db
       .collection(PROMPT_COLLECTION)
+      .where('type', '==', revertType)
       .where('isActive', '==', true)
       .get()
 
@@ -272,9 +330,10 @@ export async function PUT(request: NextRequest) {
       })
     }
 
-    // Get max version
+    // Get max version for this type
     const allPromptsSnapshot = await db
       .collection(PROMPT_COLLECTION)
+      .where('type', '==', revertType)
       .orderBy('version', 'desc')
       .limit(1)
       .get()
@@ -283,6 +342,7 @@ export async function PUT(request: NextRequest) {
 
     // Create new prompt based on reverted version
     const revertedPromptDoc = {
+      type: revertType,
       version: maxVersion + 1,
       prompt: versionData.prompt,
       createdAt: new Date(),
@@ -302,12 +362,88 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({
       success: true,
       prompt: { id: docRef.id, ...revertedPromptDoc },
-      message: `Reverted to version ${versionData.version} (saved as version ${revertedPromptDoc.version})`,
+      message: `Reverted ${PROMPT_LABELS[revertType as PromptType]} to version ${versionData.version} (saved as version ${revertedPromptDoc.version})`,
     })
   } catch (error) {
     console.error('Failed to revert prompt:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to revert prompt' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE - Reset a prompt type to default
+export async function DELETE(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams
+    const key = searchParams.get('key')
+    const promptType = (searchParams.get('type') as PromptType) || 'main'
+
+    const validKey = process.env.ANALYTICS_PASSWORD
+    if (!key || key !== validKey) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Validate prompt type
+    if (!PROMPT_TYPES.includes(promptType as any)) {
+      return NextResponse.json({ error: `Invalid prompt type. Valid types: ${PROMPT_TYPES.join(', ')}` }, { status: 400 })
+    }
+
+    const db = getFirestoreDb()
+
+    // Deactivate all prompts for this type
+    const currentSnapshot = await db
+      .collection(PROMPT_COLLECTION)
+      .where('type', '==', promptType)
+      .where('isActive', '==', true)
+      .get()
+
+    for (const doc of currentSnapshot.docs) {
+      await db.collection(PROMPT_COLLECTION).doc(doc.id).update({
+        isActive: false,
+        updatedAt: new Date(),
+      })
+    }
+
+    // Get max version for this type
+    const allPromptsSnapshot = await db
+      .collection(PROMPT_COLLECTION)
+      .where('type', '==', promptType)
+      .orderBy('version', 'desc')
+      .limit(1)
+      .get()
+
+    const maxVersion = allPromptsSnapshot.empty ? 0 : allPromptsSnapshot.docs[0].data().version
+
+    // Create new prompt with default content
+    const defaultPromptDoc = {
+      type: promptType,
+      version: maxVersion + 1,
+      prompt: DEFAULT_PROMPTS[promptType],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      notes: `Reset to default`,
+      isActive: true,
+    }
+
+    const docRef = await db.collection(PROMPT_COLLECTION).add(defaultPromptDoc)
+
+    // Save to history
+    await db.collection(PROMPT_HISTORY_COLLECTION).add({
+      promptId: docRef.id,
+      ...defaultPromptDoc,
+    })
+
+    return NextResponse.json({
+      success: true,
+      prompt: { id: docRef.id, ...defaultPromptDoc },
+      message: `Reset ${PROMPT_LABELS[promptType]} to default (saved as version ${defaultPromptDoc.version})`,
+    })
+  } catch (error) {
+    console.error('Failed to reset prompt:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to reset prompt' },
       { status: 500 }
     )
   }

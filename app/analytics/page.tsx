@@ -40,9 +40,11 @@ import {
   ArrowRight,
   GitCompare,
 } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import InsightsPanel from '@/components/analytics/InsightsPanel'
 import AIEvaluationPanel from '@/components/analytics/AIEvaluationPanel'
+import AlertsPanel from '@/components/analytics/AlertsPanel'
 import {
   AreaChart,
   Area,
@@ -250,6 +252,14 @@ export default function AnalyticsPage() {
   const [compareProperties, setCompareProperties] = useState<string[]>([])
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' })
+  const [realtimeData, setRealtimeData] = useState<{
+    activeUsers: number
+    topCountries: Array<{ country: string; users: number }>
+    activeByApp: Array<{ app: string; users: number }>
+    minuteData: number[]
+    updatedAt: string
+  } | null>(null)
+  const [realtimeLoading, setRealtimeLoading] = useState(false)
 
   // Load favorites from localStorage
   useEffect(() => {
@@ -281,6 +291,22 @@ export default function AnalyticsPage() {
     setFavorites(newFavorites)
     localStorage.setItem('analytics_favorites', JSON.stringify(newFavorites))
   }
+
+  // Fetch realtime data separately (polls every 15 seconds)
+  const fetchRealtimeData = useCallback(async (key: string) => {
+    try {
+      setRealtimeLoading(true)
+      const res = await fetch(`/api/analytics/realtime?key=${encodeURIComponent(key)}`)
+      if (res.ok) {
+        const json = await res.json()
+        setRealtimeData(json)
+      }
+    } catch (error) {
+      console.error('Error fetching realtime data:', error)
+    } finally {
+      setRealtimeLoading(false)
+    }
+  }, [])
 
   const fetchData = useCallback(async (key: string, property?: string, periodParam?: string) => {
     setLoading(true)
@@ -334,9 +360,28 @@ export default function AnalyticsPage() {
   useEffect(() => {
     const storedKey = sessionStorage.getItem('analytics_key')
     if (storedKey) {
+      setPassword(storedKey) // Restore password state for AlertsPanel
       fetchData(storedKey)
+      fetchRealtimeData(storedKey) // Also fetch realtime immediately
     }
   }, [])
+
+  // Poll realtime data every 15 seconds (separate from full refresh)
+  useEffect(() => {
+    if (!isAuthenticated) return
+    const storedKey = sessionStorage.getItem('analytics_key')
+    if (!storedKey) return
+
+    // Initial fetch
+    fetchRealtimeData(storedKey)
+
+    // Poll every 15 seconds
+    const realtimeInterval = setInterval(() => {
+      fetchRealtimeData(storedKey)
+    }, 15000)
+
+    return () => clearInterval(realtimeInterval)
+  }, [isAuthenticated, fetchRealtimeData])
 
   useEffect(() => {
     if (!autoRefresh || !isAuthenticated) return
@@ -865,6 +910,9 @@ export default function AnalyticsPage() {
           )}
         </AnimatePresence>
 
+        {/* User Analytics Alerts Banner */}
+        <AlertsPanel analyticsKey={password} compact={true} />
+
         {/* Compare Mode Panel */}
         <AnimatePresence>
           {compareMode && compareProperties.length > 0 && (
@@ -922,7 +970,7 @@ export default function AnalyticsPage() {
           )}
         </AnimatePresence>
 
-        {/* Realtime Card */}
+        {/* Realtime Card - Polls every 15 seconds */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -930,25 +978,68 @@ export default function AnalyticsPage() {
           className="mb-8"
         >
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-sm text-gray-500 dark:text-gray-400 font-light">Active users in last 30 minutes</span>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 bg-green-500 rounded-full ${realtimeLoading ? 'animate-ping' : 'animate-pulse'}`} />
+                <span className="text-sm text-gray-500 dark:text-gray-400 font-light">Active users in last 30 minutes</span>
+                <span className="text-xs text-gray-400 ml-2">(updates every 15s)</span>
+              </div>
+              {realtimeData?.updatedAt && (
+                <span className="text-xs text-gray-400">
+                  Updated {new Date(realtimeData.updatedAt).toLocaleTimeString()}
+                </span>
+              )}
             </div>
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
               {/* Total Active Users */}
               <div className="flex items-center gap-4">
-                <div className="text-5xl font-light">{data.realtime.activeUsers}</div>
+                <motion.div
+                  key={realtimeData?.activeUsers ?? data.realtime.activeUsers}
+                  initial={{ scale: 1.1, color: '#22c55e' }}
+                  animate={{ scale: 1, color: darkMode ? '#fff' : '#000' }}
+                  transition={{ duration: 0.3 }}
+                  className="text-5xl font-light"
+                >
+                  {realtimeData?.activeUsers ?? data.realtime.activeUsers}
+                </motion.div>
                 <Radio className="w-6 h-6 text-green-500" />
               </div>
 
+              {/* Minute-level Activity Sparkline */}
+              {realtimeData?.minuteData && realtimeData.minuteData.some(v => v > 0) && (
+                <div className="flex-1 max-w-xs">
+                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Active Users per Minute</div>
+                  <div className="flex items-end gap-0.5 h-12">
+                    {realtimeData.minuteData.map((count, i) => {
+                      const maxCount = Math.max(...realtimeData.minuteData, 1)
+                      const height = (count / maxCount) * 100
+                      return (
+                        <div
+                          key={i}
+                          className="flex-1 bg-green-500/30 hover:bg-green-500/50 rounded-t transition-all"
+                          style={{ height: `${Math.max(height, 4)}%` }}
+                          title={`${30 - i} min ago: ${count} users`}
+                        />
+                      )
+                    })}
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>30m ago</span>
+                    <span>now</span>
+                  </div>
+                </div>
+              )}
+
               {/* Active by App */}
-              {data.realtime.activeByApp && data.realtime.activeByApp.length > 0 && (
+              {(realtimeData?.activeByApp ?? data.realtime.activeByApp)?.length > 0 && (
                 <div className="flex-1 max-w-md">
                   <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Live by App</div>
                   <div className="flex flex-wrap gap-2">
-                    {data.realtime.activeByApp.map((a) => (
-                      <div
+                    {(realtimeData?.activeByApp ?? data.realtime.activeByApp).map((a) => (
+                      <motion.div
                         key={a.app}
+                        initial={{ scale: 0.95 }}
+                        animate={{ scale: 1 }}
                         className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full"
                       >
                         <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
@@ -956,18 +1047,18 @@ export default function AnalyticsPage() {
                           {a.app.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                         </span>
                         <span className="text-sm font-semibold text-green-600 dark:text-green-400">{a.users}</span>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 </div>
               )}
 
               {/* Top Countries */}
-              {data.realtime.topCountries.length > 0 && (
+              {(realtimeData?.topCountries ?? data.realtime.topCountries).length > 0 && (
                 <div className="text-right">
                   <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Top Countries</div>
                   <div className="space-y-1">
-                    {data.realtime.topCountries.slice(0, 3).map((c) => (
+                    {(realtimeData?.topCountries ?? data.realtime.topCountries).slice(0, 3).map((c) => (
                       <div key={c.country} className="flex items-center justify-end gap-2 text-sm">
                         <span className="text-gray-600 dark:text-gray-400">{c.country}</span>
                         <span className="font-medium">{c.users}</span>
@@ -1292,6 +1383,7 @@ export default function AnalyticsPage() {
                   <th className="text-right px-4 py-4 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">MAU</th>
                   <th className="text-right px-4 py-4 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">Sessions</th>
                   <th className="text-right px-6 py-4 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">DAU/MAU</th>
+                  <th className="text-center px-4 py-4 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium">Users</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -1345,6 +1437,16 @@ export default function AnalyticsPage() {
                       }`}>
                         {property.dauMau}%
                       </span>
+                    </td>
+                    <td className="text-center px-4 py-4">
+                      <Link
+                        href={`/analytics/users?app=${encodeURIComponent(property.id)}`}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-full transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Users className="w-3 h-3" />
+                        View
+                      </Link>
                     </td>
                   </tr>
                 ))}

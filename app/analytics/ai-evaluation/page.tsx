@@ -66,6 +66,7 @@ import QualityGauge, { QualityBadge } from '@/components/analytics/QualityGauge'
 import StatCard from '@/components/analytics/StatCard'
 import { AIAnalysisSkeleton, DashboardSkeleton, ChartSkeleton } from '@/components/analytics/LoadingSkeletons'
 import EvaluationDetailModal from '@/components/analytics/EvaluationDetailModal'
+import SystemPromptEditor from '@/components/analytics/SystemPromptEditor'
 
 interface UserMetrics {
   totalUsers: number
