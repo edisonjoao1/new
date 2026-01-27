@@ -32,11 +32,9 @@ import {
   Clock,
 } from 'lucide-react'
 
-// Prompt configurations
+// Prompt configurations (consolidated: streaming and imageAnalysis now use 'main')
 const PROMPT_CONFIGS = {
-  main: { label: 'Main Chat', icon: MessageSquare, color: 'purple', description: 'Primary conversational AI for text messages' },
-  streaming: { label: 'Streaming Chat', icon: Zap, color: 'yellow', description: 'Real-time streaming text responses' },
-  imageAnalysis: { label: 'Image Analysis', icon: Image, color: 'blue', description: 'Analyzing user-uploaded images' },
+  main: { label: 'Main Chat', icon: MessageSquare, color: 'purple', description: 'All text chat: regular, streaming, and image analysis' },
   lessonChat: { label: 'Lesson Chat', icon: BookOpen, color: 'green', description: 'Educational text chat lessons' },
   lessonVoice: { label: 'Lesson Voice', icon: Volume2, color: 'teal', description: 'Voice-based lessons (text API)' },
   voiceChat: { label: 'Voice Chat', icon: Mic, color: 'red', description: 'Real-time voice conversations' },
