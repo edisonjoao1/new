@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Splitsy - Typography Video</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #0c0c0b;
+      --text: #f0ebe5;
+      --text-dim: #7a756e;
+      --text-accent: #b8a892;
+      --text-muted: #4a4640;
+    }
+
+    body {
+      background: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-weight: 200;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .line {
+      font-size: clamp(32px, 6vw, 64px);
+      font-weight: 200;
+      color: var(--text);
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .word-wrapper {
+      display: inline-block;
+      overflow: hidden;
+      vertical-align: bottom;
+    }
+
+    .word {
+      display: inline-block;
+      transform: translateY(110%);
+      transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .word.visible {
+      transform: translateY(0);
+    }
+
+    .dim { color: var(--text-dim); }
+    .accent { color: var(--text-accent); }
+    .muted { color: var(--text-muted); }
+
+    /* Thin separator */
+    .separator {
+      width: 40px;
+      height: 1px;
+      background: var(--text-muted);
+      margin: 30px 0;
+      opacity: 0;
+      transform: scaleX(0);
+      transition: opacity 0.6s, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .separator.visible {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+
+    /* App name at end */
+    .app-name {
+      font-size: clamp(18px, 2.5vw, 24px);
+      font-weight: 300;
+      letter-spacing: 0.3em;
+      color: var(--text-accent);
+      text-transform: lowercase;
+      margin-top: 50px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.8s, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .app-name.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Grain texture */
+    .grain {
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      pointer-events: none;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      animation: grain 8s steps(10) infinite;
+    }
+
+    @keyframes grain {
+      0%, 100% { transform: translate(0, 0); }
+      10% { transform: translate(-5%, -10%); }
+      20% { transform: translate(-15%, 5%); }
+      30% { transform: translate(7%, -25%); }
+      40% { transform: translate(-5%, 25%); }
+      50% { transform: translate(-15%, 10%); }
+      60% { transform: translate(15%, 0%); }
+      70% { transform: translate(0%, 15%); }
+      80% { transform: translate(3%, 35%); }
+      90% { transform: translate(-10%, 10%); }
+    }
+
+    /* Subtle vignette */
+    .vignette {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 0%, var(--bg) 90%);
+      opacity: 0.4;
+    }
+
+    /* Corner brackets */
+    .corner {
+      position: fixed;
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--text-muted);
+      opacity: 0;
+      transition: opacity 1s ease-out;
+    }
+
+    .corner.visible { opacity: 0.3; }
+
+    .corner.tl { top: 40px; left: 40px; border-right: none; border-bottom: none; }
+    .corner.tr { top: 40px; right: 40px; border-left: none; border-bottom: none; }
+    .corner.bl { bottom: 40px; left: 40px; border-right: none; border-top: none; }
+    .corner.br { bottom: 40px; right: 40px; border-left: none; border-top: none; }
+
+    /* Bottom tagline */
+    .tagline {
+      position: fixed;
+      bottom: 50px;
+      font-size: 12px;
+      font-weight: 300;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      text-transform: lowercase;
+      opacity: 0;
+      transition: opacity 0.8s;
+    }
+
+    .tagline.visible { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="grain"></div>
+  <div class="vignette"></div>
+
+  <!-- Corner brackets -->
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+
+  <div class="container">
+    <div class="content" id="content"></div>
+  </div>
+
+  <div class="tagline" id="tagline">app store</div>
+
+  <script>
+    // Web Audio for subtle mechanical key sounds
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new AudioContext();
+      }
+    }
+
+    function playTypeSound() {
+      if (!audioCtx) return;
+
+      // Create a subtle, soft mechanical click
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+
+      // Noise-like quality with filter
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(150 + Math.random() * 100, audioCtx.currentTime);
+
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(2000, audioCtx.currentTime);
+      filter.Q.setValueAtTime(1, audioCtx.currentTime);
+
+      // Very soft, short envelope
+      const volume = 0.015 + Math.random() * 0.01;
+      gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start(audioCtx.currentTime);
+      osc.stop(audioCtx.currentTime + 0.04);
+
+      // Add a second click layer for depth
+      const osc2 = audioCtx.createOscillator();
+      const gain2 = audioCtx.createGain();
+
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(4000 + Math.random() * 1000, audioCtx.currentTime);
+
+      gain2.gain.setValueAtTime(0.008, audioCtx.currentTime);
+      gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.02);
+
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+
+      osc2.start(audioCtx.currentTime);
+      osc2.stop(audioCtx.currentTime + 0.02);
+    }
+
+    // Script for the video
+    const script = [
+      { type: 'pause', duration: 600 },
+      { type: 'corners' },
+      { type: 'pause', duration: 400 },
+
+      // Scene 1: The problem
+      { type: 'line', words: [{ text: 'dinner with friends', class: 'dim' }] },
+      { type: 'pause', duration: 800 },
+      { type: 'line', words: [{ text: 'the check arrives', class: '' }] },
+      { type: 'pause', duration: 600 },
+      { type: 'line', words: [{ text: 'chaos', class: 'accent' }] },
+      { type: 'pause', duration: 1200 },
+
+      { type: 'clear' },
+      { type: 'pause', duration: 400 },
+
+      // Scene 2: The solution
+      { type: 'line', words: [{ text: 'scan', class: '' }, { text: 'the receipt', class: 'dim' }] },
+      { type: 'pause', duration: 600 },
+      { type: 'line', words: [{ text: 'tap', class: '' }, { text: 'who ate what', class: 'dim' }] },
+      { type: 'pause', duration: 600 },
+      { type: 'line', words: [{ text: 'send', class: '' }] },
+      { type: 'pause', duration: 1200 },
+
+      { type: 'clear' },
+      { type: 'pause', duration: 400 },
+
+      // Scene 3: The tagline
+      { type: 'line', words: [{ text: 'split bills', class: '' }] },
+      { type: 'pause', duration: 500 },
+      { type: 'line', words: [{ text: 'not friendships', class: 'accent' }] },
+      { type: 'pause', duration: 1000 },
+
+      { type: 'separator' },
+      { type: 'pause', duration: 600 },
+
+      // App name
+      { type: 'appname', text: 'splitsy' },
+      { type: 'pause', duration: 400 },
+      { type: 'tagline' },
+      { type: 'pause', duration: 2000 },
+    ];
+
+    const content = document.getElementById('content');
+    let currentElements = [];
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function showWord(wrapper, delay = 0) {
+      await sleep(delay);
+      const word = wrapper.querySelector('.word');
+      playTypeSound();
+      word.classList.add('visible');
+    }
+
+    async function createLine(wordsData) {
+      const line = document.createElement('div');
+      line.className = 'line';
+
+      const wrappers = [];
+
+      wordsData.forEach((wordData, i) => {
+        if (i > 0) {
+          const space = document.createTextNode(' ');
+          line.appendChild(space);
+        }
+
+        const wrapper = document.createElement('span');
+        wrapper.className = 'word-wrapper';
+
+        const word = document.createElement('span');
+        word.className = `word ${wordData.class || ''}`;
+        word.textContent = wordData.text;
+
+        wrapper.appendChild(word);
+        line.appendChild(wrapper);
+        wrappers.push(wrapper);
+      });
+
+      content.appendChild(line);
+      currentElements.push(line);
+
+      await sleep(50);
+
+      // Animate words with stagger
+      for (let i = 0; i < wrappers.length; i++) {
+        await showWord(wrappers[i], i > 0 ? 150 : 0);
+      }
+    }
+
+    async function createSeparator() {
+      const sep = document.createElement('div');
+      sep.className = 'separator';
+      content.appendChild(sep);
+      currentElements.push(sep);
+
+      await sleep(50);
+      sep.classList.add('visible');
+    }
+
+    async function createAppName(text) {
+      const name = document.createElement('div');
+      name.className = 'app-name';
+      name.textContent = text;
+      content.appendChild(name);
+      currentElements.push(name);
+
+      await sleep(50);
+      playTypeSound();
+      name.classList.add('visible');
+    }
+
+    async function clearContent() {
+      currentElements.forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(-20px)';
+        el.style.transition = 'opacity 0.4s, transform 0.4s';
+      });
+
+      await sleep(500);
+
+      currentElements.forEach(el => el.remove());
+      currentElements = [];
+    }
+
+    async function showCorners() {
+      document.querySelectorAll('.corner').forEach((corner, i) => {
+        setTimeout(() => corner.classList.add('visible'), i * 100);
+      });
+    }
+
+    async function showTagline() {
+      document.getElementById('tagline').classList.add('visible');
+    }
+
+    async function runScript() {
+      // Init audio on user interaction
+      document.addEventListener('click', initAudio, { once: true });
+      document.addEventListener('touchstart', initAudio, { once: true });
+
+      // Try to init audio automatically
+      try {
+        initAudio();
+        if (audioCtx.state === 'suspended') {
+          await audioCtx.resume();
+        }
+      } catch (e) {}
+
+      for (const item of script) {
+        switch (item.type) {
+          case 'pause':
+            await sleep(item.duration);
+            break;
+          case 'line':
+            await createLine(item.words);
+            break;
+          case 'separator':
+            await createSeparator();
+            break;
+          case 'appname':
+            await createAppName(item.text);
+            break;
+          case 'clear':
+            await clearContent();
+            break;
+          case 'corners':
+            await showCorners();
+            break;
+          case 'tagline':
+            await showTagline();
+            break;
+        }
+      }
+    }
+
+    // Start
+    runScript();
+
+    // Double-click to restart
+    document.addEventListener('dblclick', () => location.reload());
+  </script>
+</body>
+</html>
