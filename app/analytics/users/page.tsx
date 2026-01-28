@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button'
 import UserList from '@/components/analytics/UserList'
 import UserDetailModal from '@/components/analytics/UserDetailModal'
+import VoiceDiagnostics from '@/components/analytics/VoiceDiagnostics'
 
 export default function UsersAnalyticsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -28,6 +29,7 @@ export default function UsersAnalyticsPage() {
   const [authError, setAuthError] = useState('')
   const [darkMode, setDarkMode] = useState(true)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'users' | 'voice'>('users')
   const [overview, setOverview] = useState<{
     totalUsers: number
     activeUsers24h: number
@@ -250,14 +252,53 @@ export default function UsersAnalyticsPage() {
           </div>
         )}
 
-        {/* User List */}
-        <div className={`p-6 rounded-xl ${darkMode ? 'bg-gray-800' : 'bg-white'} border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-          <UserList
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+              activeTab === 'users'
+                ? 'bg-purple-600 text-white'
+                : darkMode
+                  ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Users
+          </button>
+          <button
+            onClick={() => setActiveTab('voice')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+              activeTab === 'voice'
+                ? 'bg-purple-600 text-white'
+                : darkMode
+                  ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <Mic className="w-4 h-4" />
+            Voice Diagnostics
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'users' && (
+          <div className={`p-6 rounded-xl ${darkMode ? 'bg-gray-800' : 'bg-white'} border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            <UserList
+              analyticsKey={password || sessionStorage.getItem('analytics_key') || ''}
+              isDark={darkMode}
+              onUserSelect={setSelectedUserId}
+            />
+          </div>
+        )}
+
+        {activeTab === 'voice' && (
+          <VoiceDiagnostics
             analyticsKey={password || sessionStorage.getItem('analytics_key') || ''}
             isDark={darkMode}
-            onUserSelect={setSelectedUserId}
           />
-        </div>
+        )}
       </main>
 
       {/* User Detail Modal */}
