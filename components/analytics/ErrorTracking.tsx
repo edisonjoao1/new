@@ -18,6 +18,9 @@ interface UserWithErrors {
   userId: string
   userIdShort: string
   errorCount: number
+  voiceErrors: number
+  imageErrors: number
+  nsfwAttempts: number
   lastError: string | null
   errorTypes: string[]
   deviceModel: string
@@ -40,6 +43,7 @@ interface ErrorData {
   summary: {
     totalErrors: number
     voiceErrors: number
+    imageErrors: number
     nsfwAttempts: number
     usersAffected: number
     errorRate: number
@@ -117,7 +121,7 @@ export default function ErrorTracking({ analyticsKey, onUserClick }: Props) {
       <div className="flex justify-between items-start mb-6">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Error Tracking</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Monitor voice failures and issues</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Monitor voice, image, and other failures</p>
         </div>
         {data.cached && (
           <span className="text-xs text-gray-400">(cached)</span>
@@ -125,7 +129,7 @@ export default function ErrorTracking({ analyticsKey, onUserClick }: Props) {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-5 gap-4 mb-6">
         <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle className="w-4 h-4 text-red-500" />
@@ -136,6 +140,10 @@ export default function ErrorTracking({ analyticsKey, onUserClick }: Props) {
         <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4">
           <span className="text-sm text-gray-600 dark:text-gray-400">Voice Errors</span>
           <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{data.summary.voiceErrors}</p>
+        </div>
+        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+          <span className="text-sm text-gray-600 dark:text-gray-400">Image Errors</span>
+          <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{data.summary.imageErrors || 0}</p>
         </div>
         <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
           <span className="text-sm text-gray-600 dark:text-gray-400">Users Affected</span>

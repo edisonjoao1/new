@@ -40,6 +40,7 @@ import ConversionFunnel from './ConversionFunnel'
 import ErrorTracking from './ErrorTracking'
 import BehaviorInsights from './BehaviorInsights'
 import AlertsPanel from './AlertsPanel'
+import PerformanceDashboard from './PerformanceDashboard'
 import { Button } from '@/components/ui/button'
 import {
   AreaChart,
@@ -152,7 +153,7 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
   })
 
   // View mode
-  const [viewMode, setViewMode] = useState<'dashboard' | 'users' | 'retention' | 'funnel' | 'insights' | 'errors' | 'alerts'>('dashboard')
+  const [viewMode, setViewMode] = useState<'dashboard' | 'users' | 'retention' | 'funnel' | 'insights' | 'errors' | 'alerts' | 'performance'>('dashboard')
 
   // Auto-refresh state
   const [autoRefresh, setAutoRefresh] = useState(true)
@@ -356,6 +357,7 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
             {[
               { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
               { id: 'users', label: 'Users', icon: Users },
+              { id: 'performance', label: 'Performance', icon: Activity },
               { id: 'retention', label: 'Retention', icon: Target },
               { id: 'funnel', label: 'Funnel', icon: GitBranch },
               { id: 'insights', label: 'AI Insights', icon: Sparkles },
@@ -959,6 +961,11 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
             </div>
           )}
         </>
+      )}
+
+      {/* Performance Dashboard View */}
+      {viewMode === 'performance' && (
+        <PerformanceDashboard analyticsKey={analyticsKey} />
       )}
 
       {/* Retention Cohorts View */}

@@ -503,8 +503,9 @@ async function getUserDetail(db: ReturnType<typeof getFirestoreDb>, userId: stri
           const customMeta = metadata.metadata || {}
           const model = customMeta.model || customMeta.modelId || null
           const conversationId = customMeta.conversation_id || customMeta.conversationId || null
+          // Check source field explicitly (new: "chat" or "generator")
           const sourceType = customMeta.source || customMeta.sourceType || customMeta.type || null
-          const isFromChat = Boolean(conversationId) || customMeta.fromChat === 'true' || sourceType === 'chat'
+          const isFromChat = sourceType === 'chat' || Boolean(conversationId) || customMeta.fromChat === 'true'
 
           return {
             id: fileName,

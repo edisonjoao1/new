@@ -19,6 +19,10 @@ interface UserWithErrors {
   userId: string
   userIdShort: string
   errorCount: number
+  voiceErrors: number
+  imageErrors: number
+  chatErrors: number
+  nsfwAttempts: number
   lastError: string | null
   errorTypes: string[]
   deviceModel: string
@@ -62,6 +66,8 @@ export async function GET(request: NextRequest) {
     const usersSnapshot = await db.collection('users').get()
 
     let totalVoiceErrors = 0
+    let totalImageErrors = 0
+    let totalChatErrors = 0
     let totalNsfwAttempts = 0
     const usersWithErrors: UserWithErrors[] = []
     const errorsByType: Map<string, {
@@ -69,6 +75,7 @@ export async function GET(request: NextRequest) {
       users: Set<string>
       reconnectAttempts: number[]
       timestamps: Date[]
+      errorCodes: number[]
     }> = new Map()
     const errorTimeline: Map<string, number> = new Map()
     const recentErrors: VoiceFailure[] = []
@@ -77,73 +84,196 @@ export async function GET(request: NextRequest) {
     for (const userDoc of usersSnapshot.docs) {
       const userData = userDoc.data()
       const voiceFailureCount = userData.voice_failure_count || 0
+      const imageFailureCount = userData.image_failure_count || 0
+      const chatErrorCount = userData.error_count || 0  // NEW: Generic errors
       const nsfwAttemptCount = userData.nsfw_attempt_count || 0
 
       totalVoiceErrors += voiceFailureCount
+      totalImageErrors += imageFailureCount
+      totalChatErrors += chatErrorCount
       totalNsfwAttempts += nsfwAttemptCount
 
-      if (voiceFailureCount > 0 || nsfwAttemptCount > 0) {
-        // Get voice_failures subcollection for detailed errors
-        const failuresSnapshot = await db
-          .collection('users')
-          .doc(userDoc.id)
-          .collection('voice_failures')
-          .orderBy('timestamp', 'desc')
-          .limit(20)
-          .get()
-
+      if (voiceFailureCount > 0 || imageFailureCount > 0 || chatErrorCount > 0 || nsfwAttemptCount > 0) {
         const userErrorTypes = new Set<string>()
         let lastErrorTime: Date | null = null
 
-        failuresSnapshot.docs.forEach(failureDoc => {
-          const failure = failureDoc.data()
-          const errorType = failure.error_type || 'unknown'
-          const timestamp = failure.timestamp?.toDate?.() ||
-                           (failure.timestamp ? new Date(failure.timestamp) : null)
+        // Get voice_failures subcollection for detailed errors
+        if (voiceFailureCount > 0) {
+          const voiceFailuresSnapshot = await db
+            .collection('users')
+            .doc(userDoc.id)
+            .collection('voice_failures')
+            .orderBy('created_at', 'desc')
+            .limit(20)
+            .get()
 
-          userErrorTypes.add(errorType)
+          voiceFailuresSnapshot.docs.forEach(failureDoc => {
+            const failure = failureDoc.data()
+            const errorType = failure.failure_type || failure.error_type || 'voice_unknown'
+            const timestamp = failure.created_at?.toDate?.() ||
+                             failure.timestamp?.toDate?.() ||
+                             (failure.created_at ? new Date(failure.created_at) : null)
 
-          if (timestamp && (!lastErrorTime || timestamp > lastErrorTime)) {
-            lastErrorTime = timestamp
-          }
+            userErrorTypes.add(errorType)
 
-          // Aggregate by error type
-          if (!errorsByType.has(errorType)) {
-            errorsByType.set(errorType, {
-              count: 0,
-              users: new Set(),
-              reconnectAttempts: [],
-              timestamps: [],
-            })
-          }
-          const typeData = errorsByType.get(errorType)!
-          typeData.count++
-          typeData.users.add(userDoc.id)
-          if (failure.reconnect_attempts) {
-            typeData.reconnectAttempts.push(failure.reconnect_attempts)
-          }
-          if (timestamp) {
-            typeData.timestamps.push(timestamp)
+            if (timestamp && (!lastErrorTime || timestamp > lastErrorTime)) {
+              lastErrorTime = timestamp
+            }
 
-            // Add to timeline
-            const dateKey = timestamp.toISOString().split('T')[0]
-            errorTimeline.set(dateKey, (errorTimeline.get(dateKey) || 0) + 1)
-          }
+            // Aggregate by error type
+            if (!errorsByType.has(errorType)) {
+              errorsByType.set(errorType, {
+                count: 0,
+                users: new Set(),
+                reconnectAttempts: [],
+                timestamps: [],
+              })
+            }
+            const typeData = errorsByType.get(errorType)!
+            typeData.count++
+            typeData.users.add(userDoc.id)
+            if (failure.reconnect_attempts) {
+              typeData.reconnectAttempts.push(failure.reconnect_attempts)
+            }
+            if (timestamp) {
+              typeData.timestamps.push(timestamp)
+              const dateKey = timestamp.toISOString().split('T')[0]
+              errorTimeline.set(dateKey, (errorTimeline.get(dateKey) || 0) + 1)
+            }
 
-          // Collect recent errors
-          if (timestamp && timestamp > cutoffDate && recentErrors.length < 50) {
-            recentErrors.push({
-              userId: userDoc.id,
-              userIdShort: userDoc.id.substring(0, 8) + '...',
-              errorType,
-              errorMessage: failure.error_message || 'No message',
-              reconnectAttempts: failure.reconnect_attempts || 0,
-              sessionDuration: failure.session_duration || 0,
-              timestamp: timestamp.toISOString(),
-              deviceModel: userData.device_model || 'Unknown',
-            })
-          }
-        })
+            // Collect recent errors
+            if (timestamp && timestamp > cutoffDate && recentErrors.length < 50) {
+              recentErrors.push({
+                userId: userDoc.id,
+                userIdShort: userDoc.id.substring(0, 8) + '...',
+                errorType,
+                errorMessage: failure.error || failure.error_message || 'No message',
+                reconnectAttempts: failure.reconnect_attempts || 0,
+                sessionDuration: failure.session_duration || 0,
+                timestamp: timestamp.toISOString(),
+                deviceModel: userData.device_model || 'Unknown',
+              })
+            }
+          })
+        }
+
+        // Get image_failures subcollection for detailed errors
+        if (imageFailureCount > 0) {
+          const imageFailuresSnapshot = await db
+            .collection('users')
+            .doc(userDoc.id)
+            .collection('image_failures')
+            .orderBy('created_at', 'desc')
+            .limit(20)
+            .get()
+
+          imageFailuresSnapshot.docs.forEach(failureDoc => {
+            const failure = failureDoc.data()
+            const errorType = `image_${failure.failure_type || 'error'}`
+            const timestamp = failure.created_at?.toDate?.() ||
+                             (failure.created_at ? new Date(failure.created_at) : null)
+
+            userErrorTypes.add(errorType)
+
+            if (timestamp && (!lastErrorTime || timestamp > lastErrorTime)) {
+              lastErrorTime = timestamp
+            }
+
+            // Aggregate by error type
+            if (!errorsByType.has(errorType)) {
+              errorsByType.set(errorType, {
+                count: 0,
+                users: new Set(),
+                reconnectAttempts: [],
+                timestamps: [],
+              })
+            }
+            const typeData = errorsByType.get(errorType)!
+            typeData.count++
+            typeData.users.add(userDoc.id)
+            if (timestamp) {
+              typeData.timestamps.push(timestamp)
+              const dateKey = timestamp.toISOString().split('T')[0]
+              errorTimeline.set(dateKey, (errorTimeline.get(dateKey) || 0) + 1)
+            }
+
+            // Collect recent errors
+            if (timestamp && timestamp > cutoffDate && recentErrors.length < 50) {
+              recentErrors.push({
+                userId: userDoc.id,
+                userIdShort: userDoc.id.substring(0, 8) + '...',
+                errorType,
+                errorMessage: failure.error || 'Image generation failed',
+                reconnectAttempts: 0,
+                sessionDuration: 0,
+                timestamp: timestamp.toISOString(),
+                deviceModel: userData.device_model || 'Unknown',
+              })
+            }
+          })
+        }
+
+        // Get generic errors subcollection (chat errors, API errors, etc.)
+        if (chatErrorCount > 0) {
+          const errorsSnapshot = await db
+            .collection('users')
+            .doc(userDoc.id)
+            .collection('errors')
+            .orderBy('created_at', 'desc')
+            .limit(20)
+            .get()
+
+          errorsSnapshot.docs.forEach(errorDoc => {
+            const errorData = errorDoc.data()
+            const category = errorData.category || 'unknown'
+            const errorCode = errorData.error_code
+            const errorType = errorCode ? `${category}_${errorCode}` : category
+            const timestamp = errorData.created_at?.toDate?.() ||
+                             (errorData.created_at ? new Date(errorData.created_at) : null)
+
+            userErrorTypes.add(errorType)
+
+            if (timestamp && (!lastErrorTime || timestamp > lastErrorTime)) {
+              lastErrorTime = timestamp
+            }
+
+            // Aggregate by error type
+            if (!errorsByType.has(errorType)) {
+              errorsByType.set(errorType, {
+                count: 0,
+                users: new Set(),
+                reconnectAttempts: [],
+                timestamps: [],
+                errorCodes: [],
+              })
+            }
+            const typeData = errorsByType.get(errorType)!
+            typeData.count++
+            typeData.users.add(userDoc.id)
+            if (errorCode) {
+              typeData.errorCodes.push(errorCode)
+            }
+            if (timestamp) {
+              typeData.timestamps.push(timestamp)
+              const dateKey = timestamp.toISOString().split('T')[0]
+              errorTimeline.set(dateKey, (errorTimeline.get(dateKey) || 0) + 1)
+            }
+
+            // Collect recent errors
+            if (timestamp && timestamp > cutoffDate && recentErrors.length < 50) {
+              recentErrors.push({
+                userId: userDoc.id,
+                userIdShort: userDoc.id.substring(0, 8) + '...',
+                errorType,
+                errorMessage: errorData.error_message || 'No message',
+                reconnectAttempts: 0,
+                sessionDuration: 0,
+                timestamp: timestamp.toISOString(),
+                deviceModel: errorData.device_model || userData.device_model || 'Unknown',
+              })
+            }
+          })
+        }
 
         // Add NSFW as error type if applicable
         if (nsfwAttemptCount > 0) {
@@ -154,6 +284,7 @@ export async function GET(request: NextRequest) {
               users: new Set(),
               reconnectAttempts: [],
               timestamps: [],
+              errorCodes: [],
             })
           }
           const nsfwData = errorsByType.get('nsfw_attempt')!
@@ -164,7 +295,11 @@ export async function GET(request: NextRequest) {
         usersWithErrors.push({
           userId: userDoc.id,
           userIdShort: userDoc.id.substring(0, 8) + '...',
-          errorCount: voiceFailureCount + nsfwAttemptCount,
+          errorCount: voiceFailureCount + imageFailureCount + chatErrorCount + nsfwAttemptCount,
+          voiceErrors: voiceFailureCount,
+          imageErrors: imageFailureCount,
+          chatErrors: chatErrorCount,
+          nsfwAttempts: nsfwAttemptCount,
           lastError: lastErrorTime ? (lastErrorTime as Date).toISOString() : null,
           errorTypes: Array.from(userErrorTypes),
           deviceModel: userData.device_model || 'Unknown',
@@ -229,8 +364,10 @@ export async function GET(request: NextRequest) {
 
     const result = {
       summary: {
-        totalErrors: totalVoiceErrors + totalNsfwAttempts,
+        totalErrors: totalVoiceErrors + totalImageErrors + totalChatErrors + totalNsfwAttempts,
         voiceErrors: totalVoiceErrors,
+        imageErrors: totalImageErrors,
+        chatErrors: totalChatErrors,
         nsfwAttempts: totalNsfwAttempts,
         usersAffected: usersWithErrors.length,
         errorRate: usersSnapshot.size > 0
