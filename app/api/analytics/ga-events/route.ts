@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 /**
- * Google Analytics 4 Data API - Detailed Event Analytics
- * Fetches event parameters with full detail (latency, endpoints, errors, etc.)
+ * Google Analytics 4 Data API - Event Analytics
+ * Fetches event data from GA4
  */
 
 // GA4 Property ID for Inteligencia Artificial Gratis (Spanish app)
@@ -42,9 +42,9 @@ async function getAccessToken(): Promise<string> {
   return data.access_token
 }
 
-async function runGAReport(accessToken: string, request: any) {
+async function runGAReport(accessToken: string, propertyId: string, request: any) {
   const response = await fetch(
-    `https://analyticsdata.googleapis.com/v1beta/properties/${GA4_PROPERTY_ID}:runReport`,
+    `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
     {
       method: 'POST',
       headers: {
@@ -63,11 +63,30 @@ async function runGAReport(accessToken: string, request: any) {
   return response.json()
 }
 
+async function getCustomDimensions(accessToken: string, propertyId: string) {
+  const response = await fetch(
+    `https://analyticsadmin.googleapis.com/v1beta/properties/${propertyId}/customDimensions`,
+    {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    }
+  )
+
+  if (!response.ok) {
+    return [] // Return empty if no custom dimensions
+  }
+
+  const data = await response.json()
+  return data.customDimensions || []
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const key = searchParams.get('key')
-  const eventName = searchParams.get('event') || 'api_latency'
+  const eventName = searchParams.get('event')
   const days = parseInt(searchParams.get('days') || '7')
+  const propertyId = searchParams.get('propertyId') || GA4_PROPERTY_ID
 
   const validKey = process.env.ANALYTICS_PASSWORD
   if (!key || key !== validKey) {
@@ -84,58 +103,46 @@ export async function GET(request: NextRequest) {
 
     const formatDate = (d: Date) => d.toISOString().split('T')[0]
 
-    // Fetch event counts by parameter value
-    const eventReport = await runGAReport(accessToken, {
-      dateRanges: [{ startDate: formatDate(startDate), endDate: formatDate(endDate) }],
-      dimensions: [
-        { name: 'eventName' },
-        { name: 'customEvent:endpoint' }, // For api_latency events
-      ],
-      metrics: [
-        { name: 'eventCount' },
-        { name: 'eventValue' }, // Often contains latency
-      ],
-      dimensionFilter: {
-        filter: {
-          fieldName: 'eventName',
-          stringFilter: {
-            value: eventName,
-            matchType: 'EXACT',
-          },
+    // Get custom dimensions for this property
+    const customDimensions = await getCustomDimensions(accessToken, propertyId)
+
+    // Build dimensions array - use custom dimensions if available
+    const dimensions: { name: string }[] = [{ name: 'eventName' }]
+
+    // Check for endpoint custom dimension
+    const endpointDim = customDimensions.find((d: any) =>
+      d.parameterName === 'endpoint' || d.displayName?.toLowerCase().includes('endpoint')
+    )
+    if (endpointDim) {
+      dimensions.push({ name: `customEvent:${endpointDim.parameterName}` })
+    }
+
+    // If a specific event is requested, filter by it
+    const dimensionFilter = eventName ? {
+      filter: {
+        fieldName: 'eventName',
+        stringFilter: {
+          value: eventName,
+          matchType: 'EXACT',
         },
       },
+    } : undefined
+
+    // Fetch event report
+    const eventReport = await runGAReport(accessToken, propertyId, {
+      dateRanges: [{ startDate: formatDate(startDate), endDate: formatDate(endDate) }],
+      dimensions,
+      metrics: [
+        { name: 'eventCount' },
+        { name: 'eventValue' },
+      ],
+      dimensionFilter,
       orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
       limit: 100,
     })
 
-    // Fetch latency distribution if it's api_latency event
-    let latencyReport = null
-    if (eventName === 'api_latency') {
-      latencyReport = await runGAReport(accessToken, {
-        dateRanges: [{ startDate: formatDate(startDate), endDate: formatDate(endDate) }],
-        dimensions: [
-          { name: 'customEvent:endpoint' },
-        ],
-        metrics: [
-          { name: 'eventCount' },
-          { name: 'eventValue' }, // Sum of latency values
-        ],
-        dimensionFilter: {
-          filter: {
-            fieldName: 'eventName',
-            stringFilter: {
-              value: 'api_latency',
-              matchType: 'EXACT',
-            },
-          },
-        },
-        orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
-        limit: 50,
-      })
-    }
-
     // Fetch timeline data
-    const timelineReport = await runGAReport(accessToken, {
+    const timelineReport = await runGAReport(accessToken, propertyId, {
       dateRanges: [{ startDate: formatDate(startDate), endDate: formatDate(endDate) }],
       dimensions: [
         { name: 'date' },
@@ -143,49 +150,65 @@ export async function GET(request: NextRequest) {
       ],
       metrics: [
         { name: 'eventCount' },
+        { name: 'eventValue' },
       ],
-      dimensionFilter: {
-        filter: {
-          fieldName: 'eventName',
-          stringFilter: {
-            value: eventName,
-            matchType: 'EXACT',
-          },
-        },
-      },
+      dimensionFilter,
       orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
+      limit: 100,
     })
 
-    // Process results
-    const byEndpoint = eventReport.rows?.map((row: any) => ({
-      endpoint: row.dimensionValues?.[1]?.value || 'unknown',
-      count: parseInt(row.metricValues?.[0]?.value || '0'),
-      totalLatency: parseInt(row.metricValues?.[1]?.value || '0'),
-    })) || []
+    // Process event results
+    const events = eventReport.rows?.map((row: any) => {
+      const result: any = {
+        eventName: row.dimensionValues?.[0]?.value || 'unknown',
+        count: parseInt(row.metricValues?.[0]?.value || '0'),
+        totalValue: parseFloat(row.metricValues?.[1]?.value || '0'),
+      }
 
+      // Add endpoint if we have it
+      if (dimensions.length > 1) {
+        result.endpoint = row.dimensionValues?.[1]?.value || 'unknown'
+      }
+
+      // Calculate avg value (e.g., avg latency)
+      result.avgValue = result.count > 0 ? Math.round(result.totalValue / result.count) : 0
+
+      return result
+    }) || []
+
+    // Process timeline
     const timeline = timelineReport.rows?.map((row: any) => ({
       date: row.dimensionValues?.[0]?.value,
+      eventName: row.dimensionValues?.[1]?.value,
       count: parseInt(row.metricValues?.[0]?.value || '0'),
+      totalValue: parseFloat(row.metricValues?.[1]?.value || '0'),
     })) || []
 
-    // Calculate avg latency per endpoint
-    const endpointStats = byEndpoint.map((e: any) => ({
-      ...e,
-      avgLatency: e.count > 0 ? Math.round(e.totalLatency / e.count) : 0,
-    }))
+    // Summary stats
+    const totalEvents = events.reduce((sum: number, e: any) => sum + e.count, 0)
+    const totalValue = events.reduce((sum: number, e: any) => sum + e.totalValue, 0)
+    const uniqueEvents = new Set(events.map((e: any) => e.eventName)).size
 
     return NextResponse.json({
-      event: eventName,
+      propertyId,
+      eventFilter: eventName || 'all',
       dateRange: {
         start: formatDate(startDate),
         end: formatDate(endDate),
       },
       summary: {
-        totalEvents: byEndpoint.reduce((sum: number, e: any) => sum + e.count, 0),
-        uniqueEndpoints: byEndpoint.length,
+        totalEvents,
+        totalValue: Math.round(totalValue),
+        avgValuePerEvent: totalEvents > 0 ? Math.round(totalValue / totalEvents) : 0,
+        uniqueEvents,
       },
-      byEndpoint: endpointStats,
+      events,
       timeline,
+      customDimensions: customDimensions.map((d: any) => ({
+        name: d.displayName,
+        parameterName: d.parameterName,
+        scope: d.scope,
+      })),
       generatedAt: new Date().toISOString(),
     })
 
