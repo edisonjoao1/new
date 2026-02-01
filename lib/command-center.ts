@@ -1,12 +1,29 @@
 // Command Center State Management
 // Uses in-memory storage with optional Postgres persistence
 
+export interface DailyCommitment {
+  app: string | null;        // What app are you shipping today?
+  health: string | null;     // Health commitment
+  job: string | null;        // Job search task
+  appShipped: boolean;       // Did you actually ship?
+  healthDone: boolean;
+  jobDone: boolean;
+}
+
 export interface CommandCenterState {
   revenue: {
     current: { frenchAI: number; spanishAI: number; otherApps: number };
     goal: number;
   };
   apps: Record<string, { mau: number; subscribers: number; status: string }>;
+
+  // Multi-track accountability
+  tracks: {
+    appsShipped: Array<{ date: string; name: string; link?: string }>;
+    healthStreak: number;
+    jobApplications: Array<{ date: string; company: string; role: string }>;
+  };
+
   streaks: { current: number; best: number; lastCheckIn: string | null; missedDates: string[] };
   checkIns: Array<{
     id: string;
@@ -29,6 +46,7 @@ export interface CommandCenterState {
     morningDone: boolean;
     middayDone: boolean;
     eveningDone: boolean;
+    commitments: DailyCommitment;
   };
 }
 
@@ -41,6 +59,11 @@ const DEFAULT_STATE: CommandCenterState = {
     frenchAI: { mau: 200, subscribers: 1, status: 'live' },
     spanishAI: { mau: 746, subscribers: 0, status: 'pending_review' },
   },
+  tracks: {
+    appsShipped: [],
+    healthStreak: 0,
+    jobApplications: [],
+  },
   streaks: { current: 0, best: 0, lastCheckIn: null, missedDates: [] },
   checkIns: [],
   commitments: [],
@@ -50,6 +73,14 @@ const DEFAULT_STATE: CommandCenterState = {
     morningDone: false,
     middayDone: false,
     eveningDone: false,
+    commitments: {
+      app: null,
+      health: null,
+      job: null,
+      appShipped: false,
+      healthDone: false,
+      jobDone: false,
+    },
   },
 };
 

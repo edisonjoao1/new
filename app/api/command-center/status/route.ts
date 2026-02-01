@@ -12,6 +12,16 @@ export async function GET() {
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const daysLeft = lastDay.getDate() - now.getDate();
 
+  // Apps shipped stats
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const appsThisWeek = state.tracks?.appsShipped?.filter(
+    (a) => new Date(a.date) >= weekAgo
+  ).length || 0;
+  const appsThisMonth = state.tracks?.appsShipped?.filter(
+    (a) => new Date(a.date) >= monthStart
+  ).length || 0;
+
   const recentCheckIns = state.checkIns
     .filter((c) => c.date === today)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -29,5 +39,18 @@ export async function GET() {
     daysLeft,
     recentCheckIns,
     totalCheckIns: state.checkIns.length,
+
+    // Multi-track accountability
+    tracks: {
+      appsShipped: {
+        thisWeek: appsThisWeek,
+        thisMonth: appsThisMonth,
+        total: state.tracks?.appsShipped?.length || 0,
+        recent: state.tracks?.appsShipped?.slice(-5).reverse() || [],
+      },
+      healthStreak: state.tracks?.healthStreak || 0,
+      jobApplications: state.tracks?.jobApplications?.length || 0,
+    },
+    dailyCommitments: state.today?.commitments || null,
   });
 }
