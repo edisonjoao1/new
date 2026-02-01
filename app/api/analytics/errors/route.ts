@@ -127,6 +127,7 @@ export async function GET(request: NextRequest) {
                 users: new Set(),
                 reconnectAttempts: [],
                 timestamps: [],
+                errorCodes: [],
               })
             }
             const typeData = errorsByType.get(errorType)!
@@ -186,6 +187,7 @@ export async function GET(request: NextRequest) {
                 users: new Set(),
                 reconnectAttempts: [],
                 timestamps: [],
+                errorCodes: [],
               })
             }
             const typeData = errorsByType.get(errorType)!
