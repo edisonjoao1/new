@@ -56,28 +56,67 @@ interface Admin {
   directive: { priority: string; action: string; commitment: string | null };
 }
 
+interface Activity {
+  today: {
+    totalTime: string;
+    productiveTime: string;
+    distractingTime: string;
+    productivityScore: number;
+    breakdown: {
+      veryProductive: string;
+      productive: string;
+      neutral: string;
+      distracting: string;
+      veryDistracting: string;
+    };
+  };
+  topActivities: Array<{
+    name: string;
+    category: string;
+    seconds: number;
+    productivity: number;
+    formatted: string;
+  }>;
+  distractingApps: Array<{
+    name: string;
+    formatted: string;
+  }>;
+  recentDays: Array<{
+    date: string;
+    pulse: number;
+    totalHours: number;
+    productivePercentage: number;
+  }>;
+}
+
 export default function CommandCenter() {
   const [status, setStatus] = useState<Status | null>(null);
   const [admin, setAdmin] = useState<Admin | null>(null);
+  const [activity, setActivity] = useState<Activity | null>(null);
   const [commitment, setCommitment] = useState('');
   const [activeCommitment, setActiveCommitment] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 30000);
+    const interval = setInterval(loadData, 30000); // Refresh every 30s
     return () => clearInterval(interval);
   }, []);
 
   async function loadData() {
     try {
-      const [statusRes, adminRes] = await Promise.all([
+      const [statusRes, adminRes, activityRes] = await Promise.all([
         fetch('/api/command-center/status'),
         fetch('/api/command-center/admin'),
+        fetch('/api/command-center/activity'),
       ]);
       const statusData = await statusRes.json();
       const adminData = await adminRes.json();
+      const activityData = await activityRes.json();
       setStatus(statusData);
       setAdmin(adminData);
+      if (!activityData.error) {
+        setActivity(activityData);
+      }
       if (adminData.directive?.commitment) {
         setActiveCommitment(adminData.directive.commitment);
       }
@@ -238,6 +277,87 @@ export default function CommandCenter() {
             </span>
           </div>
         </section>
+
+        {/* RescueTime Activity */}
+        {activity && (
+          <section className="bg-gradient-to-br from-orange-500/10 to-red-500/5 border border-orange-500/30 rounded-2xl p-6 mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="text-xs font-semibold tracking-wider text-orange-400 mb-1">
+                  LIVE ACTIVITY (RescueTime)
+                </h2>
+                <div className="text-2xl font-bold text-white">
+                  {activity.today.productivityScore}% Productive
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-lg font-semibold text-green-400">
+                  {activity.today.productiveTime}
+                </div>
+                <div className="text-sm text-gray-500">productive</div>
+              </div>
+            </div>
+
+            {/* Productivity Bar */}
+            <div className="h-3 bg-white/10 rounded-full overflow-hidden mb-4 flex">
+              <div
+                className="h-full bg-green-500"
+                style={{ width: `${activity.today.productivityScore}%` }}
+                title="Productive"
+              />
+              <div
+                className="h-full bg-red-500"
+                style={{ width: `${100 - activity.today.productivityScore}%` }}
+                title="Distracting"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Top Productive */}
+              <div>
+                <h3 className="text-xs text-gray-500 mb-2">TOP APPS TODAY</h3>
+                <div className="space-y-1">
+                  {activity.topActivities.slice(0, 5).map((app, i) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span className={app.productivity > 0 ? 'text-green-400' : app.productivity < 0 ? 'text-red-400' : 'text-gray-400'}>
+                        {app.name.length > 20 ? app.name.slice(0, 20) + '...' : app.name}
+                      </span>
+                      <span className="text-gray-500">{app.formatted}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Distracting */}
+              {activity.distractingApps.length > 0 && (
+                <div>
+                  <h3 className="text-xs text-red-400 mb-2">DISTRACTING</h3>
+                  <div className="space-y-1">
+                    {activity.distractingApps.slice(0, 5).map((app, i) => (
+                      <div key={i} className="flex justify-between text-sm">
+                        <span className="text-red-400">{app.name.length > 20 ? app.name.slice(0, 20) + '...' : app.name}</span>
+                        <span className="text-gray-500">{app.formatted}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Time Breakdown */}
+            <div className="flex gap-4 mt-4 pt-4 border-t border-white/10 text-sm">
+              <span className="text-gray-500">
+                Total: <span className="text-white">{activity.today.totalTime}</span>
+              </span>
+              <span className="text-gray-500">
+                Productive: <span className="text-green-400">{activity.today.productiveTime}</span>
+              </span>
+              <span className="text-gray-500">
+                Distracting: <span className="text-red-400">{activity.today.distractingTime}</span>
+              </span>
+            </div>
+          </section>
+        )}
 
         {/* Grid */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
