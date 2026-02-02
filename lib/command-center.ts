@@ -1,5 +1,7 @@
 // Command Center State Management
-// Uses in-memory storage with optional Postgres persistence
+// Uses Neon Postgres for persistence
+
+import { neon } from '@neondatabase/serverless';
 
 export interface DailyCommitment {
   app: string | null;        // What app are you shipping today?
@@ -84,70 +86,59 @@ const DEFAULT_STATE: CommandCenterState = {
   },
 };
 
-// In-memory state (persists during serverless function lifetime)
-let memoryState: CommandCenterState | null = null;
-
-async function tryPostgres(): Promise<boolean> {
-  try {
-    const { sql } = await import('@vercel/postgres');
-    await sql`SELECT 1`;
-    return true;
-  } catch {
-    return false;
+// Get database connection
+function getSQL() {
+  const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!dbUrl) {
+    throw new Error('No database URL found');
   }
+  return neon(dbUrl);
+}
+
+// Initialize table
+async function initTable() {
+  const sql = getSQL();
+  await sql`
+    CREATE TABLE IF NOT EXISTS command_center (
+      id TEXT PRIMARY KEY,
+      state JSONB NOT NULL,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
 }
 
 export async function getState(): Promise<CommandCenterState> {
-  // Try Postgres first
   try {
-    const hasPostgres = await tryPostgres();
-    if (hasPostgres) {
-      const { sql } = await import('@vercel/postgres');
+    const sql = getSQL();
+    await initTable();
 
-      // Create table if not exists
-      await sql`
-        CREATE TABLE IF NOT EXISTS command_center (
-          id TEXT PRIMARY KEY,
-          state JSONB NOT NULL,
-          updated_at TIMESTAMP DEFAULT NOW()
-        )
-      `;
-
-      const result = await sql`SELECT state FROM command_center WHERE id = 'edison'`;
-      if (result.rows.length === 0) {
-        await sql`INSERT INTO command_center (id, state) VALUES ('edison', ${JSON.stringify(DEFAULT_STATE)})`;
-        return DEFAULT_STATE;
-      }
-      return result.rows[0].state as CommandCenterState;
+    const result = await sql`SELECT state FROM command_center WHERE id = 'edison'`;
+    if (result.length === 0) {
+      // Insert default state
+      await sql`INSERT INTO command_center (id, state) VALUES ('edison', ${JSON.stringify(DEFAULT_STATE)})`;
+      return DEFAULT_STATE;
     }
+    return result[0].state as CommandCenterState;
   } catch (error) {
-    console.log('Postgres not available, using memory:', error);
+    console.error('Database error in getState:', error);
+    return DEFAULT_STATE;
   }
-
-  // Fallback to memory
-  if (!memoryState) {
-    memoryState = JSON.parse(JSON.stringify(DEFAULT_STATE));
-  }
-  return memoryState!;
 }
 
 export async function saveState(state: CommandCenterState): Promise<void> {
-  // Update memory
-  memoryState = state;
-
-  // Try Postgres
   try {
-    const hasPostgres = await tryPostgres();
-    if (hasPostgres) {
-      const { sql } = await import('@vercel/postgres');
-      await sql`
-        INSERT INTO command_center (id, state, updated_at)
-        VALUES ('edison', ${JSON.stringify(state)}, NOW())
-        ON CONFLICT (id) DO UPDATE SET state = ${JSON.stringify(state)}, updated_at = NOW()
-      `;
-    }
+    const sql = getSQL();
+    await initTable();
+
+    await sql`
+      INSERT INTO command_center (id, state, updated_at)
+      VALUES ('edison', ${JSON.stringify(state)}, NOW())
+      ON CONFLICT (id) DO UPDATE SET state = ${JSON.stringify(state)}, updated_at = NOW()
+    `;
+    console.log('State saved successfully');
   } catch (error) {
-    console.log('Postgres save failed, data in memory only:', error);
+    console.error('Database error in saveState:', error);
+    throw error; // Re-throw so caller knows it failed
   }
 }
 
