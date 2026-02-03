@@ -93,9 +93,17 @@ Keep response under 150 words. Use bullet points.`
       ],
     });
 
-    const analysis = typeof response.output === 'string'
-      ? response.output
-      : response.output?.[0]?.content?.[0]?.text || 'Unable to generate analysis';
+    // Extract text from response - use type assertion for OpenAI response format
+    let analysis = 'Unable to generate analysis';
+    if (typeof response.output === 'string') {
+      analysis = response.output;
+    } else if (Array.isArray(response.output) && response.output.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const firstOutput = response.output[0] as any;
+      if (firstOutput?.content?.[0]?.text) {
+        analysis = firstOutput.content[0].text;
+      }
+    }
 
     return NextResponse.json({
       analysis,
@@ -151,9 +159,17 @@ Give specific advice, not generic motivation. Under 100 words.`
       ],
     });
 
-    const answer = typeof response.output === 'string'
-      ? response.output
-      : response.output?.[0]?.content?.[0]?.text || 'Unable to answer';
+    // Extract text from response - use type assertion for OpenAI response format
+    let answer = 'Unable to answer';
+    if (typeof response.output === 'string') {
+      answer = response.output;
+    } else if (Array.isArray(response.output) && response.output.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const firstOutput = response.output[0] as any;
+      if (firstOutput?.content?.[0]?.text) {
+        answer = firstOutput.content[0].text;
+      }
+    }
 
     return NextResponse.json({ answer });
   } catch (error) {

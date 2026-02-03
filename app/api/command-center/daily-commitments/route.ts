@@ -49,6 +49,15 @@ export async function POST(request: Request) {
         appShipped: false,
         healthDone: false,
         jobDone: false,
+        jobCount: 0,
+        marketing: null,
+        marketingDone: false,
+        outreach: null,
+        outreachCount: 0,
+        clientWork: null,
+        clientWorkDone: false,
+        etsy: null,
+        etsyDone: false,
       },
     };
   }
