@@ -6,6 +6,9 @@ function getTodayLA(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 }
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   const state = await getState();
   const today = getTodayLA();
