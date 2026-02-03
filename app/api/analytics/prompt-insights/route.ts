@@ -3,7 +3,10 @@ import { getFirestoreDb } from '@/lib/firebase/admin'
 import OpenAI from 'openai'
 import { DEFAULT_PROMPTS, PROMPT_TYPES, PROMPT_LABELS, type PromptType } from '@/app/api/app-config/route'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+// Lazy-load OpenAI client to avoid build-time errors
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+}
 
 // Cache for insights (1 hour TTL)
 let insightsCache: { data: any; timestamp: number; promptType: string } | null = null
@@ -690,7 +693,7 @@ Output as JSON:
   }
 }`
 
-    const response = await openai.responses.create({
+    const response = await getOpenAI().responses.create({
       model: 'gpt-5-mini',
       input: analysisPrompt,
     })
