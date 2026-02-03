@@ -1,6 +1,17 @@
 import { NextResponse } from 'next/server';
 import { getState, saveState } from '@/lib/command-center';
 
+// Get date in LA timezone (Edison's timezone)
+function getTodayLA(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+}
+
+function getYesterdayLA(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+}
+
 export async function GET() {
   const state = await getState();
   return NextResponse.json({ checkIns: state.checkIns });
@@ -9,7 +20,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const state = await getState();
   const { type, content } = await request.json();
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayLA();
 
   const checkIn = {
     id: Date.now().toString(),
@@ -88,7 +99,7 @@ export async function POST(request: Request) {
 
     // Update check-in streak
     const lastCheckIn = state.streaks.lastCheckIn;
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const yesterday = getYesterdayLA();
 
     if (!lastCheckIn || lastCheckIn === yesterday || lastCheckIn === today) {
       state.streaks.current = lastCheckIn === today ? state.streaks.current : state.streaks.current + 1;

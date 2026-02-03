@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getState } from '@/lib/command-center';
 
+// Get date in LA timezone (Edison's timezone)
+function getTodayLA(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+}
+
 export async function GET() {
   const state = await getState();
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayLA();
 
   const totalRevenue = Object.values(state.revenue.current).reduce((a, b) => a + b, 0);
   const progress = (totalRevenue / state.revenue.goal) * 100;
