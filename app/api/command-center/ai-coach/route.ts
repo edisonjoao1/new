@@ -91,6 +91,15 @@ ${eveningCheckIn ? `
 - Etsy done: ${eveningCheckIn.content?.etsy_done || 'Not answered'}
 ` : 'No evening check-in yet today (still time to deliver!)'}
 
+DESKTOP ACTIVITY (what he was doing during check-ins):
+${todayCheckIns.map(c => {
+  const activity = c.content?.desktop_activity || '';
+  const openApps = c.content?.open_apps || '';
+  const currentApp = c.content?.current_app || '';
+  if (!activity && !openApps) return null;
+  return `[${c.type}] Current: ${currentApp || 'unknown'} | Open: ${openApps || 'unknown'}`;
+}).filter(Boolean).join('\n') || 'No activity data yet'}
+
 RECENT TRACK RECORD (Did he ship what he promised?):
 ${trackRecord || 'No historical data yet'}
 
@@ -110,11 +119,12 @@ CONTEXT:
           content: `You are Edison's AI accountability coach. Be direct, no fluff. Your job is to:
 1. Compare his MORNING COMMITMENTS to EVENING RESULTS - did he deliver?
 2. Look at his TRACK RECORD - is he consistently failing to ship what he promises?
-3. Identify patterns of avoidance or excuse-making
-4. Give ONE specific action he should do RIGHT NOW
-5. Keep him focused on what moves the needle (revenue, job applications)
+3. Check DESKTOP ACTIVITY - is he using productive apps (Xcode, VS Code, Chrome for job apps) or wasting time?
+4. Identify patterns of avoidance or excuse-making
+5. Give ONE specific action he should do RIGHT NOW
+6. Keep him focused on what moves the needle (revenue, job applications)
 
-CRITICAL: If he promised to ship an app and didn't, CALL HIM OUT. If he's consistently not delivering, point out the pattern.
+CRITICAL: If he promised to ship an app and didn't, CALL HIM OUT. If he's consistently not delivering, point out the pattern. If desktop activity shows distraction apps, mention it.
 
 Be tough but supportive. He has real financial pressure. Don't sugarcoat, but don't be cruel.
 Keep response under 150 words. Use bullet points.`
