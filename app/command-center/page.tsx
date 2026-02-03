@@ -36,6 +36,7 @@ interface Status {
   daysLeft: number;
   recentCheckIns: Array<{
     type: string;
+    date: string;
     timestamp: string;
     content: Record<string, string>;
   }>;
@@ -438,37 +439,63 @@ export default function CommandCenter() {
           </section>
         )}
 
-        {/* All Recent Check-ins */}
-        {status.history?.allCheckIns && status.history.allCheckIns.length > 0 && (
-          <section className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-5 mb-6">
-            <h2 className="text-xs font-semibold tracking-wider text-gray-500 mb-4">ALL CHECK-INS ({status.totalCheckIns} total)</h2>
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {status.history.allCheckIns.map((c, i) => (
-                <div key={i} className="p-3 bg-gray-50 dark:bg-white/[0.02] rounded-lg">
-                  <div className="flex justify-between items-center mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                        c.type === 'morning' ? 'bg-yellow-500/20 text-yellow-400' :
-                        c.type === 'midday' ? 'bg-blue-500/20 text-blue-400' :
-                        'bg-purple-500/20 text-purple-400'
-                      }`}>
-                        {c.type}
-                      </span>
-                      <span className="text-xs text-gray-500">{c.date}</span>
-                    </div>
-                    <span className="text-xs text-gray-500">
-                      {new Date(c.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <div className="text-sm text-gray-400">
-                    {c.content.app_commitment || c.content.app_shipped || c.content.app_progress ||
-                     c.content.q1 || Object.values(c.content)[0] || ''}
-                  </div>
-                </div>
-              ))}
+        {/* Today's Check-ins - Full Details */}
+        {status.recentCheckIns && status.recentCheckIns.length > 0 && (
+          <section className="bg-gradient-to-br from-emerald-500/5 to-green-500/5 border border-emerald-500/20 rounded-2xl p-5 mb-6">
+            <h2 className="text-xs font-semibold tracking-wider text-emerald-500 mb-4">TODAY&apos;S COMMITMENTS</h2>
+            <div className="space-y-4">
+              {/* Show the most recent of each type */}
+              {(() => {
+                const byType: Record<string, typeof status.recentCheckIns[0]> = {};
+                status.recentCheckIns.forEach(c => {
+                  if (!byType[c.type]) byType[c.type] = c;
+                });
+                return ['morning', 'midday', 'evening']
+                  .filter(t => byType[t])
+                  .map(t => <CheckInCard key={t} checkIn={byType[t]} />);
+              })()}
             </div>
           </section>
         )}
+
+        {/* Historical Check-ins - Grouped by Date */}
+        {status.history?.allCheckIns && status.history.allCheckIns.length > 0 && (() => {
+          // Group check-ins by date (excluding today)
+          const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+          const grouped: Record<string, typeof status.history.allCheckIns> = {};
+          status.history.allCheckIns
+            .filter(c => c.date !== today)
+            .forEach(c => {
+              if (!grouped[c.date]) grouped[c.date] = [];
+              grouped[c.date].push(c);
+            });
+          const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+          if (sortedDates.length === 0) return null;
+
+          return (
+            <section className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-5 mb-6">
+              <h2 className="text-xs font-semibold tracking-wider text-gray-500 mb-4">PREVIOUS DAYS</h2>
+              <div className="space-y-6 max-h-[600px] overflow-y-auto">
+                {sortedDates.slice(0, 7).map(date => (
+                  <div key={date}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        {new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                      </div>
+                      <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                    </div>
+                    <div className="space-y-3 pl-2">
+                      {grouped[date].map((c, i) => (
+                        <CheckInCard key={i} checkIn={c} compact />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* Why Section */}
         <section className="bg-gradient-to-br from-violet-500/10 to-purple-500/5 border border-purple-500/20 rounded-2xl p-6 text-center">
@@ -561,6 +588,74 @@ function CheckinDot({ done, label, time }: { done: boolean; label: string; time:
         {label}
       </div>
       <div className="text-xs text-gray-500">{time}</div>
+    </div>
+  );
+}
+
+// Map content keys to readable labels
+const CONTENT_LABELS: Record<string, string> = {
+  app_commitment: '🚀 App to ship',
+  app_shipped: '🚀 App shipped?',
+  app_progress: '🚀 App progress',
+  health_commitment: '💪 Health',
+  health_done: '💪 Health done?',
+  job_commitment: '💼 Jobs goal',
+  job_count: '💼 Jobs applied',
+  marketing_commitment: '📣 Marketing',
+  marketing_done: '📣 Marketing done?',
+  outreach_commitment: '🤝 Outreach',
+  outreach_count: '🤝 Outreach count',
+  client_commitment: '💰 Client work',
+  client_done: '💰 Client done?',
+  etsy_commitment: '🛍️ Etsy',
+  etsy_done: '🛍️ Etsy done?',
+  other_progress: '📝 Other',
+};
+
+function CheckInCard({
+  checkIn,
+  compact = false
+}: {
+  checkIn: { type: string; date: string; timestamp: string; content: Record<string, string> };
+  compact?: boolean;
+}) {
+  const typeColors: Record<string, string> = {
+    morning: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30',
+    midday: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+    evening: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  };
+
+  const typeEmoji: Record<string, string> = {
+    morning: '🌅',
+    midday: '☀️',
+    evening: '🌙',
+  };
+
+  // Filter out timestamp from content
+  const contentEntries = Object.entries(checkIn.content).filter(([key]) => key !== 'timestamp');
+
+  return (
+    <div className={`border rounded-xl ${typeColors[checkIn.type]} ${compact ? 'p-3' : 'p-4'}`}>
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{typeEmoji[checkIn.type]}</span>
+          <span className="font-semibold capitalize">{checkIn.type} Check-in</span>
+          {compact && <span className="text-xs opacity-60">{checkIn.date}</span>}
+        </div>
+        <span className="text-xs opacity-60">
+          {new Date(checkIn.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+        </span>
+      </div>
+      <div className={`grid gap-2 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+        {contentEntries.map(([key, value]) => (
+          <div key={key} className="flex gap-2 text-sm">
+            <span className="font-medium opacity-70 whitespace-nowrap">
+              {CONTENT_LABELS[key] || key.replace(/_/g, ' ')}:
+            </span>
+            <span className="text-gray-900 dark:text-white">{value}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
