@@ -151,14 +151,14 @@ export default function CommandCenter() {
 
   if (!status || !admin) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen bg-white dark:bg-[#0a0a0f] flex items-center justify-center">
+        <div className="text-gray-900 dark:text-white text-xl">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white p-6 md:p-10">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0f] text-gray-900 dark:text-white p-6 md:p-10">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <header className="text-center mb-12">
@@ -185,7 +185,7 @@ export default function CommandCenter() {
               </span>
               <span className="text-gray-500">/ 7 this week</span>
             </div>
-            <div className="mt-3 h-2 bg-white/10 rounded-full overflow-hidden">
+            <div className="mt-3 h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-500 rounded-full"
                 style={{ width: `${Math.min(((status.tracks?.appsShipped?.thisWeek || 0) / 7) * 100, 100)}%` }}
@@ -262,7 +262,7 @@ export default function CommandCenter() {
               </div>
             </div>
           </div>
-          <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-3">
+          <div className="h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden mb-3">
             <div
               className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-500"
               style={{ width: `${Math.min(parseFloat(status.revenue.progress), 100)}%` }}
@@ -270,10 +270,10 @@ export default function CommandCenter() {
           </div>
           <div className="flex gap-6 text-sm text-gray-500">
             <span>
-              <span className="text-white font-semibold">{status.revenue.progress}%</span> complete
+              <span className="text-gray-900 dark:text-white font-semibold">{status.revenue.progress}%</span> complete
             </span>
             <span>
-              <span className="text-white font-semibold">{status.daysLeft}</span> days left
+              <span className="text-gray-900 dark:text-white font-semibold">{status.daysLeft}</span> days left
             </span>
           </div>
         </section>
@@ -286,7 +286,7 @@ export default function CommandCenter() {
                 <h2 className="text-xs font-semibold tracking-wider text-orange-400 mb-1">
                   LIVE ACTIVITY (RescueTime)
                 </h2>
-                <div className="text-2xl font-bold text-white">
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
                   {activity.today.productivityScore}% Productive
                 </div>
               </div>
@@ -299,7 +299,7 @@ export default function CommandCenter() {
             </div>
 
             {/* Productivity Bar */}
-            <div className="h-3 bg-white/10 rounded-full overflow-hidden mb-4 flex">
+            <div className="h-3 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden mb-4 flex">
               <div
                 className="h-full bg-green-500"
                 style={{ width: `${activity.today.productivityScore}%` }}
@@ -345,9 +345,9 @@ export default function CommandCenter() {
             </div>
 
             {/* Time Breakdown */}
-            <div className="flex gap-4 mt-4 pt-4 border-t border-white/10 text-sm">
+            <div className="flex gap-4 mt-4 pt-4 border-t border-gray-200 dark:border-white/10 text-sm">
               <span className="text-gray-500">
-                Total: <span className="text-white">{activity.today.totalTime}</span>
+                Total: <span className="text-gray-900 dark:text-white">{activity.today.totalTime}</span>
               </span>
               <span className="text-gray-500">
                 Productive: <span className="text-green-400">{activity.today.productiveTime}</span>
@@ -362,7 +362,7 @@ export default function CommandCenter() {
         {/* Grid */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           {/* Today's Commitments */}
-          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
+          <div className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-6">
             <h2 className="text-xs font-semibold tracking-wider text-gray-500 mb-4">
               TODAY&apos;S COMMITMENTS
             </h2>
@@ -392,7 +392,7 @@ export default function CommandCenter() {
           </div>
 
           {/* Apps */}
-          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6">
+          <div className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-6">
             <h2 className="text-xs font-semibold tracking-wider text-gray-500 mb-4">
               YOUR APPS
             </h2>
@@ -400,7 +400,7 @@ export default function CommandCenter() {
               {Object.entries(status.apps).map(([key, app]) => (
                 <div
                   key={key}
-                  className="flex justify-between items-center p-4 bg-white/[0.02] rounded-xl"
+                  className="flex justify-between items-center p-4 bg-gray-100 dark:bg-white/[0.02] rounded-xl"
                 >
                   <span className="font-semibold">{key.replace('AI', ' AI')}</span>
                   <div className="flex items-center gap-4 text-sm text-gray-500">
@@ -426,7 +426,7 @@ export default function CommandCenter() {
         </div>
 
         {/* Commitment */}
-        <section className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 mb-8">
+        <section className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-6 mb-8">
           <h2 className="text-xs font-semibold tracking-wider text-gray-500 mb-4">
             TODAY&apos;S COMMITMENT
           </h2>
@@ -437,7 +437,7 @@ export default function CommandCenter() {
                 value={commitment}
                 onChange={(e) => setCommitment(e.target.value)}
                 placeholder="What's your #1 priority today?"
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/50"
+                className="flex-1 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-5 py-4 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-emerald-500/50"
                 onKeyDown={(e) => e.key === 'Enter' && makeCommitment()}
               />
               <button
@@ -459,7 +459,7 @@ export default function CommandCenter() {
                 </button>
                 <button
                   onClick={() => setActiveCommitment(null)}
-                  className="bg-white/10 text-gray-400 px-4 py-2 rounded-lg text-sm"
+                  className="bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-400 px-4 py-2 rounded-lg text-sm"
                 >
                   Didn&apos;t Complete
                 </button>
@@ -470,13 +470,13 @@ export default function CommandCenter() {
 
         {/* Recent Apps Shipped */}
         {status.tracks?.appsShipped?.recent && status.tracks.appsShipped.recent.length > 0 && (
-          <section className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 mb-8">
+          <section className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-6 mb-8">
             <h2 className="text-xs font-semibold tracking-wider text-gray-500 mb-4">
               RECENTLY SHIPPED
             </h2>
             <div className="space-y-2">
               {status.tracks.appsShipped.recent.map((app, i) => (
-                <div key={i} className="flex justify-between items-center bg-white/[0.02] rounded-xl p-3">
+                <div key={i} className="flex justify-between items-center bg-gray-100 dark:bg-white/[0.02] rounded-xl p-3">
                   <span className="font-medium">{app.name}</span>
                   <span className="text-gray-500 text-sm">{new Date(app.date).toLocaleDateString()}</span>
                 </div>
@@ -486,14 +486,14 @@ export default function CommandCenter() {
         )}
 
         {/* Recent Check-ins */}
-        <section className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 mb-8">
+        <section className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-6 mb-8">
           <h2 className="text-xs font-semibold tracking-wider text-gray-500 mb-4">
             TODAY&apos;S CHECK-INS
           </h2>
           {status.recentCheckIns.length > 0 ? (
             <div className="space-y-3">
               {status.recentCheckIns.slice(0, 3).map((c, i) => (
-                <div key={i} className="bg-white/[0.02] rounded-xl p-4">
+                <div key={i} className="bg-gray-100 dark:bg-white/[0.02] rounded-xl p-4">
                   <div className="flex justify-between mb-2">
                     <span className="font-semibold capitalize">{c.type}</span>
                     <span className="text-gray-500 text-sm">
@@ -533,8 +533,8 @@ export default function CommandCenter() {
 
 function CheckinDot({ done, label }: { done: boolean; label: string }) {
   return (
-    <div className={`flex items-center gap-2 text-sm ${done ? 'text-emerald-400' : 'text-gray-600'}`}>
-      <div className={`w-2.5 h-2.5 rounded-full ${done ? 'bg-emerald-400' : 'bg-gray-700'}`} />
+    <div className={`flex items-center gap-2 text-sm ${done ? 'text-emerald-500 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-600'}`}>
+      <div className={`w-2.5 h-2.5 rounded-full ${done ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-gray-300 dark:bg-gray-700'}`} />
       <span>{label}</span>
     </div>
   );
