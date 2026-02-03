@@ -30,6 +30,40 @@ export async function GET() {
     (a) => new Date(a.date) >= monthStart
   ).length || 0;
 
+  // Jobs today (goal: 100)
+  const jobsToday = state.tracks?.jobApplications?.filter(
+    (j) => j.date === today
+  ).length || 0;
+  const jobsThisWeek = state.tracks?.jobApplications?.filter(
+    (j) => new Date(j.date) >= weekAgo
+  ).length || 0;
+
+  // Marketing stats
+  const marketingToday = state.tracks?.marketing?.filter(
+    (m) => m.date === today
+  ).length || 0;
+  const marketingThisWeek = state.tracks?.marketing?.filter(
+    (m) => new Date(m.date) >= weekAgo
+  ).length || 0;
+
+  // Outreach stats
+  const outreachToday = state.tracks?.outreach?.filter(
+    (o) => o.date === today
+  ).length || 0;
+  const outreachThisWeek = state.tracks?.outreach?.filter(
+    (o) => new Date(o.date) >= weekAgo
+  ).length || 0;
+
+  // Client sales stats
+  const clientsThisMonth = state.tracks?.clientSales?.filter(
+    (c) => new Date(c.date) >= monthStart
+  ).length || 0;
+
+  // Etsy stats
+  const etsyToday = state.tracks?.etsy?.filter(
+    (e) => e.date === today
+  ).length || 0;
+
   const recentCheckIns = state.checkIns
     .filter((c) => c.date === today)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -57,7 +91,32 @@ export async function GET() {
         recent: state.tracks?.appsShipped?.slice(-5).reverse() || [],
       },
       healthStreak: state.tracks?.healthStreak || 0,
-      jobApplications: state.tracks?.jobApplications?.length || 0,
+      jobApplications: {
+        today: jobsToday,
+        dailyGoal: 100,
+        thisWeek: jobsThisWeek,
+        total: state.tracks?.jobApplications?.length || 0,
+      },
+      marketing: {
+        today: marketingToday,
+        thisWeek: marketingThisWeek,
+        total: state.tracks?.marketing?.length || 0,
+        recent: state.tracks?.marketing?.slice(-3).reverse() || [],
+      },
+      outreach: {
+        today: outreachToday,
+        thisWeek: outreachThisWeek,
+        total: state.tracks?.outreach?.length || 0,
+      },
+      clientSales: {
+        thisMonth: clientsThisMonth,
+        total: state.tracks?.clientSales?.length || 0,
+        recent: state.tracks?.clientSales?.slice(-3).reverse() || [],
+      },
+      etsy: {
+        today: etsyToday,
+        total: state.tracks?.etsy?.length || 0,
+      },
     },
     dailyCommitments: state.today?.commitments || null,
   });

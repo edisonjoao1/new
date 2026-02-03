@@ -22,6 +22,15 @@ interface Status {
       appShipped: boolean;
       healthDone: boolean;
       jobDone: boolean;
+      jobCount: number;
+      marketing: string | null;
+      marketingDone: boolean;
+      outreach: string | null;
+      outreachCount: number;
+      clientWork: string | null;
+      clientWorkDone: boolean;
+      etsy: string | null;
+      etsyDone: boolean;
     };
   };
   daysLeft: number;
@@ -39,7 +48,32 @@ interface Status {
       recent: Array<{ date: string; name: string; link?: string }>;
     };
     healthStreak: number;
-    jobApplications: number;
+    jobApplications: {
+      today: number;
+      dailyGoal: number;
+      thisWeek: number;
+      total: number;
+    };
+    marketing: {
+      today: number;
+      thisWeek: number;
+      total: number;
+      recent: Array<{ date: string; platform: string; description: string }>;
+    };
+    outreach: {
+      today: number;
+      thisWeek: number;
+      total: number;
+    };
+    clientSales: {
+      thisMonth: number;
+      total: number;
+      recent: Array<{ date: string; client: string; status: string }>;
+    };
+    etsy: {
+      today: number;
+      total: number;
+    };
   };
   dailyCommitments: {
     app: string | null;
@@ -48,6 +82,15 @@ interface Status {
     appShipped: boolean;
     healthDone: boolean;
     jobDone: boolean;
+    jobCount: number;
+    marketing: string | null;
+    marketingDone: boolean;
+    outreach: string | null;
+    outreachCount: number;
+    clientWork: string | null;
+    clientWorkDone: boolean;
+    etsy: string | null;
+    etsyDone: boolean;
   } | null;
 }
 
@@ -62,18 +105,9 @@ interface Activity {
     productiveTime: string;
     distractingTime: string;
     productivityScore: number;
-    breakdown: {
-      veryProductive: string;
-      productive: string;
-      neutral: string;
-      distracting: string;
-      veryDistracting: string;
-    };
   };
   topActivities: Array<{
     name: string;
-    category: string;
-    seconds: number;
     productivity: number;
     formatted: string;
   }>;
@@ -81,24 +115,19 @@ interface Activity {
     name: string;
     formatted: string;
   }>;
-  recentDays: Array<{
-    date: string;
-    pulse: number;
-    totalHours: number;
-    productivePercentage: number;
-  }>;
 }
 
 export default function CommandCenter() {
   const [status, setStatus] = useState<Status | null>(null);
   const [admin, setAdmin] = useState<Admin | null>(null);
   const [activity, setActivity] = useState<Activity | null>(null);
-  const [commitment, setCommitment] = useState('');
-  const [activeCommitment, setActiveCommitment] = useState<string | null>(null);
+  const [aiCoach, setAiCoach] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [question, setQuestion] = useState('');
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 30000); // Refresh every 30s
+    const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -117,36 +146,39 @@ export default function CommandCenter() {
       if (!activityData.error) {
         setActivity(activityData);
       }
-      if (adminData.directive?.commitment) {
-        setActiveCommitment(adminData.directive.commitment);
-      }
     } catch (err) {
       console.error('Failed to load:', err);
     }
   }
 
-  async function makeCommitment() {
-    if (!commitment.trim()) return;
-    await fetch('/api/command-center/commitment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ commitment }),
-    });
-    setActiveCommitment(commitment);
-    setCommitment('');
+  async function getAiCoaching() {
+    setAiLoading(true);
+    try {
+      const res = await fetch('/api/command-center/ai-coach');
+      const data = await res.json();
+      setAiCoach(data.analysis);
+    } catch (err) {
+      console.error('AI Coach error:', err);
+    }
+    setAiLoading(false);
   }
 
-  async function completeCommitment() {
-    const res = await fetch('/api/command-center/commitment');
-    const data = await res.json();
-    if (data.active?.length > 0) {
-      await fetch('/api/command-center/commitment', {
-        method: 'PUT',
+  async function askAi() {
+    if (!question.trim()) return;
+    setAiLoading(true);
+    try {
+      const res = await fetch('/api/command-center/ai-coach', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: data.active[0].id, status: 'completed' }),
+        body: JSON.stringify({ question }),
       });
+      const data = await res.json();
+      setAiCoach(data.answer);
+      setQuestion('');
+    } catch (err) {
+      console.error('AI Coach error:', err);
     }
-    setActiveCommitment(null);
+    setAiLoading(false);
   }
 
   if (!status || !admin) {
@@ -157,370 +189,203 @@ export default function CommandCenter() {
     );
   }
 
+  const jobsToday = status.tracks?.jobApplications?.today || 0;
+  const jobGoal = 100;
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0f] text-gray-900 dark:text-white p-6 md:p-10">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0f] text-gray-900 dark:text-white p-4 md:p-8">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <header className="text-center mb-12">
-          <p className="text-xs font-semibold tracking-[3px] text-gray-500 mb-4">
+        <header className="text-center mb-8">
+          <p className="text-xs font-semibold tracking-[3px] text-gray-500 mb-3">
             EDISON COMMAND CENTER
           </p>
-          <h1 className="text-4xl md:text-5xl font-bold mb-2">
-            ${status.revenue.current.toFixed(2)} →{' '}
-            <span className="text-emerald-400">$10,000</span>
+          <h1 className="text-3xl md:text-4xl font-bold mb-1">
+            ${status.revenue.current.toFixed(2)} → <span className="text-emerald-400">$10,000</span>
           </h1>
-          <p className="text-gray-500">{status.daysLeft} days left this month</p>
+          <p className="text-gray-500 text-sm">{status.daysLeft} days left · $1k in bank · Mom counting on you</p>
         </header>
 
-        {/* Multi-Track Progress */}
-        <div className="grid md:grid-cols-3 gap-4 mb-8">
-          {/* Apps Shipped */}
-          <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/30 rounded-2xl p-6">
-            <div className="text-xs font-semibold tracking-wider text-blue-400 mb-2">
-              APPS SHIPPED
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-blue-400">
-                {status.tracks?.appsShipped?.thisWeek || 0}
-              </span>
-              <span className="text-gray-500">/ 7 this week</span>
-            </div>
-            <div className="mt-3 h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-500 rounded-full"
-                style={{ width: `${Math.min(((status.tracks?.appsShipped?.thisWeek || 0) / 7) * 100, 100)}%` }}
-              />
-            </div>
-            <div className="mt-2 text-sm text-gray-500">
-              {status.tracks?.appsShipped?.thisMonth || 0} this month · {status.tracks?.appsShipped?.total || 0} total
-            </div>
+        {/* AI Coach Section */}
+        <section className="bg-gradient-to-br from-cyan-500/10 to-blue-500/5 border border-cyan-500/30 rounded-2xl p-5 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-semibold tracking-wider text-cyan-400">AI COACH</h2>
+            <button
+              onClick={getAiCoaching}
+              disabled={aiLoading}
+              className="text-xs bg-cyan-500/20 text-cyan-400 px-3 py-1 rounded-lg hover:bg-cyan-500/30 transition disabled:opacity-50"
+            >
+              {aiLoading ? 'Thinking...' : 'Get Analysis'}
+            </button>
           </div>
-
-          {/* Health */}
-          <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/30 rounded-2xl p-6">
-            <div className="text-xs font-semibold tracking-wider text-green-400 mb-2">
-              HEALTH STREAK
+          {aiCoach && (
+            <div className="text-sm text-gray-300 dark:text-gray-300 whitespace-pre-wrap mb-4 p-3 bg-black/20 rounded-lg">
+              {aiCoach}
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-green-400">
-                {status.tracks?.healthStreak || 0}
-              </span>
-              <span className="text-gray-500">days</span>
-            </div>
-            <div className="mt-4 text-sm">
-              {status.dailyCommitments?.healthDone ? (
-                <span className="text-green-400">✓ Done today</span>
-              ) : status.dailyCommitments?.health ? (
-                <span className="text-yellow-400">→ {status.dailyCommitments.health}</span>
-              ) : (
-                <span className="text-gray-500">Set in morning check-in</span>
-              )}
-            </div>
-          </div>
-
-          {/* Job Search */}
-          <div className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/30 rounded-2xl p-6">
-            <div className="text-xs font-semibold tracking-wider text-purple-400 mb-2">
-              JOB APPLICATIONS
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-purple-400">
-                {status.tracks?.jobApplications || 0}
-              </span>
-              <span className="text-gray-500">sent</span>
-            </div>
-            <div className="mt-4 text-sm">
-              {status.dailyCommitments?.jobDone ? (
-                <span className="text-purple-400">✓ Done today</span>
-              ) : status.dailyCommitments?.job ? (
-                <span className="text-yellow-400">→ {status.dailyCommitments.job}</span>
-              ) : (
-                <span className="text-gray-500">Set in morning check-in</span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Revenue Progress */}
-        <section className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/30 rounded-2xl p-6 mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <div className="text-3xl font-bold text-emerald-400">
-                ${status.revenue.current.toFixed(2)}
-              </div>
-              <div className="text-gray-500 text-sm">of $10,000/month goal</div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-3xl font-bold text-amber-500">
-                {status.streaks.current}
-              </div>
-              <div>
-                <div className="text-sm font-semibold">day streak</div>
-                <div className="text-gray-500 text-xs">
-                  Best: {status.streaks.best}
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden mb-3">
-            <div
-              className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(parseFloat(status.revenue.progress), 100)}%` }}
+          )}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="Ask for help... (e.g., 'How do I stay focused?' 'What should I prioritize?')"
+              className="flex-1 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-cyan-500/50"
+              onKeyDown={(e) => e.key === 'Enter' && askAi()}
             />
-          </div>
-          <div className="flex gap-6 text-sm text-gray-500">
-            <span>
-              <span className="text-gray-900 dark:text-white font-semibold">{status.revenue.progress}%</span> complete
-            </span>
-            <span>
-              <span className="text-gray-900 dark:text-white font-semibold">{status.daysLeft}</span> days left
-            </span>
+            <button
+              onClick={askAi}
+              disabled={aiLoading}
+              className="bg-cyan-500 text-black font-semibold px-4 py-2 rounded-lg text-sm hover:bg-cyan-400 transition disabled:opacity-50"
+            >
+              Ask
+            </button>
           </div>
         </section>
+
+        {/* Daily Progress Grid - 6 Tracks */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+          {/* Apps Shipped */}
+          <TrackCard
+            title="APPS SHIPPED"
+            value={status.tracks?.appsShipped?.thisWeek || 0}
+            goal={7}
+            unit="/ 7 this week"
+            color="blue"
+            done={status.dailyCommitments?.appShipped}
+            commitment={status.dailyCommitments?.app}
+          />
+
+          {/* Jobs Applied */}
+          <TrackCard
+            title="JOBS TODAY"
+            value={jobsToday}
+            goal={jobGoal}
+            unit={`/ ${jobGoal} goal`}
+            color="purple"
+            done={jobsToday >= jobGoal}
+            commitment={status.dailyCommitments?.job}
+            showProgress
+          />
+
+          {/* Marketing */}
+          <TrackCard
+            title="MARKETING"
+            value={status.tracks?.marketing?.today || 0}
+            goal={1}
+            unit="launches today"
+            color="pink"
+            done={status.dailyCommitments?.marketingDone}
+            commitment={status.dailyCommitments?.marketing}
+          />
+
+          {/* Outreach */}
+          <TrackCard
+            title="OUTREACH"
+            value={status.tracks?.outreach?.today || 0}
+            goal={10}
+            unit="people today"
+            color="orange"
+            done={(status.dailyCommitments?.outreachCount || 0) >= 10}
+            commitment={status.dailyCommitments?.outreach}
+          />
+
+          {/* Client Sales */}
+          <TrackCard
+            title="AI 4U CLIENTS"
+            value={status.tracks?.clientSales?.thisMonth || 0}
+            goal={5}
+            unit="this month"
+            color="emerald"
+            done={status.dailyCommitments?.clientWorkDone}
+            commitment={status.dailyCommitments?.clientWork}
+          />
+
+          {/* Etsy */}
+          <TrackCard
+            title="ETSY"
+            value={status.tracks?.etsy?.today || 0}
+            goal={10}
+            unit="products today"
+            color="amber"
+            done={status.dailyCommitments?.etsyDone}
+            commitment={status.dailyCommitments?.etsy}
+          />
+        </div>
+
+        {/* Secondary Stats Row */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-amber-500">{status.streaks.current}</div>
+            <div className="text-xs text-gray-500">day streak</div>
+          </div>
+          <div className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-green-400">{status.tracks?.healthStreak || 0}</div>
+            <div className="text-xs text-gray-500">health streak</div>
+          </div>
+          <div className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-blue-400">{status.tracks?.appsShipped?.total || 0}</div>
+            <div className="text-xs text-gray-500">total apps</div>
+          </div>
+        </div>
 
         {/* RescueTime Activity */}
         {activity && (
-          <section className="bg-gradient-to-br from-orange-500/10 to-red-500/5 border border-orange-500/30 rounded-2xl p-6 mb-8">
-            <div className="flex justify-between items-center mb-4">
+          <section className="bg-gradient-to-br from-orange-500/10 to-red-500/5 border border-orange-500/30 rounded-2xl p-5 mb-6">
+            <div className="flex justify-between items-center mb-3">
               <div>
-                <h2 className="text-xs font-semibold tracking-wider text-orange-400 mb-1">
-                  LIVE ACTIVITY (RescueTime)
-                </h2>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                <h2 className="text-xs font-semibold tracking-wider text-orange-400 mb-1">PRODUCTIVITY</h2>
+                <div className="text-xl font-bold text-gray-900 dark:text-white">
                   {activity.today.productivityScore}% Productive
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-lg font-semibold text-green-400">
-                  {activity.today.productiveTime}
-                </div>
-                <div className="text-sm text-gray-500">productive</div>
+              <div className="text-right text-sm">
+                <div className="text-green-400">{activity.today.productiveTime} productive</div>
+                <div className="text-red-400">{activity.today.distractingTime} distracting</div>
               </div>
             </div>
-
-            {/* Productivity Bar */}
-            <div className="h-3 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden mb-4 flex">
-              <div
-                className="h-full bg-green-500"
-                style={{ width: `${activity.today.productivityScore}%` }}
-                title="Productive"
-              />
-              <div
-                className="h-full bg-red-500"
-                style={{ width: `${100 - activity.today.productivityScore}%` }}
-                title="Distracting"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* Top Productive */}
-              <div>
-                <h3 className="text-xs text-gray-500 mb-2">TOP APPS TODAY</h3>
-                <div className="space-y-1">
-                  {activity.topActivities.slice(0, 5).map((app, i) => (
-                    <div key={i} className="flex justify-between text-sm">
-                      <span className={app.productivity > 0 ? 'text-green-400' : app.productivity < 0 ? 'text-red-400' : 'text-gray-400'}>
-                        {app.name.length > 20 ? app.name.slice(0, 20) + '...' : app.name}
-                      </span>
-                      <span className="text-gray-500">{app.formatted}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Distracting */}
-              {activity.distractingApps.length > 0 && (
-                <div>
-                  <h3 className="text-xs text-red-400 mb-2">DISTRACTING</h3>
-                  <div className="space-y-1">
-                    {activity.distractingApps.slice(0, 5).map((app, i) => (
-                      <div key={i} className="flex justify-between text-sm">
-                        <span className="text-red-400">{app.name.length > 20 ? app.name.slice(0, 20) + '...' : app.name}</span>
-                        <span className="text-gray-500">{app.formatted}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Time Breakdown */}
-            <div className="flex gap-4 mt-4 pt-4 border-t border-gray-200 dark:border-white/10 text-sm">
-              <span className="text-gray-500">
-                Total: <span className="text-gray-900 dark:text-white">{activity.today.totalTime}</span>
-              </span>
-              <span className="text-gray-500">
-                Productive: <span className="text-green-400">{activity.today.productiveTime}</span>
-              </span>
-              <span className="text-gray-500">
-                Distracting: <span className="text-red-400">{activity.today.distractingTime}</span>
-              </span>
+            <div className="h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden flex">
+              <div className="h-full bg-green-500" style={{ width: `${activity.today.productivityScore}%` }} />
+              <div className="h-full bg-red-500" style={{ width: `${100 - activity.today.productivityScore}%` }} />
             </div>
           </section>
         )}
 
-        {/* Grid */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Today's Commitments */}
-          <div className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-6">
-            <h2 className="text-xs font-semibold tracking-wider text-gray-500 mb-4">
-              TODAY&apos;S COMMITMENTS
-            </h2>
-            {status.dailyCommitments?.app ? (
-              <div className="space-y-3">
-                <div className={`p-3 rounded-lg ${status.dailyCommitments.appShipped ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-500/10 text-blue-400'}`}>
-                  <span className="text-xs uppercase tracking-wider opacity-70">App to Ship:</span>
-                  <p className="font-medium">{status.dailyCommitments.app}</p>
-                </div>
-                <div className={`p-3 rounded-lg ${status.dailyCommitments.healthDone ? 'bg-green-500/20 text-green-300' : 'bg-green-500/10 text-green-400'}`}>
-                  <span className="text-xs uppercase tracking-wider opacity-70">Health:</span>
-                  <p className="font-medium">{status.dailyCommitments.health || 'Not set'}</p>
-                </div>
-                <div className={`p-3 rounded-lg ${status.dailyCommitments.jobDone ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-500/10 text-purple-400'}`}>
-                  <span className="text-xs uppercase tracking-wider opacity-70">Job Search:</span>
-                  <p className="font-medium">{status.dailyCommitments.job || 'Not set'}</p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-gray-500">Complete your morning check-in to set commitments</p>
-            )}
-            <div className="flex gap-4 mt-5">
-              <CheckinDot done={status.today.morningDone} label="Morning" />
-              <CheckinDot done={status.today.middayDone} label="Midday" />
-              <CheckinDot done={status.today.eveningDone} label="Evening" />
-            </div>
+        {/* Check-in Status */}
+        <section className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-5 mb-6">
+          <h2 className="text-xs font-semibold tracking-wider text-gray-500 mb-4">TODAY&apos;S CHECK-INS</h2>
+          <div className="flex justify-around">
+            <CheckinDot done={status.today.morningDone} label="Morning" time="Set commitments" />
+            <CheckinDot done={status.today.middayDone} label="Midday" time="Progress check" />
+            <CheckinDot done={status.today.eveningDone} label="Evening" time="Daily review" />
           </div>
-
-          {/* Apps */}
-          <div className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-6">
-            <h2 className="text-xs font-semibold tracking-wider text-gray-500 mb-4">
-              YOUR APPS
-            </h2>
-            <div className="space-y-3">
-              {Object.entries(status.apps).map(([key, app]) => (
-                <div
-                  key={key}
-                  className="flex justify-between items-center p-4 bg-gray-100 dark:bg-white/[0.02] rounded-xl"
-                >
-                  <span className="font-semibold">{key.replace('AI', ' AI')}</span>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <span>{app.mau} MAU</span>
-                    <span>{app.subscribers} subs</span>
-                    <span className="text-emerald-400 font-semibold">
-                      ${status.revenue.breakdown[key] || 0}
-                    </span>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        app.status === 'live'
-                          ? 'bg-emerald-500/20 text-emerald-400'
-                          : 'bg-amber-500/20 text-amber-400'
-                      }`}
-                    >
-                      {app.status.replace('_', ' ')}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Commitment */}
-        <section className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-6 mb-8">
-          <h2 className="text-xs font-semibold tracking-wider text-gray-500 mb-4">
-            TODAY&apos;S COMMITMENT
-          </h2>
-          {!activeCommitment ? (
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={commitment}
-                onChange={(e) => setCommitment(e.target.value)}
-                placeholder="What's your #1 priority today?"
-                className="flex-1 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-5 py-4 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-emerald-500/50"
-                onKeyDown={(e) => e.key === 'Enter' && makeCommitment()}
-              />
-              <button
-                onClick={makeCommitment}
-                className="bg-emerald-500 text-black font-semibold px-8 py-4 rounded-xl hover:bg-emerald-400 transition"
-              >
-                LOCK IN
-              </button>
-            </div>
-          ) : (
-            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-5">
-              <p className="text-lg font-medium mb-4">{activeCommitment}</p>
-              <div className="flex gap-3">
-                <button
-                  onClick={completeCommitment}
-                  className="bg-emerald-500 text-black font-semibold px-4 py-2 rounded-lg text-sm"
-                >
-                  Mark Complete
-                </button>
-                <button
-                  onClick={() => setActiveCommitment(null)}
-                  className="bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-400 px-4 py-2 rounded-lg text-sm"
-                >
-                  Didn&apos;t Complete
-                </button>
-              </div>
-            </div>
-          )}
         </section>
 
-        {/* Recent Apps Shipped */}
-        {status.tracks?.appsShipped?.recent && status.tracks.appsShipped.recent.length > 0 && (
-          <section className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-6 mb-8">
-            <h2 className="text-xs font-semibold tracking-wider text-gray-500 mb-4">
-              RECENTLY SHIPPED
-            </h2>
-            <div className="space-y-2">
-              {status.tracks.appsShipped.recent.map((app, i) => (
-                <div key={i} className="flex justify-between items-center bg-gray-100 dark:bg-white/[0.02] rounded-xl p-3">
-                  <span className="font-medium">{app.name}</span>
-                  <span className="text-gray-500 text-sm">{new Date(app.date).toLocaleDateString()}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Recent Check-ins */}
-        <section className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-6 mb-8">
-          <h2 className="text-xs font-semibold tracking-wider text-gray-500 mb-4">
-            TODAY&apos;S CHECK-INS
-          </h2>
-          {status.recentCheckIns.length > 0 ? (
-            <div className="space-y-3">
-              {status.recentCheckIns.slice(0, 3).map((c, i) => (
-                <div key={i} className="bg-gray-100 dark:bg-white/[0.02] rounded-xl p-4">
-                  <div className="flex justify-between mb-2">
-                    <span className="font-semibold capitalize">{c.type}</span>
-                    <span className="text-gray-500 text-sm">
-                      {new Date(c.timestamp).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <p className="text-gray-400 text-sm">
-                    {c.content.app_commitment || c.content.app_shipped || c.content.q1 || ''}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500">No check-ins today yet. Morning check-in sets your commitments.</p>
-          )}
+        {/* Revenue Breakdown */}
+        <section className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/30 rounded-2xl p-5 mb-6">
+          <h2 className="text-xs font-semibold tracking-wider text-emerald-400 mb-3">REVENUE BREAKDOWN</h2>
+          <div className="h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden mb-3">
+            <div
+              className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full"
+              style={{ width: `${Math.min(parseFloat(status.revenue.progress), 100)}%` }}
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-4 text-sm">
+            {Object.entries(status.revenue.breakdown).map(([key, value]) => (
+              <div key={key}>
+                <div className="text-emerald-400 font-semibold">${value}</div>
+                <div className="text-gray-500 text-xs">{key.replace('AI', ' AI')}</div>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* Why Section */}
-        <section className="bg-gradient-to-br from-violet-500/10 to-purple-500/5 border border-purple-500/20 rounded-2xl p-10 text-center">
-          <h2 className="text-sm text-purple-400 tracking-widest mb-5">REMEMBER WHY</h2>
-          <p className="text-2xl font-semibold mb-6">{admin.dream.vision}</p>
-          <div className="flex flex-wrap justify-center gap-3">
+        <section className="bg-gradient-to-br from-violet-500/10 to-purple-500/5 border border-purple-500/20 rounded-2xl p-6 text-center">
+          <h2 className="text-xs text-purple-400 tracking-widest mb-3">REMEMBER WHY</h2>
+          <p className="text-lg font-semibold mb-4">{admin.dream.vision}</p>
+          <div className="flex flex-wrap justify-center gap-2">
             {admin.dream.why.map((reason, i) => (
-              <span
-                key={i}
-                className="bg-purple-500/10 text-purple-300 px-4 py-2 rounded-full text-sm"
-              >
+              <span key={i} className="bg-purple-500/10 text-purple-300 px-3 py-1 rounded-full text-xs">
                 {reason}
               </span>
             ))}
@@ -531,11 +396,80 @@ export default function CommandCenter() {
   );
 }
 
-function CheckinDot({ done, label }: { done: boolean; label: string }) {
+function TrackCard({
+  title,
+  value,
+  goal,
+  unit,
+  color,
+  done,
+  commitment,
+  showProgress,
+}: {
+  title: string;
+  value: number;
+  goal: number;
+  unit: string;
+  color: string;
+  done?: boolean;
+  commitment?: string | null;
+  showProgress?: boolean;
+}) {
+  const colors: Record<string, string> = {
+    blue: 'from-blue-500/10 to-blue-500/5 border-blue-500/30 text-blue-400',
+    purple: 'from-purple-500/10 to-purple-500/5 border-purple-500/30 text-purple-400',
+    pink: 'from-pink-500/10 to-pink-500/5 border-pink-500/30 text-pink-400',
+    orange: 'from-orange-500/10 to-orange-500/5 border-orange-500/30 text-orange-400',
+    emerald: 'from-emerald-500/10 to-emerald-500/5 border-emerald-500/30 text-emerald-400',
+    amber: 'from-amber-500/10 to-amber-500/5 border-amber-500/30 text-amber-400',
+    green: 'from-green-500/10 to-green-500/5 border-green-500/30 text-green-400',
+  };
+
+  const bgColors: Record<string, string> = {
+    blue: 'bg-blue-500',
+    purple: 'bg-purple-500',
+    pink: 'bg-pink-500',
+    orange: 'bg-orange-500',
+    emerald: 'bg-emerald-500',
+    amber: 'bg-amber-500',
+    green: 'bg-green-500',
+  };
+
+  const progress = Math.min((value / goal) * 100, 100);
+
   return (
-    <div className={`flex items-center gap-2 text-sm ${done ? 'text-emerald-500 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-600'}`}>
-      <div className={`w-2.5 h-2.5 rounded-full ${done ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-gray-300 dark:bg-gray-700'}`} />
-      <span>{label}</span>
+    <div className={`bg-gradient-to-br ${colors[color]} border rounded-xl p-4`}>
+      <div className="text-[10px] font-semibold tracking-wider opacity-80 mb-1">{title}</div>
+      <div className="flex items-baseline gap-1">
+        <span className="text-2xl font-bold">{value}</span>
+        <span className="text-gray-500 text-xs">{unit}</span>
+      </div>
+      {showProgress && (
+        <div className="mt-2 h-1.5 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
+          <div className={`h-full ${bgColors[color]} rounded-full`} style={{ width: `${progress}%` }} />
+        </div>
+      )}
+      <div className="mt-2 text-xs">
+        {done ? (
+          <span className="opacity-80">✓ Done</span>
+        ) : commitment ? (
+          <span className="text-yellow-400 truncate block">→ {commitment}</span>
+        ) : (
+          <span className="text-gray-500">Set in check-in</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CheckinDot({ done, label, time }: { done: boolean; label: string; time: string }) {
+  return (
+    <div className="text-center">
+      <div className={`w-4 h-4 rounded-full mx-auto mb-2 ${done ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`} />
+      <div className={`text-sm font-medium ${done ? 'text-emerald-500 dark:text-emerald-400' : 'text-gray-500'}`}>
+        {label}
+      </div>
+      <div className="text-xs text-gray-500">{time}</div>
     </div>
   );
 }

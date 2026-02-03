@@ -10,6 +10,15 @@ export interface DailyCommitment {
   appShipped: boolean;       // Did you actually ship?
   healthDone: boolean;
   jobDone: boolean;
+  jobCount: number;          // Jobs applied today (goal: 100)
+  marketing: string | null;  // Marketing task
+  marketingDone: boolean;
+  outreach: string | null;   // Outreach task
+  outreachCount: number;     // People reached out to today
+  clientWork: string | null; // AI 4U client work
+  clientWorkDone: boolean;
+  etsy: string | null;       // Etsy task
+  etsyDone: boolean;
 }
 
 export interface CommandCenterState {
@@ -24,6 +33,11 @@ export interface CommandCenterState {
     appsShipped: Array<{ date: string; name: string; link?: string }>;
     healthStreak: number;
     jobApplications: Array<{ date: string; company: string; role: string }>;
+    // New tracks
+    marketing: Array<{ date: string; platform: string; description: string }>;
+    outreach: Array<{ date: string; person: string; channel: string }>;
+    clientSales: Array<{ date: string; client: string; status: string; value?: number }>;
+    etsy: Array<{ date: string; action: string; count?: number }>;
   };
 
   streaks: { current: number; best: number; lastCheckIn: string | null; missedDates: string[] };
@@ -65,6 +79,10 @@ const DEFAULT_STATE: CommandCenterState = {
     appsShipped: [],
     healthStreak: 0,
     jobApplications: [],
+    marketing: [],
+    outreach: [],
+    clientSales: [],
+    etsy: [],
   },
   streaks: { current: 0, best: 0, lastCheckIn: null, missedDates: [] },
   checkIns: [],
@@ -82,6 +100,15 @@ const DEFAULT_STATE: CommandCenterState = {
       appShipped: false,
       healthDone: false,
       jobDone: false,
+      jobCount: 0,
+      marketing: null,
+      marketingDone: false,
+      outreach: null,
+      outreachCount: 0,
+      clientWork: null,
+      clientWorkDone: false,
+      etsy: null,
+      etsyDone: false,
     },
   },
 };

@@ -47,11 +47,20 @@ export async function POST(request: Request) {
         appShipped: false,
         healthDone: false,
         jobDone: false,
+        jobCount: 0,
+        marketing: null,
+        marketingDone: false,
+        outreach: null,
+        outreachCount: 0,
+        clientWork: null,
+        clientWorkDone: false,
+        etsy: null,
+        etsyDone: false,
       },
     };
   }
 
-  // Ensure commitments object exists
+  // Ensure commitments object exists with all fields
   if (!state.today.commitments) {
     state.today.commitments = {
       app: null,
@@ -60,6 +69,15 @@ export async function POST(request: Request) {
       appShipped: false,
       healthDone: false,
       jobDone: false,
+      jobCount: 0,
+      marketing: null,
+      marketingDone: false,
+      outreach: null,
+      outreachCount: 0,
+      clientWork: null,
+      clientWorkDone: false,
+      etsy: null,
+      etsyDone: false,
     };
   }
 
@@ -70,6 +88,10 @@ export async function POST(request: Request) {
     state.today.commitments.app = content.app_commitment || null;
     state.today.commitments.health = content.health_commitment || null;
     state.today.commitments.job = content.job_commitment || null;
+    state.today.commitments.marketing = content.marketing_commitment || null;
+    state.today.commitments.outreach = content.outreach_commitment || null;
+    state.today.commitments.clientWork = content.client_commitment || null;
+    state.today.commitments.etsy = content.etsy_commitment || null;
   } else if (type === 'midday') {
     state.today.middayDone = true;
   } else if (type === 'evening') {
@@ -91,10 +113,37 @@ export async function POST(request: Request) {
       }
     }
 
-    // Check job completion
+    // Check job completion and count
     const jobAnswer = (content.job_done || '').toLowerCase();
-    if (jobAnswer.includes('yes') || jobAnswer.length > 10) {
+    const jobCount = parseInt(content.job_count) || 0;
+    if (jobAnswer.includes('yes') || jobCount > 0) {
       state.today.commitments.jobDone = true;
+      state.today.commitments.jobCount = jobCount;
+    }
+
+    // Check marketing completion
+    const marketingAnswer = (content.marketing_done || '').toLowerCase();
+    if (marketingAnswer.includes('yes')) {
+      state.today.commitments.marketingDone = true;
+    }
+
+    // Check outreach completion
+    const outreachAnswer = (content.outreach_done || '').toLowerCase();
+    const outreachCount = parseInt(content.outreach_count) || 0;
+    if (outreachAnswer.includes('yes') || outreachCount > 0) {
+      state.today.commitments.outreachCount = outreachCount;
+    }
+
+    // Check client work completion
+    const clientAnswer = (content.client_done || '').toLowerCase();
+    if (clientAnswer.includes('yes')) {
+      state.today.commitments.clientWorkDone = true;
+    }
+
+    // Check Etsy completion
+    const etsyAnswer = (content.etsy_done || '').toLowerCase();
+    if (etsyAnswer.includes('yes')) {
+      state.today.commitments.etsyDone = true;
     }
 
     // Update check-in streak
