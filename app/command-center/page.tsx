@@ -612,6 +612,18 @@ const CONTENT_LABELS: Record<string, string> = {
   other_progress: '📝 Other',
 };
 
+// Desktop activity fields to show separately
+const ACTIVITY_FIELDS = ['desktop_activity', 'open_apps', 'current_app', 'xcode_projects', 'vscode_projects', 'terminal_sessions', 'browser_tabs'];
+
+const ACTIVITY_LABELS: Record<string, string> = {
+  current_app: '📍 Focus',
+  xcode_projects: '🔨 Xcode',
+  vscode_projects: '💻 VS Code',
+  terminal_sessions: '⌨️ Terminal',
+  browser_tabs: '🌐 Browser',
+  open_apps: '📱 Apps',
+};
+
 function CheckInCard({
   checkIn,
   compact = false
@@ -631,8 +643,19 @@ function CheckInCard({
     evening: '🌙',
   };
 
-  // Filter out timestamp from content
-  const contentEntries = Object.entries(checkIn.content).filter(([key]) => key !== 'timestamp');
+  // Separate content into commitments/answers and desktop activity
+  const contentEntries = Object.entries(checkIn.content).filter(
+    ([key]) => key !== 'timestamp' && !ACTIVITY_FIELDS.includes(key)
+  );
+  const activityEntries = Object.entries(checkIn.content).filter(
+    ([key]) => ACTIVITY_FIELDS.includes(key) && key !== 'desktop_activity' && checkIn.content[key]
+  );
+
+  // Parse browser tabs for productive vs distraction
+  const browserTabs = checkIn.content.browser_tabs || '';
+  const tabs = browserTabs.split(' | ').filter(Boolean);
+  const productiveTabs = tabs.filter(t => /job|linkedin|indeed|github|greenhouse|lever|workday|stackoverflow/i.test(t));
+  const distractionTabs = tabs.filter(t => /youtube|twitter|reddit|netflix|twitch|instagram|tiktok|facebook/i.test(t));
 
   return (
     <div className={`border rounded-xl ${typeColors[checkIn.type]} ${compact ? 'p-3' : 'p-4'}`}>
@@ -646,6 +669,8 @@ function CheckInCard({
           {new Date(checkIn.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
         </span>
       </div>
+
+      {/* Commitments/Answers */}
       <div className={`grid gap-2 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
         {contentEntries.map(([key, value]) => (
           <div key={key} className="flex gap-2 text-sm">
@@ -656,6 +681,57 @@ function CheckInCard({
           </div>
         ))}
       </div>
+
+      {/* Desktop Activity Section */}
+      {activityEntries.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-current/20">
+          <div className="text-xs font-semibold opacity-60 mb-2">DESKTOP ACTIVITY</div>
+          <div className="grid gap-1.5">
+            {checkIn.content.current_app && (
+              <div className="flex gap-2 text-xs">
+                <span className="opacity-60">📍 Focus:</span>
+                <span className="font-medium text-green-400">{checkIn.content.current_app}</span>
+              </div>
+            )}
+            {checkIn.content.xcode_projects && (
+              <div className="flex gap-2 text-xs">
+                <span className="opacity-60">🔨 Xcode:</span>
+                <span className="text-blue-400">{checkIn.content.xcode_projects}</span>
+              </div>
+            )}
+            {checkIn.content.vscode_projects && (
+              <div className="flex gap-2 text-xs">
+                <span className="opacity-60">💻 VS Code:</span>
+                <span className="text-blue-400">{checkIn.content.vscode_projects}</span>
+              </div>
+            )}
+            {checkIn.content.terminal_sessions && (
+              <div className="flex gap-2 text-xs">
+                <span className="opacity-60">⌨️ Terminal:</span>
+                <span className="text-green-400">{checkIn.content.terminal_sessions}</span>
+              </div>
+            )}
+            {productiveTabs.length > 0 && (
+              <div className="flex gap-2 text-xs">
+                <span className="opacity-60">✅ Productive:</span>
+                <span className="text-green-400">{productiveTabs.slice(0, 3).join(', ')}</span>
+              </div>
+            )}
+            {distractionTabs.length > 0 && (
+              <div className="flex gap-2 text-xs">
+                <span className="opacity-60">⚠️ Distraction:</span>
+                <span className="text-red-400">{distractionTabs.slice(0, 3).join(', ')}</span>
+              </div>
+            )}
+            {checkIn.content.open_apps && (
+              <div className="flex gap-2 text-xs">
+                <span className="opacity-60">📱 Open:</span>
+                <span className="opacity-80 truncate max-w-[300px]">{checkIn.content.open_apps}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
