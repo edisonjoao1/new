@@ -68,6 +68,42 @@ export async function GET() {
     .filter((c) => c.date === today)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
+  // Historical check-ins - last 7 days grouped by date
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const historicalCheckIns = state.checkIns
+    .filter((c) => new Date(c.date) >= sevenDaysAgo && c.date !== today)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  // Group by date
+  const checkInsByDay: Record<string, typeof historicalCheckIns> = {};
+  historicalCheckIns.forEach((c) => {
+    if (!checkInsByDay[c.date]) {
+      checkInsByDay[c.date] = [];
+    }
+    checkInsByDay[c.date].push(c);
+  });
+
+  // Calculate daily completion stats
+  const dailyStats = Object.keys(checkInsByDay).map((date) => {
+    const dayCheckIns = checkInsByDay[date];
+    const hasMorning = dayCheckIns.some((c) => c.type === 'morning');
+    const hasMidday = dayCheckIns.some((c) => c.type === 'midday');
+    const hasEvening = dayCheckIns.some((c) => c.type === 'evening');
+    const eveningCheckIn = dayCheckIns.find((c) => c.type === 'evening');
+    const morningCheckIn = dayCheckIns.find((c) => c.type === 'morning');
+
+    return {
+      date,
+      hasMorning,
+      hasMidday,
+      hasEvening,
+      complete: hasMorning && hasEvening,
+      appCommitment: morningCheckIn?.content?.app_commitment || null,
+      appShipped: eveningCheckIn?.content?.app_shipped || null,
+      jobCount: eveningCheckIn?.content?.job_count || null,
+    };
+  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
   return NextResponse.json({
     revenue: {
       current: totalRevenue,
@@ -119,6 +155,13 @@ export async function GET() {
       },
     },
     dailyCommitments: state.today?.commitments || null,
+
+    // Historical data
+    history: {
+      checkInsByDay,
+      dailyStats,
+      allCheckIns: state.checkIns.slice(-50).reverse(), // Last 50 check-ins
+    },
   });
 }
 // Triggered redeploy Mon Feb  2 20:42:34 EST 2026

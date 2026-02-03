@@ -92,6 +92,24 @@ interface Status {
     etsy: string | null;
     etsyDone: boolean;
   } | null;
+  history: {
+    dailyStats: Array<{
+      date: string;
+      hasMorning: boolean;
+      hasMidday: boolean;
+      hasEvening: boolean;
+      complete: boolean;
+      appCommitment: string | null;
+      appShipped: string | null;
+      jobCount: string | null;
+    }>;
+    allCheckIns: Array<{
+      type: string;
+      date: string;
+      timestamp: string;
+      content: Record<string, string>;
+    }>;
+  };
 }
 
 interface Admin {
@@ -378,6 +396,79 @@ export default function CommandCenter() {
             ))}
           </div>
         </section>
+
+        {/* History - Past Days */}
+        {status.history?.dailyStats && status.history.dailyStats.length > 0 && (
+          <section className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-5 mb-6">
+            <h2 className="text-xs font-semibold tracking-wider text-gray-500 mb-4">PAST 7 DAYS</h2>
+            <div className="space-y-3">
+              {status.history.dailyStats.map((day) => (
+                <div key={day.date} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-white/[0.02] rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${day.complete ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                    <div>
+                      <div className="font-medium text-sm">
+                        {new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </div>
+                      {day.appCommitment && (
+                        <div className="text-xs text-gray-500 truncate max-w-[200px]">
+                          App: {day.appCommitment}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs">
+                    <div className="flex gap-1">
+                      <span className={day.hasMorning ? 'text-emerald-400' : 'text-gray-500'}>M</span>
+                      <span className={day.hasMidday ? 'text-emerald-400' : 'text-gray-500'}>D</span>
+                      <span className={day.hasEvening ? 'text-emerald-400' : 'text-gray-500'}>E</span>
+                    </div>
+                    {day.appShipped && (
+                      <span className={day.appShipped.toLowerCase().includes('yes') ? 'text-emerald-400' : 'text-red-400'}>
+                        {day.appShipped.toLowerCase().includes('yes') ? '✓ Shipped' : '✗ No ship'}
+                      </span>
+                    )}
+                    {day.jobCount && (
+                      <span className="text-purple-400">{day.jobCount} jobs</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* All Recent Check-ins */}
+        {status.history?.allCheckIns && status.history.allCheckIns.length > 0 && (
+          <section className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-5 mb-6">
+            <h2 className="text-xs font-semibold tracking-wider text-gray-500 mb-4">ALL CHECK-INS ({status.totalCheckIns} total)</h2>
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {status.history.allCheckIns.map((c, i) => (
+                <div key={i} className="p-3 bg-gray-50 dark:bg-white/[0.02] rounded-lg">
+                  <div className="flex justify-between items-center mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                        c.type === 'morning' ? 'bg-yellow-500/20 text-yellow-400' :
+                        c.type === 'midday' ? 'bg-blue-500/20 text-blue-400' :
+                        'bg-purple-500/20 text-purple-400'
+                      }`}>
+                        {c.type}
+                      </span>
+                      <span className="text-xs text-gray-500">{c.date}</span>
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {new Date(c.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    {c.content.app_commitment || c.content.app_shipped || c.content.app_progress ||
+                     c.content.q1 || Object.values(c.content)[0] || ''}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Why Section */}
         <section className="bg-gradient-to-br from-violet-500/10 to-purple-500/5 border border-purple-500/20 rounded-2xl p-6 text-center">
