@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getState } from '@/lib/command-center';
 
-// Get date in LA timezone (Edison's timezone)
+// Get date in Eastern timezone (Edison's timezone)
 function getTodayLA(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 }
 
 export async function GET() {
