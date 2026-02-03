@@ -238,7 +238,7 @@ export default function CommandCenter() {
             </button>
           </div>
           {aiCoach && (
-            <div className="text-sm text-gray-300 dark:text-gray-300 whitespace-pre-wrap mb-4 p-3 bg-black/20 rounded-lg">
+            <div className="text-sm text-gray-100 whitespace-pre-wrap mb-4 p-4 bg-gray-900 rounded-lg leading-relaxed">
               {aiCoach}
             </div>
           )}
