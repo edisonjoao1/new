@@ -93,12 +93,30 @@ ${eveningCheckIn ? `
 
 DESKTOP ACTIVITY (what he was doing during check-ins):
 ${todayCheckIns.map(c => {
-  const activity = c.content?.desktop_activity || '';
-  const openApps = c.content?.open_apps || '';
   const currentApp = c.content?.current_app || '';
-  if (!activity && !openApps) return null;
-  return `[${c.type}] Current: ${currentApp || 'unknown'} | Open: ${openApps || 'unknown'}`;
-}).filter(Boolean).join('\n') || 'No activity data yet'}
+  const xcodeProjects = c.content?.xcode_projects || '';
+  const vscodeProjects = c.content?.vscode_projects || '';
+  const terminalSessions = c.content?.terminal_sessions || '';
+  const browserTabs = c.content?.browser_tabs || '';
+  const openApps = c.content?.open_apps || '';
+
+  if (!currentApp && !openApps) return null;
+
+  let details = `[${c.type.toUpperCase()}] Focus: ${currentApp || 'unknown'}`;
+  if (xcodeProjects) details += `\\n  Xcode: ${xcodeProjects}`;
+  if (vscodeProjects) details += `\\n  VS Code: ${vscodeProjects}`;
+  if (terminalSessions) details += `\\n  Terminal: ${terminalSessions}`;
+  if (browserTabs) {
+    // Identify productive vs distraction tabs
+    const tabs = browserTabs.split(' | ');
+    const productive = tabs.filter((t: string) => /job|linkedin|indeed|github|greenhouse|lever|workday/i.test(t));
+    const distraction = tabs.filter((t: string) => /youtube|twitter|reddit|netflix|twitch|instagram|tiktok|facebook/i.test(t));
+    if (productive.length > 0) details += `\\n  Productive tabs: ${productive.join(', ')}`;
+    if (distraction.length > 0) details += `\\n  ⚠️ DISTRACTION TABS: ${distraction.join(', ')}`;
+  }
+  details += `\\n  Open apps: ${openApps}`;
+  return details;
+}).filter(Boolean).join('\\n\\n') || 'No activity data yet'}
 
 RECENT TRACK RECORD (Did he ship what he promised?):
 ${trackRecord || 'No historical data yet'}
