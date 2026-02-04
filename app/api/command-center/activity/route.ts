@@ -1,10 +1,20 @@
 import { NextResponse } from 'next/server';
+import { getState, saveState } from '@/lib/command-center';
 
 const RESCUETIME_API_KEY = process.env.RESCUETIME_API_KEY;
 
 export async function GET() {
+  // Get live desktop data first (always available)
+  let liveDesktop = null;
+  try {
+    const state = await getState();
+    liveDesktop = state.liveDesktop || null;
+  } catch (e) {
+    console.error('Failed to get live desktop:', e);
+  }
+
   if (!RESCUETIME_API_KEY) {
-    return NextResponse.json({ error: 'RescueTime API key not configured' }, { status: 500 });
+    return NextResponse.json({ liveDesktop, error: 'RescueTime API key not configured' });
   }
 
   const today = new Date().toISOString().split('T')[0];
@@ -112,6 +122,7 @@ export async function GET() {
         totalHours: s.total_hours,
         productivePercentage: s.all_productive_percentage,
       })),
+      liveDesktop,
       lastUpdated: new Date().toISOString(),
     });
   } catch (error) {
@@ -131,4 +142,21 @@ function formatTime(seconds: number): string {
     return `${hours}h ${minutes}m`;
   }
   return `${minutes}m`;
+}
+
+// POST: Receive live desktop activity from Mac script
+export async function POST(request: Request) {
+  try {
+    const desktop = await request.json();
+    desktop.lastUpdated = new Date().toISOString();
+
+    const state = await getState();
+    state.liveDesktop = desktop;
+    await saveState(state);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Desktop activity POST error:', error);
+    return NextResponse.json({ error: 'Failed to save' }, { status: 500 });
+  }
 }

@@ -134,6 +134,15 @@ interface Activity {
     name: string;
     formatted: string;
   }>;
+  liveDesktop?: {
+    frontmost: string;
+    openApps: string;
+    xcodeProjects: string;
+    vscodeProjects: string;
+    terminalSessions: string;
+    browserTabs: string;
+    lastUpdated: string;
+  };
 }
 
 export default function CommandCenter() {
@@ -348,7 +357,7 @@ export default function CommandCenter() {
         </div>
 
         {/* RescueTime Activity */}
-        {activity && (
+        {activity && activity.today && (
           <section className="bg-gradient-to-br from-orange-500/10 to-red-500/5 border border-orange-500/30 rounded-2xl p-5 mb-6">
             <div className="flex justify-between items-center mb-3">
               <div>
@@ -365,6 +374,55 @@ export default function CommandCenter() {
             <div className="h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden flex">
               <div className="h-full bg-green-500" style={{ width: `${activity.today.productivityScore}%` }} />
               <div className="h-full bg-red-500" style={{ width: `${100 - activity.today.productivityScore}%` }} />
+            </div>
+          </section>
+        )}
+
+        {/* Live Desktop Activity */}
+        {activity?.liveDesktop && (
+          <section className="bg-gradient-to-br from-blue-500/10 to-purple-500/5 border border-blue-500/30 rounded-2xl p-5 mb-6">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-xs font-semibold tracking-wider text-blue-400">LIVE DESKTOP</h2>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                <span className="text-xs text-gray-500">
+                  {new Date(activity.liveDesktop.lastUpdated).toLocaleTimeString()}
+                </span>
+              </div>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-2">
+                <span className="text-gray-500">📍 Focus:</span>
+                <span className="text-green-400 font-medium">{activity.liveDesktop.frontmost}</span>
+              </div>
+              {activity.liveDesktop.xcodeProjects && (
+                <div className="flex gap-2">
+                  <span className="text-gray-500">🔨 Xcode:</span>
+                  <span className="text-blue-400">{activity.liveDesktop.xcodeProjects}</span>
+                </div>
+              )}
+              {activity.liveDesktop.vscodeProjects && (
+                <div className="flex gap-2">
+                  <span className="text-gray-500">💻 VS Code:</span>
+                  <span className="text-blue-400">{activity.liveDesktop.vscodeProjects}</span>
+                </div>
+              )}
+              {activity.liveDesktop.terminalSessions && (
+                <div className="flex gap-2">
+                  <span className="text-gray-500">⌨️ Terminal:</span>
+                  <span className="text-green-400">{activity.liveDesktop.terminalSessions}</span>
+                </div>
+              )}
+              {activity.liveDesktop.browserTabs && (
+                <div className="flex gap-2 flex-wrap">
+                  <span className="text-gray-500">🌐 Tabs:</span>
+                  <span className="text-gray-300 text-xs">{activity.liveDesktop.browserTabs}</span>
+                </div>
+              )}
+              <div className="flex gap-2 pt-1 border-t border-white/10 mt-2">
+                <span className="text-gray-500">📱 Open:</span>
+                <span className="text-gray-400 text-xs">{activity.liveDesktop.openApps}</span>
+              </div>
             </div>
           </section>
         )}
