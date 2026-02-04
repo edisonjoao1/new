@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getState, saveState } from '@/lib/command-center';
 
+export const dynamic = 'force-dynamic';
+
 const RESCUETIME_API_KEY = process.env.RESCUETIME_API_KEY;
 
 export async function GET() {
