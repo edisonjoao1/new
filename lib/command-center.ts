@@ -64,6 +64,15 @@ export interface CommandCenterState {
     eveningDone: boolean;
     commitments: DailyCommitment;
   };
+  liveDesktop?: {
+    frontmost: string;
+    openApps: string;
+    xcodeProjects: string;
+    vscodeProjects: string;
+    terminalSessions: string;
+    browserTabs: string;
+    lastUpdated: string;
+  };
 }
 
 const DEFAULT_STATE: CommandCenterState = {
