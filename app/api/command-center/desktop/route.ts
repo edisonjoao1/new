@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getState, saveState } from '@/lib/command-center';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 // GET current desktop activity
 export async function GET() {
