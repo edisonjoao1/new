@@ -161,16 +161,22 @@ export default function CommandCenter() {
 
   async function loadData() {
     try {
-      const [statusRes, adminRes, activityRes] = await Promise.all([
+      const [statusRes, adminRes, activityRes, desktopRes] = await Promise.all([
         fetch('/api/command-center/status'),
         fetch('/api/command-center/admin'),
         fetch('/api/command-center/activity'),
+        fetch('/api/command-center/desktop'),
       ]);
       const statusData = await statusRes.json();
       const adminData = await adminRes.json();
       const activityData = await activityRes.json();
+      const desktopData = await desktopRes.json();
       setStatus(statusData);
       setAdmin(adminData);
+      // Merge desktop data into activity
+      if (desktopData.desktop) {
+        activityData.liveDesktop = desktopData.desktop;
+      }
       if (!activityData.error) {
         setActivity(activityData);
       }
