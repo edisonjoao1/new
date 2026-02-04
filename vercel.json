@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/command-center/weekly-report?secret=${CRON_SECRET}",
+      "schedule": "0 9 * * 0"
+    }
+  ]
+}

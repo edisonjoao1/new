@@ -32,7 +32,7 @@ export interface CommandCenterState {
   tracks: {
     appsShipped: Array<{ date: string; name: string; link?: string }>;
     healthStreak: number;
-    jobApplications: Array<{ date: string; company: string; role: string }>;
+    jobApplications: Array<{ date: string; company: string; role: string; source?: string; emailSubject?: string | null; timestamp?: string }>;
     // New tracks
     marketing: Array<{ date: string; platform: string; description: string }>;
     outreach: Array<{ date: string; person: string; channel: string }>;

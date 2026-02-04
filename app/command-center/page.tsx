@@ -626,11 +626,14 @@ function TrackCard({
         <span className="text-2xl font-bold">{value}</span>
         <span className="text-gray-500 text-xs">{unit}</span>
       </div>
-      {showProgress && (
-        <div className="mt-2 h-1.5 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
-          <div className={`h-full ${bgColors[color]} rounded-full`} style={{ width: `${progress}%` }} />
-        </div>
-      )}
+      {/* Always show progress bar */}
+      <div className="mt-2 h-1.5 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
+        <div
+          className={`h-full ${bgColors[color]} rounded-full transition-all duration-500`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <div className="text-[10px] text-gray-500 mt-1">{Math.round(progress)}% of goal</div>
       <div className="mt-2 text-xs">
         {done ? (
           <span className="opacity-80">✓ Done</span>
