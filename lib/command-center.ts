@@ -3,6 +3,16 @@
 
 import { neon } from '@neondatabase/serverless';
 
+export interface Subscription {
+  id: string;
+  app: string;           // frenchAI, spanishAI, daysTogether, love, gemAI
+  plan: 'weekly' | 'monthly' | 'yearly';
+  price: number;         // gross price
+  startDate: string;
+  isTrial: boolean;
+  isActive: boolean;
+}
+
 export interface DailyCommitment {
   app: string | null;        // What app are you shipping today?
   health: string | null;     // Health commitment
@@ -73,6 +83,7 @@ export interface CommandCenterState {
     browserTabs: string;
     lastUpdated: string;
   };
+  subscriptions: Subscription[];
 }
 
 const DEFAULT_STATE: CommandCenterState = {
@@ -120,6 +131,14 @@ const DEFAULT_STATE: CommandCenterState = {
       etsyDone: false,
     },
   },
+  subscriptions: [
+    // Current confirmed subscriptions
+    { id: 'french-w1', app: 'frenchAI', plan: 'weekly', price: 3.99, startDate: '2025-01-01', isTrial: false, isActive: true },
+    { id: 'french-w2', app: 'frenchAI', plan: 'weekly', price: 3.99, startDate: '2025-01-15', isTrial: false, isActive: true },
+    { id: 'french-y1', app: 'frenchAI', plan: 'yearly', price: 44.99, startDate: '2025-02-10', isTrial: false, isActive: true },
+    { id: 'spanish-w1', app: 'spanishAI', plan: 'weekly', price: 8.99, startDate: '2025-01-20', isTrial: false, isActive: true },
+    { id: 'spanish-m1', app: 'spanishAI', plan: 'monthly', price: 29.99, startDate: '2025-02-01', isTrial: true, isActive: true },
+  ],
 };
 
 // Get database connection

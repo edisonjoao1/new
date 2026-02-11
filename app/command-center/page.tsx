@@ -119,10 +119,31 @@ interface Admin {
 }
 
 interface Subscription {
-  app: 'frenchAI' | 'spanishAI';
-  type: 'weekly' | 'monthly';
+  id: string;
+  app: string;
+  plan: 'weekly' | 'monthly' | 'yearly';
   price: number;
-  isTrial?: boolean;
+  startDate: string;
+  isTrial: boolean;
+  isActive: boolean;
+}
+
+interface SubscriptionData {
+  subscriptions: Subscription[];
+  mrr: {
+    gross: number;
+    net: number;
+    byApp: Record<string, { gross: number; net: number; count: number; breakdown: Record<string, number> }>;
+  };
+  progress: {
+    current: number;
+    goal1k: number;
+    goal10k: number;
+    percent1k: string;
+    percent10k: string;
+    remaining1k: number;
+    remaining10k: number;
+  };
 }
 
 interface Activity {
@@ -156,6 +177,7 @@ export default function CommandCenter() {
   const [status, setStatus] = useState<Status | null>(null);
   const [admin, setAdmin] = useState<Admin | null>(null);
   const [activity, setActivity] = useState<Activity | null>(null);
+  const [subData, setSubData] = useState<SubscriptionData | null>(null);
   const [aiCoach, setAiCoach] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [question, setQuestion] = useState('');
@@ -176,18 +198,21 @@ export default function CommandCenter() {
 
   async function loadData() {
     try {
-      const [statusRes, adminRes, activityRes, desktopRes] = await Promise.all([
+      const [statusRes, adminRes, activityRes, desktopRes, subsRes] = await Promise.all([
         fetch('/api/command-center/status'),
         fetch('/api/command-center/admin'),
         fetch('/api/command-center/activity'),
         fetch('/api/command-center/desktop'),
+        fetch('/api/command-center/subscriptions'),
       ]);
       const statusData = await statusRes.json();
       const adminData = await adminRes.json();
       const activityData = await activityRes.json();
       const desktopData = await desktopRes.json();
+      const subsData = await subsRes.json();
       setStatus(statusData);
       setAdmin(adminData);
+      setSubData(subsData);
       // Merge desktop data into activity
       if (desktopData.desktop) {
         activityData.liveDesktop = desktopData.desktop;
@@ -253,28 +278,20 @@ export default function CommandCenter() {
     setRevenueSaving(true);
     try {
       const price = PRICES[revenueInput.app]?.[revenueInput.type] || 0;
-      const grossAmount = price * revenueInput.count;
-      const appName = APP_NAMES[revenueInput.app] || revenueInput.app;
 
-      // Log as checkin to record the subscription
-      await fetch('/api/command-center/checkin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'subscription',
-          content: {
+      // Add each subscription individually
+      for (let i = 0; i < revenueInput.count; i++) {
+        await fetch('/api/command-center/subscriptions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             app: revenueInput.app,
-            appName: appName,
             plan: revenueInput.type,
-            price: price.toString(),
-            count: revenueInput.count.toString(),
-            gross: grossAmount.toFixed(2),
-            net: (grossAmount * (1 - APPLE_CUT)).toFixed(2),
-            isTrial: revenueInput.isTrial ? 'yes' : 'no',
-            note: `${revenueInput.count}x ${appName} ${revenueInput.type} @ $${price}${revenueInput.isTrial ? ' (trial)' : ''}`
-          }
-        })
-      });
+            price: price,
+            isTrial: revenueInput.isTrial
+          })
+        });
+      }
 
       // Reload data
       await loadData();
@@ -306,12 +323,12 @@ export default function CommandCenter() {
             EDISON COMMAND CENTER
           </p>
           <h1 className="text-3xl md:text-4xl font-bold mb-1">
-            ${status.revenue.current.toFixed(2)} → <span className="text-yellow-400">$1,000</span> → <span className="text-emerald-400">$10K</span>
+            ${subData?.mrr.net.toFixed(2) || status.revenue.current.toFixed(2)}<span className="text-lg text-gray-500">/mo</span> → <span className="text-yellow-400">$1,000</span> → <span className="text-emerald-400">$10K</span>
           </h1>
           <div className="flex justify-center gap-4 text-sm mt-2">
-            <span className="text-yellow-400">{Math.min(((status.revenue.current / 1000) * 100), 100).toFixed(1)}% to $1k</span>
+            <span className="text-yellow-400">{subData?.progress.percent1k || '0%'} to $1k</span>
             <span className="text-gray-500">·</span>
-            <span className="text-gray-500">{status.daysLeft} days left</span>
+            <span className="text-emerald-400">${subData?.progress.remaining1k.toFixed(0) || '1000'} to go</span>
             <span className="text-gray-500">·</span>
             <span className="text-gray-500">Mom counting on you</span>
           </div>
@@ -523,7 +540,7 @@ export default function CommandCenter() {
         {/* Revenue Breakdown */}
         <section className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/30 rounded-2xl p-5 mb-6">
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-xs font-semibold tracking-wider text-emerald-400">REVENUE BREAKDOWN</h2>
+            <h2 className="text-xs font-semibold tracking-wider text-emerald-400">REVENUE BREAKDOWN (MRR)</h2>
             <button
               onClick={() => setShowRevenueInput(!showRevenueInput)}
               className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-lg hover:bg-emerald-500/30 transition"
@@ -614,65 +631,150 @@ export default function CommandCenter() {
             </div>
           )}
 
-          <div className="h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden mb-3">
+          {/* Progress Bar */}
+          <div className="h-3 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden mb-3 relative">
             <div
-              className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full"
-              style={{ width: `${Math.min(parseFloat(status.revenue.progress), 100)}%` }}
+              className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-500"
+              style={{ width: `${Math.min((subData?.mrr.net || 0) / 1000 * 100, 100)}%` }}
             />
-          </div>
-          <div className="grid grid-cols-3 gap-4 text-sm mb-4">
-            {Object.entries(status.revenue.breakdown).map(([key, value]) => (
-              <div key={key}>
-                <div className="text-emerald-400 font-semibold">${value}</div>
-                <div className="text-gray-500 text-xs">{key.replace('AI', ' AI')}</div>
-              </div>
-            ))}
+            {/* $1k marker */}
+            <div className="absolute top-0 left-[10%] h-full w-0.5 bg-yellow-400/50" title="$1k goal" />
           </div>
 
-          {/* Math: How many subs needed */}
-          <div className="bg-gray-900/30 rounded-lg p-3 mt-3">
-            <div className="text-xs font-semibold text-yellow-400 mb-2">🎯 FIRST GOAL: $1K/MONTH (after 15% Apple cut)</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-3">
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2">
-                <div className="text-yellow-400 font-bold">59</div>
-                <div className="text-gray-500">French weekly ($3.99)</div>
-              </div>
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2">
-                <div className="text-yellow-400 font-bold">79</div>
-                <div className="text-gray-500">French monthly ($14.99)</div>
-              </div>
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2">
-                <div className="text-yellow-400 font-bold">26</div>
-                <div className="text-gray-500">Spanish weekly ($8.99)</div>
-              </div>
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2">
-                <div className="text-yellow-400 font-bold">40</div>
-                <div className="text-gray-500">Spanish monthly ($29.99)</div>
-              </div>
+          {/* Current MRR Summary */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="bg-white/5 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-emerald-400">${subData?.mrr.net.toFixed(2) || '0.00'}</div>
+              <div className="text-xs text-gray-500">Net MRR (after 15%)</div>
             </div>
-            <div className="text-xs font-semibold text-emerald-400 mb-2">🚀 BIG GOAL: $10K/MONTH</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-              <div className="bg-white/5 rounded p-2">
-                <div className="text-blue-400 font-bold">588</div>
-                <div className="text-gray-500">French weekly</div>
-              </div>
-              <div className="bg-white/5 rounded p-2">
-                <div className="text-blue-400 font-bold">785</div>
-                <div className="text-gray-500">French monthly</div>
-              </div>
-              <div className="bg-white/5 rounded p-2">
-                <div className="text-purple-400 font-bold">263</div>
-                <div className="text-gray-500">Spanish weekly</div>
-              </div>
-              <div className="bg-white/5 rounded p-2">
-                <div className="text-purple-400 font-bold">392</div>
-                <div className="text-gray-500">Spanish monthly</div>
-              </div>
+            <div className="bg-white/5 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-gray-400">${subData?.mrr.gross.toFixed(2) || '0.00'}</div>
+              <div className="text-xs text-gray-500">Gross MRR</div>
             </div>
-            <div className="text-xs text-gray-500 mt-2 text-center">
-              Weekly = ~4.3 payments/month · Monthly = 1 payment/month
+            <div className="bg-white/5 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-yellow-400">${subData?.progress.remaining1k.toFixed(0) || '1000'}</div>
+              <div className="text-xs text-gray-500">to $1k goal</div>
+            </div>
+            <div className="bg-white/5 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-blue-400">{subData?.subscriptions.filter(s => s.isActive).length || 0}</div>
+              <div className="text-xs text-gray-500">active subs</div>
             </div>
           </div>
+
+          {/* Breakdown by App */}
+          <div className="bg-gray-900/30 rounded-lg p-3 mb-3">
+            <div className="text-xs font-semibold text-gray-400 mb-2">BY APP</div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {subData?.mrr.byApp && Object.entries(subData.mrr.byApp).map(([app, data]) => (
+                <div key={app} className="bg-white/5 rounded p-2">
+                  <div className="text-sm font-semibold text-emerald-400">${data.net.toFixed(2)}/mo</div>
+                  <div className="text-xs text-gray-500">{APP_NAMES[app] || app}</div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    {data.count} sub{data.count !== 1 ? 's' : ''}: {Object.entries(data.breakdown).map(([plan, count]) => `${count} ${plan}`).join(', ')}
+                  </div>
+                </div>
+              ))}
+              {(!subData?.mrr.byApp || Object.keys(subData.mrr.byApp).length === 0) && (
+                <div className="text-sm text-gray-500 col-span-3">No active subscriptions yet</div>
+              )}
+            </div>
+          </div>
+
+          {/* Dynamic: How many MORE subs needed */}
+          {(() => {
+            const currentNet = subData?.mrr.net || 0;
+            const remaining1k = Math.max(0, 1000 - currentNet);
+            const remaining10k = Math.max(0, 10000 - currentNet);
+
+            // Calculate how many of each sub type needed (net MRR per sub)
+            const calcNeeded = (price: number, plan: string, target: number) => {
+              const multiplier = plan === 'weekly' ? 4.33 : plan === 'yearly' ? 1/12 : 1;
+              const netPerSub = price * multiplier * (1 - APPLE_CUT);
+              return Math.ceil(target / netPerSub);
+            };
+
+            return (
+              <div className="bg-gray-900/30 rounded-lg p-3 mt-3">
+                <div className="text-xs font-semibold text-yellow-400 mb-2">🎯 TO REACH $1K/MONTH ({remaining1k > 0 ? `$${remaining1k.toFixed(0)} more needed` : 'REACHED!'})</div>
+                {remaining1k > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-3">
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2">
+                      <div className="text-yellow-400 font-bold">{calcNeeded(3.99, 'weekly', remaining1k)}</div>
+                      <div className="text-gray-500">French weekly ($3.99)</div>
+                    </div>
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2">
+                      <div className="text-yellow-400 font-bold">{calcNeeded(14.99, 'monthly', remaining1k)}</div>
+                      <div className="text-gray-500">French monthly ($14.99)</div>
+                    </div>
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2">
+                      <div className="text-yellow-400 font-bold">{calcNeeded(8.99, 'weekly', remaining1k)}</div>
+                      <div className="text-gray-500">Spanish weekly ($8.99)</div>
+                    </div>
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2">
+                      <div className="text-yellow-400 font-bold">{calcNeeded(29.99, 'monthly', remaining1k)}</div>
+                      <div className="text-gray-500">Spanish monthly ($29.99)</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-emerald-400 font-bold text-center py-2">🎉 $1K GOAL REACHED!</div>
+                )}
+
+                {/* Mix suggestions */}
+                {remaining1k > 0 && (
+                  <div className="bg-white/5 rounded p-2 mb-3">
+                    <div className="text-xs font-semibold text-cyan-400 mb-1">💡 REALISTIC MIXES TO $1K:</div>
+                    <div className="text-xs text-gray-400 space-y-1">
+                      <div>• <span className="text-blue-400">10 French weekly</span> + <span className="text-purple-400">5 Spanish weekly</span> + <span className="text-emerald-400">15 monthly mix</span> = ~$1k</div>
+                      <div>• <span className="text-blue-400">20 French weekly</span> + <span className="text-emerald-400">20 French monthly</span> = ~$1k</div>
+                      <div>• <span className="text-purple-400">15 Spanish weekly</span> + <span className="text-emerald-400">10 Spanish monthly</span> = ~$1k</div>
+                      <div>• <span className="text-yellow-400">25 yearly subs</span> (French @ $44.99) = ~$1k MRR</div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-xs font-semibold text-emerald-400 mb-2">🚀 TO REACH $10K/MONTH ({remaining10k > 0 ? `$${remaining10k.toFixed(0)} more needed` : 'REACHED!'})</div>
+                {remaining10k > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                    <div className="bg-white/5 rounded p-2">
+                      <div className="text-blue-400 font-bold">{calcNeeded(3.99, 'weekly', remaining10k)}</div>
+                      <div className="text-gray-500">French weekly</div>
+                    </div>
+                    <div className="bg-white/5 rounded p-2">
+                      <div className="text-blue-400 font-bold">{calcNeeded(14.99, 'monthly', remaining10k)}</div>
+                      <div className="text-gray-500">French monthly</div>
+                    </div>
+                    <div className="bg-white/5 rounded p-2">
+                      <div className="text-purple-400 font-bold">{calcNeeded(8.99, 'weekly', remaining10k)}</div>
+                      <div className="text-gray-500">Spanish weekly</div>
+                    </div>
+                    <div className="bg-white/5 rounded p-2">
+                      <div className="text-purple-400 font-bold">{calcNeeded(29.99, 'monthly', remaining10k)}</div>
+                      <div className="text-gray-500">Spanish monthly</div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-xs text-gray-500 mt-3 text-center">
+                  Weekly = ~4.33 payments/month · Monthly = 1/month · Yearly = 1/12 per month · 15% Apple cut
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Active Subscriptions List */}
+          {subData?.subscriptions && subData.subscriptions.filter(s => s.isActive).length > 0 && (
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <div className="text-xs font-semibold text-gray-400 mb-2">ACTIVE SUBSCRIPTIONS</div>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {subData.subscriptions.filter(s => s.isActive).map(sub => (
+                  <div key={sub.id} className="flex justify-between items-center text-xs bg-white/5 rounded px-2 py-1">
+                    <span className="text-gray-300">{APP_NAMES[sub.app] || sub.app} - {sub.plan}</span>
+                    <span className="text-emerald-400">${sub.price} {sub.isTrial && <span className="text-yellow-400">(trial)</span>}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* History - Past Days */}
