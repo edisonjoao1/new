@@ -161,8 +161,8 @@ export default function CommandCenter() {
   const [question, setQuestion] = useState('');
   const [showRevenueInput, setShowRevenueInput] = useState(false);
   const [revenueInput, setRevenueInput] = useState({
-    app: 'frenchAI' as 'frenchAI' | 'spanishAI',
-    type: 'weekly' as 'weekly' | 'monthly',
+    app: 'frenchAI',
+    type: 'weekly',
     count: 1,
     isTrial: false
   });
@@ -231,9 +231,20 @@ export default function CommandCenter() {
   }
 
   // Subscription prices
-  const PRICES = {
-    frenchAI: { weekly: 3.99, monthly: 14.99 },
-    spanishAI: { weekly: 8.99, monthly: 29.99 }
+  const PRICES: Record<string, Record<string, number>> = {
+    frenchAI: { weekly: 3.99, monthly: 14.99, yearly: 44.99 },
+    spanishAI: { weekly: 8.99, monthly: 29.99, yearly: 69.99 },
+    daysTogether: { monthly: 4.99, yearly: 34.99 },
+    love: { weekly: 3.99, monthly: 19.99 },
+    gemAI: { weekly: 5.99, monthly: 19.99 }
+  };
+
+  const APP_NAMES: Record<string, string> = {
+    frenchAI: 'French AI',
+    spanishAI: 'Spanish AI',
+    daysTogether: 'Days Together',
+    love: 'Love',
+    gemAI: 'Gem AI (pending)'
   };
 
   const APPLE_CUT = 0.15; // 15% for small business program
@@ -241,8 +252,9 @@ export default function CommandCenter() {
   async function saveRevenue() {
     setRevenueSaving(true);
     try {
-      const price = PRICES[revenueInput.app][revenueInput.type];
+      const price = PRICES[revenueInput.app]?.[revenueInput.type] || 0;
       const grossAmount = price * revenueInput.count;
+      const appName = APP_NAMES[revenueInput.app] || revenueInput.app;
 
       // Log as checkin to record the subscription
       await fetch('/api/command-center/checkin', {
@@ -252,13 +264,14 @@ export default function CommandCenter() {
           type: 'subscription',
           content: {
             app: revenueInput.app,
+            appName: appName,
             plan: revenueInput.type,
             price: price.toString(),
             count: revenueInput.count.toString(),
             gross: grossAmount.toFixed(2),
             net: (grossAmount * (1 - APPLE_CUT)).toFixed(2),
             isTrial: revenueInput.isTrial ? 'yes' : 'no',
-            note: `${revenueInput.count}x ${revenueInput.app} ${revenueInput.type} @ $${price}${revenueInput.isTrial ? ' (trial)' : ''}`
+            note: `${revenueInput.count}x ${appName} ${revenueInput.type} @ $${price}${revenueInput.isTrial ? ' (trial)' : ''}`
           }
         })
       });
@@ -527,22 +540,31 @@ export default function CommandCenter() {
                   <label className="text-xs text-gray-400 block mb-1">App</label>
                   <select
                     value={revenueInput.app}
-                    onChange={(e) => setRevenueInput({...revenueInput, app: e.target.value as 'frenchAI' | 'spanishAI'})}
+                    onChange={(e) => {
+                      const newApp = e.target.value;
+                      const availablePlans = Object.keys(PRICES[newApp] || {});
+                      const newType = availablePlans.includes(revenueInput.type) ? revenueInput.type : availablePlans[0];
+                      setRevenueInput({...revenueInput, app: newApp, type: newType});
+                    }}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
                   >
-                    <option value="frenchAI">French AI ($3.99/wk, $14.99/mo)</option>
-                    <option value="spanishAI">Spanish AI ($8.99/wk, $29.99/mo)</option>
+                    <option value="frenchAI">French AI</option>
+                    <option value="spanishAI">Spanish AI</option>
+                    <option value="daysTogether">Days Together</option>
+                    <option value="love">Love</option>
+                    <option value="gemAI">Gem AI (pending)</option>
                   </select>
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Plan</label>
                   <select
                     value={revenueInput.type}
-                    onChange={(e) => setRevenueInput({...revenueInput, type: e.target.value as 'weekly' | 'monthly'})}
+                    onChange={(e) => setRevenueInput({...revenueInput, type: e.target.value})}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
                   >
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
+                    {PRICES[revenueInput.app]?.weekly !== undefined && <option value="weekly">Weekly (${PRICES[revenueInput.app].weekly})</option>}
+                    {PRICES[revenueInput.app]?.monthly !== undefined && <option value="monthly">Monthly (${PRICES[revenueInput.app].monthly})</option>}
+                    {PRICES[revenueInput.app]?.yearly !== undefined && <option value="yearly">Yearly (${PRICES[revenueInput.app].yearly})</option>}
                   </select>
                 </div>
               </div>
@@ -573,12 +595,12 @@ export default function CommandCenter() {
                 <div className="text-sm">
                   <span className="text-gray-400">Gross: </span>
                   <span className="text-white font-medium">
-                    ${(PRICES[revenueInput.app][revenueInput.type] * revenueInput.count).toFixed(2)}
+                    ${((PRICES[revenueInput.app]?.[revenueInput.type] || 0) * revenueInput.count).toFixed(2)}
                   </span>
                   <span className="text-gray-400 mx-2">→</span>
                   <span className="text-gray-400">Net (after 15%): </span>
                   <span className="text-emerald-400 font-medium">
-                    ${(PRICES[revenueInput.app][revenueInput.type] * revenueInput.count * (1 - APPLE_CUT)).toFixed(2)}
+                    ${((PRICES[revenueInput.app]?.[revenueInput.type] || 0) * revenueInput.count * (1 - APPLE_CUT)).toFixed(2)}
                   </span>
                 </div>
                 <button
