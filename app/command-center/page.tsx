@@ -118,6 +118,13 @@ interface Admin {
   directive: { priority: string; action: string; commitment: string | null };
 }
 
+interface Subscription {
+  app: 'frenchAI' | 'spanishAI';
+  type: 'weekly' | 'monthly';
+  price: number;
+  isTrial?: boolean;
+}
+
 interface Activity {
   today: {
     totalTime: string;
@@ -152,6 +159,14 @@ export default function CommandCenter() {
   const [aiCoach, setAiCoach] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [question, setQuestion] = useState('');
+  const [showRevenueInput, setShowRevenueInput] = useState(false);
+  const [revenueInput, setRevenueInput] = useState({
+    app: 'frenchAI' as 'frenchAI' | 'spanishAI',
+    type: 'weekly' as 'weekly' | 'monthly',
+    count: 1,
+    isTrial: false
+  });
+  const [revenueSaving, setRevenueSaving] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -213,6 +228,49 @@ export default function CommandCenter() {
       console.error('AI Coach error:', err);
     }
     setAiLoading(false);
+  }
+
+  // Subscription prices
+  const PRICES = {
+    frenchAI: { weekly: 3.99, monthly: 14.99 },
+    spanishAI: { weekly: 8.99, monthly: 29.99 }
+  };
+
+  const APPLE_CUT = 0.15; // 15% for small business program
+
+  async function saveRevenue() {
+    setRevenueSaving(true);
+    try {
+      const price = PRICES[revenueInput.app][revenueInput.type];
+      const grossAmount = price * revenueInput.count;
+
+      // Log as checkin to record the subscription
+      await fetch('/api/command-center/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'subscription',
+          content: {
+            app: revenueInput.app,
+            plan: revenueInput.type,
+            price: price.toString(),
+            count: revenueInput.count.toString(),
+            gross: grossAmount.toFixed(2),
+            net: (grossAmount * (1 - APPLE_CUT)).toFixed(2),
+            isTrial: revenueInput.isTrial ? 'yes' : 'no',
+            note: `${revenueInput.count}x ${revenueInput.app} ${revenueInput.type} @ $${price}${revenueInput.isTrial ? ' (trial)' : ''}`
+          }
+        })
+      });
+
+      // Reload data
+      await loadData();
+      setShowRevenueInput(false);
+      setRevenueInput({ app: 'frenchAI', type: 'weekly', count: 1, isTrial: false });
+    } catch (err) {
+      console.error('Revenue save error:', err);
+    }
+    setRevenueSaving(false);
   }
 
   if (!status || !admin) {
@@ -445,20 +503,128 @@ export default function CommandCenter() {
 
         {/* Revenue Breakdown */}
         <section className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/30 rounded-2xl p-5 mb-6">
-          <h2 className="text-xs font-semibold tracking-wider text-emerald-400 mb-3">REVENUE BREAKDOWN</h2>
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-xs font-semibold tracking-wider text-emerald-400">REVENUE BREAKDOWN</h2>
+            <button
+              onClick={() => setShowRevenueInput(!showRevenueInput)}
+              className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-lg hover:bg-emerald-500/30 transition"
+            >
+              {showRevenueInput ? 'Cancel' : '+ Add Subscription'}
+            </button>
+          </div>
+
+          {/* Revenue Input Form */}
+          {showRevenueInput && (
+            <div className="bg-gray-900/50 rounded-xl p-4 mb-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">App</label>
+                  <select
+                    value={revenueInput.app}
+                    onChange={(e) => setRevenueInput({...revenueInput, app: e.target.value as 'frenchAI' | 'spanishAI'})}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="frenchAI">French AI ($3.99/wk, $14.99/mo)</option>
+                    <option value="spanishAI">Spanish AI ($8.99/wk, $29.99/mo)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Plan</label>
+                  <select
+                    value={revenueInput.type}
+                    onChange={(e) => setRevenueInput({...revenueInput, type: e.target.value as 'weekly' | 'monthly'})}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">How many?</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={revenueInput.count}
+                    onChange={(e) => setRevenueInput({...revenueInput, count: parseInt(e.target.value) || 1})}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={revenueInput.isTrial}
+                      onChange={(e) => setRevenueInput({...revenueInput, isTrial: e.target.checked})}
+                      className="rounded"
+                    />
+                    <span className="text-yellow-400">On trial (pending)</span>
+                  </label>
+                </div>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-white/10">
+                <div className="text-sm">
+                  <span className="text-gray-400">Gross: </span>
+                  <span className="text-white font-medium">
+                    ${(PRICES[revenueInput.app][revenueInput.type] * revenueInput.count).toFixed(2)}
+                  </span>
+                  <span className="text-gray-400 mx-2">→</span>
+                  <span className="text-gray-400">Net (after 15%): </span>
+                  <span className="text-emerald-400 font-medium">
+                    ${(PRICES[revenueInput.app][revenueInput.type] * revenueInput.count * (1 - APPLE_CUT)).toFixed(2)}
+                  </span>
+                </div>
+                <button
+                  onClick={saveRevenue}
+                  disabled={revenueSaving}
+                  className="bg-emerald-500 text-black font-semibold px-4 py-2 rounded-lg text-sm hover:bg-emerald-400 transition disabled:opacity-50"
+                >
+                  {revenueSaving ? 'Saving...' : 'Log Subscription'}
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden mb-3">
             <div
               className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full"
               style={{ width: `${Math.min(parseFloat(status.revenue.progress), 100)}%` }}
             />
           </div>
-          <div className="grid grid-cols-3 gap-4 text-sm">
+          <div className="grid grid-cols-3 gap-4 text-sm mb-4">
             {Object.entries(status.revenue.breakdown).map(([key, value]) => (
               <div key={key}>
                 <div className="text-emerald-400 font-semibold">${value}</div>
                 <div className="text-gray-500 text-xs">{key.replace('AI', ' AI')}</div>
               </div>
             ))}
+          </div>
+
+          {/* Math: How many subs needed */}
+          <div className="bg-gray-900/30 rounded-lg p-3 mt-3">
+            <div className="text-xs font-semibold text-gray-400 mb-2">SUBS NEEDED FOR $10K/MONTH (after 15% Apple cut)</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+              <div className="bg-white/5 rounded p-2">
+                <div className="text-blue-400 font-bold">588</div>
+                <div className="text-gray-500">French weekly ($3.99)</div>
+              </div>
+              <div className="bg-white/5 rounded p-2">
+                <div className="text-blue-400 font-bold">785</div>
+                <div className="text-gray-500">French monthly ($14.99)</div>
+              </div>
+              <div className="bg-white/5 rounded p-2">
+                <div className="text-purple-400 font-bold">263</div>
+                <div className="text-gray-500">Spanish weekly ($8.99)</div>
+              </div>
+              <div className="bg-white/5 rounded p-2">
+                <div className="text-purple-400 font-bold">392</div>
+                <div className="text-gray-500">Spanish monthly ($29.99)</div>
+              </div>
+            </div>
+            <div className="text-xs text-gray-500 mt-2 text-center">
+              Weekly = ~4.3 payments/month · Monthly = 1 payment/month
+            </div>
           </div>
         </section>
 
