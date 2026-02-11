@@ -293,9 +293,15 @@ export default function CommandCenter() {
             EDISON COMMAND CENTER
           </p>
           <h1 className="text-3xl md:text-4xl font-bold mb-1">
-            ${status.revenue.current.toFixed(2)} → <span className="text-emerald-400">$10,000</span>
+            ${status.revenue.current.toFixed(2)} → <span className="text-yellow-400">$1,000</span> → <span className="text-emerald-400">$10K</span>
           </h1>
-          <p className="text-gray-500 text-sm">{status.daysLeft} days left · $1k in bank · Mom counting on you</p>
+          <div className="flex justify-center gap-4 text-sm mt-2">
+            <span className="text-yellow-400">{Math.min(((status.revenue.current / 1000) * 100), 100).toFixed(1)}% to $1k</span>
+            <span className="text-gray-500">·</span>
+            <span className="text-gray-500">{status.daysLeft} days left</span>
+            <span className="text-gray-500">·</span>
+            <span className="text-gray-500">Mom counting on you</span>
+          </div>
         </header>
 
         {/* AI Coach Section */}
@@ -603,23 +609,42 @@ export default function CommandCenter() {
 
           {/* Math: How many subs needed */}
           <div className="bg-gray-900/30 rounded-lg p-3 mt-3">
-            <div className="text-xs font-semibold text-gray-400 mb-2">SUBS NEEDED FOR $10K/MONTH (after 15% Apple cut)</div>
+            <div className="text-xs font-semibold text-yellow-400 mb-2">🎯 FIRST GOAL: $1K/MONTH (after 15% Apple cut)</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-3">
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2">
+                <div className="text-yellow-400 font-bold">59</div>
+                <div className="text-gray-500">French weekly ($3.99)</div>
+              </div>
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2">
+                <div className="text-yellow-400 font-bold">79</div>
+                <div className="text-gray-500">French monthly ($14.99)</div>
+              </div>
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2">
+                <div className="text-yellow-400 font-bold">26</div>
+                <div className="text-gray-500">Spanish weekly ($8.99)</div>
+              </div>
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2">
+                <div className="text-yellow-400 font-bold">40</div>
+                <div className="text-gray-500">Spanish monthly ($29.99)</div>
+              </div>
+            </div>
+            <div className="text-xs font-semibold text-emerald-400 mb-2">🚀 BIG GOAL: $10K/MONTH</div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
               <div className="bg-white/5 rounded p-2">
                 <div className="text-blue-400 font-bold">588</div>
-                <div className="text-gray-500">French weekly ($3.99)</div>
+                <div className="text-gray-500">French weekly</div>
               </div>
               <div className="bg-white/5 rounded p-2">
                 <div className="text-blue-400 font-bold">785</div>
-                <div className="text-gray-500">French monthly ($14.99)</div>
+                <div className="text-gray-500">French monthly</div>
               </div>
               <div className="bg-white/5 rounded p-2">
                 <div className="text-purple-400 font-bold">263</div>
-                <div className="text-gray-500">Spanish weekly ($8.99)</div>
+                <div className="text-gray-500">Spanish weekly</div>
               </div>
               <div className="bg-white/5 rounded p-2">
                 <div className="text-purple-400 font-bold">392</div>
-                <div className="text-gray-500">Spanish monthly ($29.99)</div>
+                <div className="text-gray-500">Spanish monthly</div>
               </div>
             </div>
             <div className="text-xs text-gray-500 mt-2 text-center">
