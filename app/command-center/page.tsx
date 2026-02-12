@@ -779,26 +779,26 @@ export default function CommandCenter() {
 
         {/* PROJECTIONS & RETENTION */}
         {subData && subData.mrr.net > 0 && (
-          <section className="bg-gradient-to-br from-purple-500/10 to-blue-500/5 border border-purple-500/30 rounded-2xl p-5 mb-6">
-            <h2 className="text-xs font-semibold tracking-wider text-purple-400 mb-4">PROJECTIONS & RETENTION</h2>
+          <section className="bg-white dark:bg-gray-900 border border-purple-300 dark:border-purple-500/30 rounded-2xl p-5 mb-6 shadow-sm">
+            <h2 className="text-xs font-semibold tracking-wider text-purple-600 dark:text-purple-400 mb-4">PROJECTIONS & RETENTION</h2>
 
             {/* Annual projection */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-              <div className="bg-white/5 rounded-lg p-3 text-center">
-                <div className="text-xl font-bold text-purple-400">${(subData.mrr.net * 12).toFixed(0)}</div>
-                <div className="text-xs text-gray-500">Annual (if all stay)</div>
+              <div className="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-purple-600 dark:text-purple-400">${(subData.mrr.net * 12).toFixed(0)}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">Annual (if all stay)</div>
               </div>
-              <div className="bg-white/5 rounded-lg p-3 text-center">
-                <div className="text-xl font-bold text-blue-400">${(subData.mrr.net * 12 * 0.7).toFixed(0)}</div>
-                <div className="text-xs text-gray-500">Realistic (30% churn)</div>
+              <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-blue-600 dark:text-blue-400">${(subData.mrr.net * 12 * 0.7).toFixed(0)}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">Realistic (30% churn)</div>
               </div>
-              <div className="bg-white/5 rounded-lg p-3 text-center">
-                <div className="text-xl font-bold text-yellow-400">${(subData.mrr.net * 12 * 0.5).toFixed(0)}</div>
-                <div className="text-xs text-gray-500">Conservative (50% churn)</div>
+              <div className="bg-yellow-50 dark:bg-yellow-900/30 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-yellow-600 dark:text-yellow-400">${(subData.mrr.net * 12 * 0.5).toFixed(0)}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">Conservative (50% churn)</div>
               </div>
-              <div className="bg-white/5 rounded-lg p-3 text-center">
-                <div className="text-xl font-bold text-emerald-400">{subData.subscriptions.filter(s => s.isTrial).length}</div>
-                <div className="text-xs text-gray-500">on trial (convert?)</div>
+              <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{subData.subscriptions.filter(s => s.isTrial).length}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">on trial (convert?)</div>
               </div>
             </div>
 
@@ -815,20 +815,20 @@ export default function CommandCenter() {
               });
 
               const appColors: Record<string, string> = {
-                frenchAI: 'text-blue-400',
-                spanishAI: 'text-purple-400',
-                daysTogether: 'text-pink-400',
-                love: 'text-red-400',
-                gemAI: 'text-cyan-400',
+                frenchAI: 'text-blue-600 dark:text-blue-400',
+                spanishAI: 'text-purple-600 dark:text-purple-400',
+                daysTogether: 'text-pink-600 dark:text-pink-400',
+                love: 'text-red-600 dark:text-red-400',
+                gemAI: 'text-cyan-600 dark:text-cyan-400',
               };
 
               return (
-                <div className="bg-gray-900/30 rounded-lg p-3 mb-3">
-                  <div className="text-xs font-semibold text-cyan-400 mb-2">💰 YOUR SUBS LIFETIME VALUE (LTV) IF THEY STAY</div>
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 mb-3">
+                  <div className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 mb-2">💰 YOUR SUBS LIFETIME VALUE (LTV) IF THEY STAY</div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="text-gray-500">
+                        <tr className="text-gray-600 dark:text-gray-400">
                           <th className="text-left py-1">Your Sub</th>
                           <th className="text-right">#</th>
                           <th className="text-right">1 Mo</th>
@@ -837,14 +837,14 @@ export default function CommandCenter() {
                           <th className="text-right">1 Year</th>
                         </tr>
                       </thead>
-                      <tbody className="text-gray-300">
+                      <tbody className="text-gray-700 dark:text-gray-300">
                         {Object.values(subTypes).map((sub, i) => {
                           const mult = sub.plan === 'weekly' ? 4.33 : sub.plan === 'yearly' ? 1/12 : 1;
                           const monthlyNet = sub.price * mult * 0.85;
-                          const color = appColors[sub.app] || 'text-emerald-400';
+                          const color = appColors[sub.app] || 'text-emerald-600 dark:text-emerald-400';
                           return (
                             <tr key={i}>
-                              <td className="py-1">{APP_NAMES[sub.app]} {sub.plan} (${sub.price})</td>
+                              <td className="py-1 text-gray-800 dark:text-gray-200">{APP_NAMES[sub.app]} {sub.plan} (${sub.price})</td>
                               <td className={`text-right font-bold ${color}`}>{sub.count}x</td>
                               <td className={`text-right ${color}`}>${(monthlyNet * sub.count).toFixed(0)}</td>
                               <td className={`text-right ${color}`}>${(monthlyNet * 3 * sub.count).toFixed(0)}</td>
@@ -853,13 +853,13 @@ export default function CommandCenter() {
                             </tr>
                           );
                         })}
-                        <tr className="border-t border-white/10 font-bold">
-                          <td className="py-2">TOTAL</td>
-                          <td className="text-right text-white">{subData.subscriptions.filter(s => s.isActive).length}x</td>
-                          <td className="text-right text-emerald-400">${subData.mrr.net.toFixed(0)}</td>
-                          <td className="text-right text-emerald-400">${(subData.mrr.net * 3).toFixed(0)}</td>
-                          <td className="text-right text-emerald-400">${(subData.mrr.net * 6).toFixed(0)}</td>
-                          <td className="text-right text-emerald-400">${(subData.mrr.net * 12).toFixed(0)}</td>
+                        <tr className="border-t border-gray-300 dark:border-gray-600 font-bold">
+                          <td className="py-2 text-gray-900 dark:text-white">TOTAL</td>
+                          <td className="text-right text-gray-900 dark:text-white">{subData.subscriptions.filter(s => s.isActive).length}x</td>
+                          <td className="text-right text-emerald-600 dark:text-emerald-400">${subData.mrr.net.toFixed(0)}</td>
+                          <td className="text-right text-emerald-600 dark:text-emerald-400">${(subData.mrr.net * 3).toFixed(0)}</td>
+                          <td className="text-right text-emerald-600 dark:text-emerald-400">${(subData.mrr.net * 6).toFixed(0)}</td>
+                          <td className="text-right text-emerald-600 dark:text-emerald-400">${(subData.mrr.net * 12).toFixed(0)}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -869,30 +869,30 @@ export default function CommandCenter() {
             })()}
 
             {/* Retention rates */}
-            <div className="bg-gray-900/30 rounded-lg p-3">
-              <div className="text-xs font-semibold text-orange-400 mb-2">📊 INDUSTRY RETENTION RATES (App Subscriptions)</div>
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
+              <div className="text-xs font-semibold text-orange-600 dark:text-orange-400 mb-2">📊 INDUSTRY RETENTION RATES (App Subscriptions)</div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-2">
-                <div className="bg-white/5 rounded p-2">
-                  <div className="text-orange-400 font-bold">~40-60%</div>
-                  <div className="text-gray-500">Trial → Paid</div>
+                <div className="bg-orange-50 dark:bg-orange-900/30 rounded p-2">
+                  <div className="text-orange-600 dark:text-orange-400 font-bold">~40-60%</div>
+                  <div className="text-gray-600 dark:text-gray-400">Trial → Paid</div>
                 </div>
-                <div className="bg-white/5 rounded p-2">
-                  <div className="text-yellow-400 font-bold">~70-80%</div>
-                  <div className="text-gray-500">Month 1 retention</div>
+                <div className="bg-yellow-50 dark:bg-yellow-900/30 rounded p-2">
+                  <div className="text-yellow-600 dark:text-yellow-400 font-bold">~70-80%</div>
+                  <div className="text-gray-600 dark:text-gray-400">Month 1 retention</div>
                 </div>
-                <div className="bg-white/5 rounded p-2">
-                  <div className="text-blue-400 font-bold">~50-60%</div>
-                  <div className="text-gray-500">Month 3 retention</div>
+                <div className="bg-blue-50 dark:bg-blue-900/30 rounded p-2">
+                  <div className="text-blue-600 dark:text-blue-400 font-bold">~50-60%</div>
+                  <div className="text-gray-600 dark:text-gray-400">Month 3 retention</div>
                 </div>
-                <div className="bg-white/5 rounded p-2">
-                  <div className="text-emerald-400 font-bold">~30-40%</div>
-                  <div className="text-gray-500">Month 12 retention</div>
+                <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded p-2">
+                  <div className="text-emerald-600 dark:text-emerald-400 font-bold">~30-40%</div>
+                  <div className="text-gray-600 dark:text-gray-400">Month 12 retention</div>
                 </div>
               </div>
-              <div className="text-xs text-gray-500 mt-2">
-                <strong>Your {subData.subscriptions.filter(s => s.isTrial).length} trial(s):</strong> Expect {Math.round(subData.subscriptions.filter(s => s.isTrial).length * 0.5)} to convert (50% rate).
+              <div className="text-xs text-gray-600 dark:text-gray-400 mt-2">
+                <strong className="text-gray-800 dark:text-gray-200">Your {subData.subscriptions.filter(s => s.isTrial).length} trial(s):</strong> Expect {Math.round(subData.subscriptions.filter(s => s.isTrial).length * 0.5)} to convert (50% rate).
                 <br />
-                <strong>Weekly subs churn faster</strong> than monthly/yearly. Push yearly for better retention!
+                <strong className="text-gray-800 dark:text-gray-200">Weekly subs churn faster</strong> than monthly/yearly. Push yearly for better retention!
               </div>
             </div>
 
@@ -917,27 +917,27 @@ export default function CommandCenter() {
               const projected12mo = (trialConvertValue + paidRetainValue) * 0.35; // 35% at 12 mo
 
               return (
-                <div className="bg-white/5 rounded-lg p-3 mt-3">
-                  <div className="text-xs font-semibold text-emerald-400 mb-2">🔮 YOUR PROJECTED MRR (with churn)</div>
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 mt-3">
+                  <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-2">🔮 YOUR PROJECTED MRR (with churn)</div>
                   <div className="grid grid-cols-4 gap-2 text-xs">
                     <div className="text-center">
-                      <div className="text-lg font-bold text-white">${subData.mrr.net.toFixed(0)}</div>
-                      <div className="text-gray-500">Now</div>
+                      <div className="text-lg font-bold text-gray-900 dark:text-white">${subData.mrr.net.toFixed(0)}</div>
+                      <div className="text-gray-600 dark:text-gray-400">Now</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-bold text-yellow-400">${(trialConvertValue + paidRetainValue).toFixed(0)}</div>
-                      <div className="text-gray-500">Month 1</div>
+                      <div className="text-lg font-bold text-yellow-600 dark:text-yellow-400">${(trialConvertValue + paidRetainValue).toFixed(0)}</div>
+                      <div className="text-gray-600 dark:text-gray-400">Month 1</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-bold text-orange-400">${projected3mo.toFixed(0)}</div>
-                      <div className="text-gray-500">Month 3</div>
+                      <div className="text-lg font-bold text-orange-600 dark:text-orange-400">${projected3mo.toFixed(0)}</div>
+                      <div className="text-gray-600 dark:text-gray-400">Month 3</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-bold text-red-400">${projected12mo.toFixed(0)}</div>
-                      <div className="text-gray-500">Month 12</div>
+                      <div className="text-lg font-bold text-red-600 dark:text-red-400">${projected12mo.toFixed(0)}</div>
+                      <div className="text-gray-600 dark:text-gray-400">Month 12</div>
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500 mt-2 text-center">
+                  <div className="text-xs text-gray-600 dark:text-gray-400 mt-2 text-center">
                     ⚠️ This is why you need to keep acquiring new subs! Churn is real.
                   </div>
                 </div>
