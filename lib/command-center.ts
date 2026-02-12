@@ -131,14 +131,7 @@ const DEFAULT_STATE: CommandCenterState = {
       etsyDone: false,
     },
   },
-  subscriptions: [
-    // Current confirmed subscriptions
-    { id: 'french-w1', app: 'frenchAI', plan: 'weekly', price: 3.99, startDate: '2025-01-01', isTrial: false, isActive: true },
-    { id: 'french-w2', app: 'frenchAI', plan: 'weekly', price: 3.99, startDate: '2025-01-15', isTrial: false, isActive: true },
-    { id: 'french-y1', app: 'frenchAI', plan: 'yearly', price: 44.99, startDate: '2025-02-10', isTrial: false, isActive: true },
-    { id: 'spanish-w1', app: 'spanishAI', plan: 'weekly', price: 8.99, startDate: '2025-01-20', isTrial: false, isActive: true },
-    { id: 'spanish-m1', app: 'spanishAI', plan: 'monthly', price: 29.99, startDate: '2025-02-01', isTrial: true, isActive: true },
-  ],
+  subscriptions: [], // Populated via API
 };
 
 // Get database connection
@@ -173,7 +166,21 @@ export async function getState(): Promise<CommandCenterState> {
       await sql`INSERT INTO command_center (id, state) VALUES ('edison', ${JSON.stringify(DEFAULT_STATE)})`;
       return DEFAULT_STATE;
     }
-    return result[0].state as CommandCenterState;
+
+    // Merge with defaults to ensure new fields exist
+    const dbState = result[0].state as CommandCenterState;
+    const merged: CommandCenterState = {
+      ...DEFAULT_STATE,
+      ...dbState,
+      // Ensure subscriptions array exists (for old data without it)
+      subscriptions: dbState.subscriptions || [],
+      // Ensure tracks has all fields
+      tracks: {
+        ...DEFAULT_STATE.tracks,
+        ...(dbState.tracks || {}),
+      },
+    };
+    return merged;
   } catch (error) {
     console.error('Database error in getState:', error);
     return DEFAULT_STATE;
