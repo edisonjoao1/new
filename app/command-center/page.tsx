@@ -777,6 +777,164 @@ export default function CommandCenter() {
           )}
         </section>
 
+        {/* PROJECTIONS & RETENTION */}
+        {subData && subData.mrr.net > 0 && (
+          <section className="bg-gradient-to-br from-purple-500/10 to-blue-500/5 border border-purple-500/30 rounded-2xl p-5 mb-6">
+            <h2 className="text-xs font-semibold tracking-wider text-purple-400 mb-4">PROJECTIONS & RETENTION</h2>
+
+            {/* Annual projection */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div className="bg-white/5 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-purple-400">${(subData.mrr.net * 12).toFixed(0)}</div>
+                <div className="text-xs text-gray-500">Annual (if all stay)</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-blue-400">${(subData.mrr.net * 12 * 0.7).toFixed(0)}</div>
+                <div className="text-xs text-gray-500">Realistic (30% churn)</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-yellow-400">${(subData.mrr.net * 12 * 0.5).toFixed(0)}</div>
+                <div className="text-xs text-gray-500">Conservative (50% churn)</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-emerald-400">{subData.subscriptions.filter(s => s.isTrial).length}</div>
+                <div className="text-xs text-gray-500">on trial (convert?)</div>
+              </div>
+            </div>
+
+            {/* Lifetime Value per sub type */}
+            <div className="bg-gray-900/30 rounded-lg p-3 mb-3">
+              <div className="text-xs font-semibold text-cyan-400 mb-2">💰 LIFETIME VALUE (LTV) IF THEY STAY</div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-gray-500">
+                      <th className="text-left py-1">Sub Type</th>
+                      <th className="text-right">1 Mo</th>
+                      <th className="text-right">3 Mo</th>
+                      <th className="text-right">6 Mo</th>
+                      <th className="text-right">1 Year</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-300">
+                    <tr>
+                      <td className="py-1">French Weekly ($3.99)</td>
+                      <td className="text-right text-emerald-400">${(3.99 * 4.33 * 0.85).toFixed(0)}</td>
+                      <td className="text-right text-emerald-400">${(3.99 * 4.33 * 3 * 0.85).toFixed(0)}</td>
+                      <td className="text-right text-emerald-400">${(3.99 * 4.33 * 6 * 0.85).toFixed(0)}</td>
+                      <td className="text-right text-emerald-400 font-bold">${(3.99 * 4.33 * 12 * 0.85).toFixed(0)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1">French Monthly ($14.99)</td>
+                      <td className="text-right text-emerald-400">${(14.99 * 0.85).toFixed(0)}</td>
+                      <td className="text-right text-emerald-400">${(14.99 * 3 * 0.85).toFixed(0)}</td>
+                      <td className="text-right text-emerald-400">${(14.99 * 6 * 0.85).toFixed(0)}</td>
+                      <td className="text-right text-emerald-400 font-bold">${(14.99 * 12 * 0.85).toFixed(0)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1">Spanish Weekly ($8.99)</td>
+                      <td className="text-right text-purple-400">${(8.99 * 4.33 * 0.85).toFixed(0)}</td>
+                      <td className="text-right text-purple-400">${(8.99 * 4.33 * 3 * 0.85).toFixed(0)}</td>
+                      <td className="text-right text-purple-400">${(8.99 * 4.33 * 6 * 0.85).toFixed(0)}</td>
+                      <td className="text-right text-purple-400 font-bold">${(8.99 * 4.33 * 12 * 0.85).toFixed(0)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1">Spanish Monthly ($29.99)</td>
+                      <td className="text-right text-purple-400">${(29.99 * 0.85).toFixed(0)}</td>
+                      <td className="text-right text-purple-400">${(29.99 * 3 * 0.85).toFixed(0)}</td>
+                      <td className="text-right text-purple-400">${(29.99 * 6 * 0.85).toFixed(0)}</td>
+                      <td className="text-right text-purple-400 font-bold">${(29.99 * 12 * 0.85).toFixed(0)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1">Days Together ($4.99)</td>
+                      <td className="text-right text-pink-400">${(4.99 * 0.85).toFixed(0)}</td>
+                      <td className="text-right text-pink-400">${(4.99 * 3 * 0.85).toFixed(0)}</td>
+                      <td className="text-right text-pink-400">${(4.99 * 6 * 0.85).toFixed(0)}</td>
+                      <td className="text-right text-pink-400 font-bold">${(4.99 * 12 * 0.85).toFixed(0)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Retention rates */}
+            <div className="bg-gray-900/30 rounded-lg p-3">
+              <div className="text-xs font-semibold text-orange-400 mb-2">📊 INDUSTRY RETENTION RATES (App Subscriptions)</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-2">
+                <div className="bg-white/5 rounded p-2">
+                  <div className="text-orange-400 font-bold">~40-60%</div>
+                  <div className="text-gray-500">Trial → Paid</div>
+                </div>
+                <div className="bg-white/5 rounded p-2">
+                  <div className="text-yellow-400 font-bold">~70-80%</div>
+                  <div className="text-gray-500">Month 1 retention</div>
+                </div>
+                <div className="bg-white/5 rounded p-2">
+                  <div className="text-blue-400 font-bold">~50-60%</div>
+                  <div className="text-gray-500">Month 3 retention</div>
+                </div>
+                <div className="bg-white/5 rounded p-2">
+                  <div className="text-emerald-400 font-bold">~30-40%</div>
+                  <div className="text-gray-500">Month 12 retention</div>
+                </div>
+              </div>
+              <div className="text-xs text-gray-500 mt-2">
+                <strong>Your {subData.subscriptions.filter(s => s.isTrial).length} trial(s):</strong> Expect {Math.round(subData.subscriptions.filter(s => s.isTrial).length * 0.5)} to convert (50% rate).
+                <br />
+                <strong>Weekly subs churn faster</strong> than monthly/yearly. Push yearly for better retention!
+              </div>
+            </div>
+
+            {/* Your current subs projected */}
+            {(() => {
+              const activeSubs = subData.subscriptions.filter(s => s.isActive);
+              const trials = activeSubs.filter(s => s.isTrial);
+              const paid = activeSubs.filter(s => !s.isTrial);
+
+              // Project with 50% trial conversion, 70% month 1 retention
+              const trialConvertValue = trials.reduce((sum, s) => {
+                const mult = s.plan === 'weekly' ? 4.33 : s.plan === 'yearly' ? 1/12 : 1;
+                return sum + (s.price * mult * 0.85 * 0.5); // 50% convert
+              }, 0);
+
+              const paidRetainValue = paid.reduce((sum, s) => {
+                const mult = s.plan === 'weekly' ? 4.33 : s.plan === 'yearly' ? 1/12 : 1;
+                return sum + (s.price * mult * 0.85 * 0.7); // 70% retain
+              }, 0);
+
+              const projected3mo = (trialConvertValue + paidRetainValue) * 0.6; // 60% at 3 mo
+              const projected12mo = (trialConvertValue + paidRetainValue) * 0.35; // 35% at 12 mo
+
+              return (
+                <div className="bg-white/5 rounded-lg p-3 mt-3">
+                  <div className="text-xs font-semibold text-emerald-400 mb-2">🔮 YOUR PROJECTED MRR (with churn)</div>
+                  <div className="grid grid-cols-4 gap-2 text-xs">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-white">${subData.mrr.net.toFixed(0)}</div>
+                      <div className="text-gray-500">Now</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-yellow-400">${(trialConvertValue + paidRetainValue).toFixed(0)}</div>
+                      <div className="text-gray-500">Month 1</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-orange-400">${projected3mo.toFixed(0)}</div>
+                      <div className="text-gray-500">Month 3</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-red-400">${projected12mo.toFixed(0)}</div>
+                      <div className="text-gray-500">Month 12</div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2 text-center">
+                    ⚠️ This is why you need to keep acquiring new subs! Churn is real.
+                  </div>
+                </div>
+              );
+            })()}
+          </section>
+        )}
+
         {/* History - Past Days */}
         {status.history?.dailyStats && status.history.dailyStats.length > 0 && (
           <section className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-2xl p-5 mb-6">
