@@ -802,60 +802,71 @@ export default function CommandCenter() {
               </div>
             </div>
 
-            {/* Lifetime Value per sub type */}
-            <div className="bg-gray-900/30 rounded-lg p-3 mb-3">
-              <div className="text-xs font-semibold text-cyan-400 mb-2">💰 LIFETIME VALUE (LTV) IF THEY STAY</div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="text-gray-500">
-                      <th className="text-left py-1">Sub Type</th>
-                      <th className="text-right">1 Mo</th>
-                      <th className="text-right">3 Mo</th>
-                      <th className="text-right">6 Mo</th>
-                      <th className="text-right">1 Year</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-gray-300">
-                    <tr>
-                      <td className="py-1">French Weekly ($3.99)</td>
-                      <td className="text-right text-emerald-400">${(3.99 * 4.33 * 0.85).toFixed(0)}</td>
-                      <td className="text-right text-emerald-400">${(3.99 * 4.33 * 3 * 0.85).toFixed(0)}</td>
-                      <td className="text-right text-emerald-400">${(3.99 * 4.33 * 6 * 0.85).toFixed(0)}</td>
-                      <td className="text-right text-emerald-400 font-bold">${(3.99 * 4.33 * 12 * 0.85).toFixed(0)}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1">French Monthly ($14.99)</td>
-                      <td className="text-right text-emerald-400">${(14.99 * 0.85).toFixed(0)}</td>
-                      <td className="text-right text-emerald-400">${(14.99 * 3 * 0.85).toFixed(0)}</td>
-                      <td className="text-right text-emerald-400">${(14.99 * 6 * 0.85).toFixed(0)}</td>
-                      <td className="text-right text-emerald-400 font-bold">${(14.99 * 12 * 0.85).toFixed(0)}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1">Spanish Weekly ($8.99)</td>
-                      <td className="text-right text-purple-400">${(8.99 * 4.33 * 0.85).toFixed(0)}</td>
-                      <td className="text-right text-purple-400">${(8.99 * 4.33 * 3 * 0.85).toFixed(0)}</td>
-                      <td className="text-right text-purple-400">${(8.99 * 4.33 * 6 * 0.85).toFixed(0)}</td>
-                      <td className="text-right text-purple-400 font-bold">${(8.99 * 4.33 * 12 * 0.85).toFixed(0)}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1">Spanish Monthly ($29.99)</td>
-                      <td className="text-right text-purple-400">${(29.99 * 0.85).toFixed(0)}</td>
-                      <td className="text-right text-purple-400">${(29.99 * 3 * 0.85).toFixed(0)}</td>
-                      <td className="text-right text-purple-400">${(29.99 * 6 * 0.85).toFixed(0)}</td>
-                      <td className="text-right text-purple-400 font-bold">${(29.99 * 12 * 0.85).toFixed(0)}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1">Days Together ($4.99)</td>
-                      <td className="text-right text-pink-400">${(4.99 * 0.85).toFixed(0)}</td>
-                      <td className="text-right text-pink-400">${(4.99 * 3 * 0.85).toFixed(0)}</td>
-                      <td className="text-right text-pink-400">${(4.99 * 6 * 0.85).toFixed(0)}</td>
-                      <td className="text-right text-pink-400 font-bold">${(4.99 * 12 * 0.85).toFixed(0)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            {/* Lifetime Value - Dynamic based on YOUR subs */}
+            {(() => {
+              // Group subs by app+plan to show unique types with counts
+              const subTypes: Record<string, { app: string; plan: string; price: number; count: number }> = {};
+              subData.subscriptions.filter(s => s.isActive).forEach(s => {
+                const key = `${s.app}-${s.plan}`;
+                if (!subTypes[key]) {
+                  subTypes[key] = { app: s.app, plan: s.plan, price: s.price, count: 0 };
+                }
+                subTypes[key].count++;
+              });
+
+              const appColors: Record<string, string> = {
+                frenchAI: 'text-blue-400',
+                spanishAI: 'text-purple-400',
+                daysTogether: 'text-pink-400',
+                love: 'text-red-400',
+                gemAI: 'text-cyan-400',
+              };
+
+              return (
+                <div className="bg-gray-900/30 rounded-lg p-3 mb-3">
+                  <div className="text-xs font-semibold text-cyan-400 mb-2">💰 YOUR SUBS LIFETIME VALUE (LTV) IF THEY STAY</div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-gray-500">
+                          <th className="text-left py-1">Your Sub</th>
+                          <th className="text-right">#</th>
+                          <th className="text-right">1 Mo</th>
+                          <th className="text-right">3 Mo</th>
+                          <th className="text-right">6 Mo</th>
+                          <th className="text-right">1 Year</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-gray-300">
+                        {Object.values(subTypes).map((sub, i) => {
+                          const mult = sub.plan === 'weekly' ? 4.33 : sub.plan === 'yearly' ? 1/12 : 1;
+                          const monthlyNet = sub.price * mult * 0.85;
+                          const color = appColors[sub.app] || 'text-emerald-400';
+                          return (
+                            <tr key={i}>
+                              <td className="py-1">{APP_NAMES[sub.app]} {sub.plan} (${sub.price})</td>
+                              <td className={`text-right font-bold ${color}`}>{sub.count}x</td>
+                              <td className={`text-right ${color}`}>${(monthlyNet * sub.count).toFixed(0)}</td>
+                              <td className={`text-right ${color}`}>${(monthlyNet * 3 * sub.count).toFixed(0)}</td>
+                              <td className={`text-right ${color}`}>${(monthlyNet * 6 * sub.count).toFixed(0)}</td>
+                              <td className={`text-right ${color} font-bold`}>${(monthlyNet * 12 * sub.count).toFixed(0)}</td>
+                            </tr>
+                          );
+                        })}
+                        <tr className="border-t border-white/10 font-bold">
+                          <td className="py-2">TOTAL</td>
+                          <td className="text-right text-white">{subData.subscriptions.filter(s => s.isActive).length}x</td>
+                          <td className="text-right text-emerald-400">${subData.mrr.net.toFixed(0)}</td>
+                          <td className="text-right text-emerald-400">${(subData.mrr.net * 3).toFixed(0)}</td>
+                          <td className="text-right text-emerald-400">${(subData.mrr.net * 6).toFixed(0)}</td>
+                          <td className="text-right text-emerald-400">${(subData.mrr.net * 12).toFixed(0)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Retention rates */}
             <div className="bg-gray-900/30 rounded-lg p-3">
