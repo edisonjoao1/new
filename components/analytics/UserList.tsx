@@ -34,6 +34,11 @@ import {
   Bell,
   Sparkles,
   GitBranch,
+  Send,
+  Video,
+  SearchIcon,
+  Star,
+  BellRing,
 } from 'lucide-react'
 import RetentionCohorts from './RetentionCohorts'
 import ConversionFunnel from './ConversionFunnel'
@@ -57,11 +62,12 @@ import {
   Cell,
 } from 'recharts'
 
-type UserSegment = 'all' | 'today' | 'new' | 'power' | 'at_risk' | 'voice' | 'images'
+type UserSegment = 'all' | 'today' | 'new' | 'power' | 'at_risk' | 'voice' | 'images' | 'subscribed' | 'videos'
 
 interface User {
   id: string
   device_id: string
+  user_name: string | null
   locale: string
   device_model: string
   os_version: string
@@ -69,7 +75,9 @@ interface User {
   total_app_opens: number
   total_messages_sent: number
   total_images_generated: number
+  total_videos_generated: number
   total_voice_sessions: number
+  total_web_searches: number
   total_session_seconds: number
   created_at: string | null
   last_active: string | null
@@ -78,7 +86,11 @@ interface User {
   days_since_first_open: number
   voice_failure_count: number
   nsfw_attempt_count: number
-  is_premium: boolean
+  is_subscribed: boolean
+  notification_granted: boolean
+  has_rated: boolean
+  engagement_level: string | null
+  personalization_score: number
   conversation_count: number
   engagement_score: number
 }
@@ -93,16 +105,36 @@ interface DashboardStats {
     totalImages: number
     totalVoiceSessions: number
     totalAppOpens: number
+    totalVideos: number
+    totalWebSearches: number
     totalSessionHours: number
     avgMessagesPerUser: number
     avgImagesPerUser: number
     avgAppOpensPerUser: number
+    avgPersonalizationScore: number
+  }
+  changes: {
+    activeThisWeek: number | null
+    activeThisMonth: number | null
+    newUsers: number | null
   }
   segmentCounts: Record<string, number>
   topLocales: { locale: string; count: number; percentage: number }[]
   topDevices: { device: string; count: number; percentage: number }[]
   timeline: { date: string; signups: number; active: number }[]
+  timelineDays: number
   retentionRate: { day1: number; day7: number }
+  notifications?: {
+    granted: number
+    denied: number
+    notYetAsked: number
+    reachable: number
+    unreachable: number
+    totalSent: number
+    engagedAfterNotification: number
+    engagementRate: number
+    peakHours: { hour: number; count: number }[]
+  }
 }
 
 // Segment definitions
@@ -110,10 +142,12 @@ const SEGMENTS: { id: UserSegment; label: string; icon: any; description: string
   { id: 'all', label: 'All Users', icon: Users, description: 'All registered users', color: 'purple' },
   { id: 'today', label: 'Active Today', icon: Zap, description: 'Users active in last 24h', color: 'green' },
   { id: 'new', label: 'New Users', icon: UserPlus, description: 'Registered in last 7 days', color: 'blue' },
-  { id: 'power', label: 'Power Users', icon: Crown, description: '50+ messages sent', color: 'yellow' },
+  { id: 'subscribed', label: 'Subscribed', icon: Crown, description: 'Active subscribers', color: 'yellow' },
+  { id: 'power', label: 'Power Users', icon: Star, description: '50+ messages sent', color: 'orange' },
   { id: 'at_risk', label: 'At Risk', icon: AlertTriangle, description: 'Inactive 7+ days', color: 'red' },
   { id: 'voice', label: 'Voice Users', icon: Mic, description: 'Used voice chat', color: 'pink' },
   { id: 'images', label: 'Image Creators', icon: Image, description: 'Generated images', color: 'indigo' },
+  { id: 'videos', label: 'Video Creators', icon: Video, description: 'Generated videos', color: 'cyan' },
 ]
 
 const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1']
@@ -149,21 +183,22 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
   const [minMessages, setMinMessages] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [segmentCounts, setSegmentCounts] = useState<Record<UserSegment, number>>({
-    all: 0, today: 0, new: 0, power: 0, at_risk: 0, voice: 0, images: 0
+    all: 0, today: 0, new: 0, power: 0, at_risk: 0, voice: 0, images: 0, subscribed: 0, videos: 0
   })
 
   // View mode
-  const [viewMode, setViewMode] = useState<'dashboard' | 'users' | 'retention' | 'funnel' | 'insights' | 'errors' | 'alerts' | 'performance'>('dashboard')
+  const [viewMode, setViewMode] = useState<'dashboard' | 'users' | 'notifications' | 'retention' | 'funnel' | 'insights' | 'errors' | 'alerts' | 'performance'>('dashboard')
 
   // Auto-refresh state
-  const [autoRefresh, setAutoRefresh] = useState(true)
+  const [autoRefresh, setAutoRefresh] = useState(false)
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date())
+  const [timelineDays, setTimelineDays] = useState(90)
 
   // Fetch dashboard stats
   const fetchDashboard = async (silent = false) => {
     if (!silent) setLoadingDashboard(true)
     try {
-      const response = await fetch(`/api/analytics/users?key=${encodeURIComponent(analyticsKey)}&dashboard=true`)
+      const response = await fetch(`/api/analytics/users?key=${encodeURIComponent(analyticsKey)}&dashboard=true&timelineDays=${timelineDays}`)
       const data = await response.json()
       if (response.ok) {
         setDashboard(data)
@@ -231,6 +266,12 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
 
   useEffect(() => {
     if (analyticsKey) {
+      fetchDashboard()
+    }
+  }, [timelineDays])
+
+  useEffect(() => {
+    if (analyticsKey) {
       fetchUsers()
     }
   }, [analyticsKey, page, sortBy, sortOrder, localeFilter, deviceFilter, activeSegment, dateFrom, dateTo, minMessages])
@@ -242,7 +283,7 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
     const interval = setInterval(() => {
       fetchDashboard(true) // Silent refresh
       fetchUsers(true) // Silent refresh
-    }, 30000) // 30 seconds
+    }, 5 * 60 * 1000) // 5 minutes
 
     return () => clearInterval(interval)
   }, [autoRefresh, analyticsKey, page, sortBy, sortOrder, localeFilter, deviceFilter, activeSegment, dateFrom, dateTo, minMessages])
@@ -295,17 +336,22 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
   }
 
   const exportCSV = () => {
-    const headers = ['Device ID', 'Locale', 'Device', 'OS', 'App Version', 'Messages', 'Images', 'Voice Sessions', 'App Opens', 'First Open', 'Last Active', 'Engagement Score']
+    const headers = ['Name', 'Device ID', 'Locale', 'Device', 'OS', 'App Version', 'Subscribed', 'Messages', 'Images', 'Videos', 'Voice Sessions', 'Web Searches', 'App Opens', 'Notifications', 'First Open', 'Last Active', 'Engagement Score']
     const rows = users.map(u => [
+      u.user_name || '',
       u.device_id,
       u.locale,
       u.device_model,
       u.os_version,
       u.app_version,
+      u.is_subscribed ? 'Yes' : 'No',
       u.total_messages_sent,
       u.total_images_generated,
+      u.total_videos_generated,
       u.total_voice_sessions,
+      u.total_web_searches,
       u.total_app_opens,
+      u.notification_granted ? 'Granted' : 'No',
       u.first_open_date || u.created_at || 'Never',
       u.last_active || 'Never',
       u.engagement_score,
@@ -323,6 +369,7 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
   const filteredUsers = searchQuery
     ? users.filter(u =>
         u.device_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (u.user_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         u.locale.toLowerCase().includes(searchQuery.toLowerCase()) ||
         u.device_model.toLowerCase().includes(searchQuery.toLowerCase())
       )
@@ -357,6 +404,7 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
             {[
               { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
               { id: 'users', label: 'Users', icon: Users },
+              { id: 'notifications', label: 'Notifications', icon: Send },
               { id: 'performance', label: 'Performance', icon: Activity },
               { id: 'retention', label: 'Retention', icon: Target },
               { id: 'funnel', label: 'Funnel', icon: GitBranch },
@@ -421,15 +469,18 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
       {viewMode === 'dashboard' && dashboard && (
         <div className="space-y-6">
           {/* Overview Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {[
-              { label: 'Total Users', value: formatNumber(dashboard.overview.totalUsers), icon: Users, color: 'purple' },
-              { label: 'Active Today', value: formatNumber(dashboard.overview.activeToday), icon: Zap, color: 'green' },
-              { label: 'Active This Week', value: formatNumber(dashboard.overview.activeThisWeek), icon: TrendingUp, color: 'blue' },
-              { label: 'App Opens', value: formatNumber(dashboard.overview.totalAppOpens), icon: Activity, color: 'cyan' },
-              { label: 'Total Messages', value: formatNumber(dashboard.overview.totalMessages), icon: MessageSquare, color: 'indigo' },
-              { label: 'Images Generated', value: formatNumber(dashboard.overview.totalImages), icon: Image, color: 'pink' },
-              { label: 'Voice Sessions', value: formatNumber(dashboard.overview.totalVoiceSessions), icon: Mic, color: 'red' },
+              { label: 'Total Users', value: formatNumber(dashboard.overview.totalUsers), icon: Users, color: 'purple', change: null as number | null },
+              { label: 'WAU', value: formatNumber(dashboard.overview.activeThisWeek), icon: TrendingUp, color: 'blue', change: dashboard.changes?.activeThisWeek ?? null },
+              { label: 'MAU', value: formatNumber(dashboard.overview.activeThisMonth), icon: Activity, color: 'green', change: dashboard.changes?.activeThisMonth ?? null },
+              { label: 'New Users (7d)', value: formatNumber(dashboard.segmentCounts.new || 0), icon: UserPlus, color: 'cyan', change: dashboard.changes?.newUsers ?? null },
+              { label: 'Subscribed', value: formatNumber(dashboard.segmentCounts.subscribed || 0), icon: Crown, color: 'yellow', change: null },
+              { label: 'Messages', value: formatNumber(dashboard.overview.totalMessages), icon: MessageSquare, color: 'indigo', change: null },
+              { label: 'Images', value: formatNumber(dashboard.overview.totalImages), icon: Image, color: 'pink', change: null },
+              { label: 'Videos', value: formatNumber(dashboard.overview.totalVideos), icon: Video, color: 'cyan', change: null },
+              { label: 'Voice Sessions', value: formatNumber(dashboard.overview.totalVoiceSessions), icon: Mic, color: 'red', change: null },
+              { label: 'Notifications', value: formatNumber(dashboard.segmentCounts.notification_granted || 0), icon: BellRing, color: 'emerald', change: null },
             ].map((stat) => (
               <div
                 key={stat.label}
@@ -439,9 +490,19 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
                   <stat.icon className={`w-4 h-4 text-${stat.color}-500`} />
                   <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{stat.label}</span>
                 </div>
-                <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {stat.value}
-                </p>
+                <div className="flex items-end justify-between">
+                  <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {stat.value}
+                  </p>
+                  {stat.change !== null && (
+                    <span className={`text-xs font-medium flex items-center gap-0.5 ${
+                      stat.change > 0 ? 'text-green-500' : stat.change < 0 ? 'text-red-500' : isDark ? 'text-gray-500' : 'text-gray-400'
+                    }`}>
+                      <TrendingUp className={`w-3 h-3 ${stat.change < 0 ? 'rotate-180' : ''}`} />
+                      {stat.change > 0 ? '+' : ''}{stat.change}%
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -450,9 +511,34 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Activity Timeline */}
             <div className={`p-6 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-              <h3 className={`text-sm font-medium mb-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Activity Timeline (Last 30 Days)
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Activity Timeline
+                </h3>
+                <div className="flex gap-1">
+                  {[
+                    { label: '30d', value: 30 },
+                    { label: '60d', value: 60 },
+                    { label: '90d', value: 90 },
+                    { label: '180d', value: 180 },
+                    { label: 'All', value: 365 },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setTimelineDays(opt.value)}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        timelineDays === opt.value
+                          ? 'bg-purple-600 text-white'
+                          : isDark
+                            ? 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={dashboard.timeline}>
@@ -790,11 +876,10 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
                 <thead className={isDark ? 'bg-gray-800' : 'bg-gray-50'}>
                   <tr>
                     {[
-                      { key: 'device_id', label: 'User ID', icon: Users, hasInfo: false },
-                      { key: 'locale', label: 'Locale', icon: Globe, hasInfo: false },
-                      { key: 'device_model', label: 'Device', icon: Smartphone, hasInfo: false },
+                      { key: 'device_id', label: 'User', icon: Users, hasInfo: false },
                       { key: 'total_messages_sent', label: 'Messages', icon: MessageSquare, hasInfo: false },
                       { key: 'total_images_generated', label: 'Images', icon: Image, hasInfo: false },
+                      { key: 'total_videos_generated', label: 'Videos', icon: Video, hasInfo: false },
                       { key: 'total_voice_sessions', label: 'Voice', icon: Mic, hasInfo: false },
                       { key: 'total_app_opens', label: 'Opens', icon: Activity, hasInfo: false },
                       { key: 'first_open_date', label: 'First Open', icon: Calendar, hasInfo: false },
@@ -820,11 +905,15 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
                               <div className={`absolute top-full right-0 mt-2 px-3 py-2 text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 w-56 ${isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-900 text-white'}`}>
                                 <div className="font-semibold mb-1">Engagement Score (0-100)</div>
                                 <div className="text-left normal-case font-normal space-y-0.5">
-                                  <div>Messages: up to 40pts</div>
-                                  <div>Conversations: up to 20pts</div>
-                                  <div>Images: up to 15pts</div>
-                                  <div>Voice: up to 15pts</div>
-                                  <div>Session time: up to 10pts</div>
+                                  <div>Messages: up to 30pts</div>
+                                  <div>Conversations: up to 15pts</div>
+                                  <div>Images: up to 10pts</div>
+                                  <div>Voice: up to 10pts</div>
+                                  <div>Videos: up to 10pts</div>
+                                  <div>Web searches: up to 8pts</div>
+                                  <div>Session time: up to 7pts</div>
+                                  <div>Personalization: up to 5pts</div>
+                                  <div>Subscribed: 5pts</div>
                                 </div>
                               </div>
                             </span>
@@ -844,7 +933,7 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
                   {loading ? (
                     [...Array(10)].map((_, i) => (
                       <tr key={i} className={isDark ? 'bg-gray-900' : 'bg-white'}>
-                        {[...Array(11)].map((_, j) => (
+                        {[...Array(10)].map((_, j) => (
                           <td key={j} className="px-4 py-3">
                             <div className={`h-4 rounded ${isDark ? 'bg-gray-700' : 'bg-gray-200'} animate-pulse`}></div>
                           </td>
@@ -870,27 +959,34 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            {user.is_premium && <Crown className="w-3 h-3 text-yellow-500" />}
-                            <span className={`font-mono text-sm ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
-                              {user.device_id.substring(0, 12)}...
-                            </span>
+                            {user.is_subscribed && <Crown className="w-3 h-3 text-yellow-500 flex-shrink-0" />}
+                            {user.notification_granted && <BellRing className="w-3 h-3 text-green-500 flex-shrink-0" />}
+                            <div className="min-w-0">
+                              {user.user_name ? (
+                                <>
+                                  <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                    {user.user_name}
+                                  </p>
+                                  <p className={`font-mono text-xs truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                    {user.device_id.substring(0, 8)}...
+                                  </p>
+                                </>
+                              ) : (
+                                <p className={`font-mono text-sm truncate ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
+                                  {user.device_id.substring(0, 12)}...
+                                </p>
+                              )}
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {user.locale}
-                          </span>
-                        </td>
-                        <td className={`px-4 py-3 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                          {user.device_model}
                         </td>
                         <td className={`px-4 py-3 text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
                           {user.total_messages_sent.toLocaleString()}
                         </td>
                         <td className={`px-4 py-3 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                           {user.total_images_generated}
+                        </td>
+                        <td className={`px-4 py-3 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          {user.total_videos_generated}
                         </td>
                         <td className={`px-4 py-3 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                           {user.total_voice_sessions}
@@ -961,6 +1057,247 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
             </div>
           )}
         </>
+      )}
+
+      {/* Notifications Analytics View */}
+      {viewMode === 'notifications' && dashboard && (
+        <div className="space-y-6">
+          {/* Notification Overview Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[
+              {
+                label: 'Granted',
+                value: dashboard.notifications?.granted || 0,
+                icon: BellRing,
+                color: 'green',
+                description: 'Users who granted permission'
+              },
+              {
+                label: 'Denied',
+                value: dashboard.notifications?.denied || 0,
+                icon: Bell,
+                color: 'red',
+                description: 'Prompted but declined'
+              },
+              {
+                label: 'Not Yet Asked',
+                value: dashboard.notifications?.notYetAsked || 0,
+                icon: Clock,
+                color: 'yellow',
+                description: 'Haven\'t been prompted yet'
+              },
+              {
+                label: 'Notifications Sent',
+                value: dashboard.notifications?.totalSent || 0,
+                icon: Send,
+                color: 'blue',
+                description: 'Total sent'
+              },
+              {
+                label: 'Engagement Rate',
+                value: `${dashboard.notifications?.engagementRate || 0}%`,
+                icon: Zap,
+                color: 'purple',
+                description: 'Opened app after notification'
+              },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <stat.icon className={`w-4 h-4 text-${stat.color}-500`} />
+                  <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{stat.label}</span>
+                </div>
+                <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {typeof stat.value === 'number' ? formatNumber(stat.value) : stat.value}
+                </p>
+                <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{stat.description}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Reachability Chart */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className={`p-6 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <h3 className={`text-sm font-medium mb-4 flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                <Bell className="w-4 h-4" />
+                Notification Permission Status
+              </h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPie>
+                    <Pie
+                      data={[
+                        { name: 'Granted', value: dashboard.notifications?.granted || 0, fill: '#10b981' },
+                        { name: 'Denied', value: dashboard.notifications?.denied || 0, fill: '#ef4444' },
+                        { name: 'Not Yet Asked', value: dashboard.notifications?.notYetAsked || 0, fill: '#eab308' },
+                      ]}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      label={({ name, percent }: any) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
+                    >
+                      <Cell fill="#10b981" />
+                      <Cell fill="#ef4444" />
+                      <Cell fill="#eab308" />
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: isDark ? '#1f2937' : '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                      }}
+                    />
+                  </RechartsPie>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-center gap-4 mt-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-green-500" />
+                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Granted ({dashboard.notifications?.granted || 0})
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500" />
+                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Denied ({dashboard.notifications?.denied || 0})
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Not Yet Asked ({dashboard.notifications?.notYetAsked || 0})
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Peak Activity Hours */}
+            <div className={`p-6 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <h3 className={`text-sm font-medium mb-4 flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                <Clock className="w-4 h-4" />
+                Peak Activity Hours (Best Times to Send)
+              </h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dashboard.notifications?.peakHours || []}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#374151' : '#e5e7eb'} />
+                    <XAxis
+                      dataKey="hour"
+                      tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 10 }}
+                      tickFormatter={(h) => `${h}:00`}
+                    />
+                    <YAxis tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 10 }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: isDark ? '#1f2937' : '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: any) => [`${value} users active`, 'Activity']}
+                      labelFormatter={(hour) => `${hour}:00`}
+                    />
+                    <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <p className={`text-xs mt-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                Notifications are automatically sent at each user's preferred time based on their activity patterns
+              </p>
+            </div>
+          </div>
+
+          {/* Engagement After Notification */}
+          <div className={`p-6 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+            <h3 className={`text-sm font-medium mb-4 flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+              <TrendingUp className="w-4 h-4" />
+              Notification Engagement Funnel
+            </h3>
+            <div className="space-y-4">
+              {/* Funnel visualization */}
+              {[
+                {
+                  label: 'Users with Push Enabled',
+                  value: dashboard.notifications?.reachable || 0,
+                  percentage: 100,
+                  color: 'purple'
+                },
+                {
+                  label: 'Notifications Delivered',
+                  value: dashboard.notifications?.totalSent || 0,
+                  percentage: dashboard.notifications?.reachable
+                    ? Math.round((dashboard.notifications?.totalSent || 0) / dashboard.notifications.reachable * 100)
+                    : 0,
+                  color: 'blue'
+                },
+                {
+                  label: 'Engaged (Opened App)',
+                  value: dashboard.notifications?.engagedAfterNotification || 0,
+                  percentage: dashboard.notifications?.engagementRate || 0,
+                  color: 'green'
+                },
+              ].map((step, index) => (
+                <div key={step.label} className="flex items-center gap-4">
+                  <div className="w-32 text-right">
+                    <span className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                      {step.label}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <div className={`h-8 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-200'} overflow-hidden`}>
+                      <div
+                        className={`h-8 rounded-lg bg-${step.color}-500 transition-all flex items-center justify-end pr-3`}
+                        style={{ width: `${Math.max(step.percentage, 5)}%` }}
+                      >
+                        <span className="text-white text-sm font-medium">
+                          {formatNumber(step.value)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-16 text-left">
+                    <span className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                      {step.percentage}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Smart Notification Info */}
+          <div className={`p-6 rounded-xl ${isDark ? 'bg-purple-900/20 border-purple-800' : 'bg-purple-50 border-purple-200'} border`}>
+            <h3 className={`text-sm font-medium mb-3 flex items-center gap-2 ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>
+              <Sparkles className="w-4 h-4" />
+              Smart Notification System
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <p className={`text-xs font-medium mb-1 ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>AI-Powered Content</p>
+                <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  GPT generates personalized, value-driven messages based on user behavior patterns
+                </p>
+              </div>
+              <div>
+                <p className={`text-xs font-medium mb-1 ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>Optimal Timing</p>
+                <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Notifications sent at each user's peak activity hours (morning/afternoon/evening)
+                </p>
+              </div>
+              <div>
+                <p className={`text-xs font-medium mb-1 ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>Segment Targeting</p>
+                <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Users grouped by behavior: never started, image lovers, voice users, power users
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Performance Dashboard View */}

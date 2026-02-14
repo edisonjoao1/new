@@ -27,7 +27,23 @@ import {
   BookOpen,
   Zap,
   Bell,
+  BellRing,
+  BellOff,
   Hash,
+  Video,
+  Search,
+  Star,
+  User,
+  Heart,
+  Target,
+  Sparkles,
+  MapPin,
+  Briefcase,
+  ThumbsUp,
+  MessageCircle,
+  CircleAlert,
+  Flame,
+  BarChart3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -45,25 +61,76 @@ interface UserDetail {
   id: string
   device_id: string
 
+  // Profile
+  user_name: string | null
+  about_me: string | null
+  occupation: string | null
+  interests: string[]
+  goals: string[]
+  assistant_name: string | null
+  communication_style: string | null
+  timezone: string | null
+
   // Device Info
   locale: string
   device_model: string
   os_version: string
   app_version: string
+  previous_version: string | null
 
   // Core Usage Stats
   total_app_opens: number
   total_messages_sent: number
   total_images_generated: number
+  total_videos_generated: number
   total_voice_sessions: number
+  total_web_searches: number
+  total_learn_lessons_viewed: number
   total_session_seconds: number
 
-  // Dates (COMPREHENSIVE)
+  // Dates
   first_open_date: string | null
   last_open_date: string | null
   created_at: string | null
   last_active: string | null
   days_since_first_open: number
+
+  // Subscription
+  is_subscribed: boolean
+  subscription_updated_at: string | null
+
+  // Notifications
+  notification_granted: boolean
+  notifications_enabled: boolean
+  notification_prompted: boolean
+  notification_frequency: string | null
+  preferred_notification_time: string | null
+  notification_preferences_updated_at: string | null
+
+  // Personalization
+  personalization_score: number
+  personalization_fields: Record<string, boolean> | null
+  has_basic_personalization: boolean
+  missing_personalizations: string[]
+
+  // Rating & Feedback
+  has_rated: boolean
+  rating_response: string | null
+  rating_prompt_count: number
+  last_rating_event: string | null
+  last_rating_event_at: string | null
+  feedback_count: number
+  last_feedback: string | null
+  last_feedback_trigger: string | null
+
+  // Error Tracking
+  error_count: number
+  last_error: string | null
+  last_error_category: string | null
+  last_error_code: number | null
+  image_failure_count: number
+  last_image_failure: string | null
+  last_image_failure_type: string | null
 
   // Voice Failure Tracking
   voice_failure_count: number
@@ -77,26 +144,32 @@ interface UserDetail {
   // Lesson Progress
   lessons_completed: number
   lessons_started: number
+  completed_lesson_ids: string[]
+  viewed_lesson_ids: string[]
   current_lesson: string | null
 
-  // Subscription/Premium
-  is_premium: boolean
-  subscription_type: string | null
+  // Engagement
+  engagement_score: number
+  engagement_level: string | null
+
+  // Activity Patterns
+  active_dates: string[]
+  activity_hours: number[]
+  current_streak: number
+  longest_streak: number
 
   // Referral/Source
   referral_source: string | null
   install_source: string | null
 
-  // Engagement
-  engagement_score: number
-
-  // Push Notifications
-  push_enabled: boolean | null
-  push_token: string | null
+  // Push Token
+  has_push_token: boolean
 
   // Feature Usage Flags
   has_used_voice: boolean
   has_generated_images: boolean
+  has_generated_videos: boolean
+  has_used_web_search: boolean
   has_used_lessons: boolean
 }
 
@@ -345,13 +418,18 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                     <div>
                       <div className="flex items-center gap-3">
                         <div className={`p-3 rounded-xl ${isDark ? 'bg-purple-900/30' : 'bg-purple-100'}`}>
-                          <Users className="w-6 h-6 text-purple-500" />
+                          <User className="w-6 h-6 text-purple-500" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
                             <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                              User Details
+                              {user.user_name || 'Unnamed User'}
                             </h2>
+                            {user.is_subscribed && (
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-500/20 text-yellow-500 font-medium">
+                                Subscribed
+                              </span>
+                            )}
                             <button
                               onClick={copyUserId}
                               className={`p-1 rounded transition-colors ${
@@ -365,9 +443,14 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                               )}
                             </button>
                           </div>
-                          <p className={`font-mono text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          <p className={`font-mono text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                             {user.device_id}
                           </p>
+                          {(user.occupation || user.about_me) && (
+                            <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                              {user.occupation || user.about_me}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -378,33 +461,40 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                       <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                         Engagement Score
                       </p>
+                      {user.engagement_level && (
+                        <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                          {user.engagement_level}
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   {/* Quick Stats */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mt-6">
                     {[
                       { label: 'Messages', value: user.total_messages_sent, icon: MessageSquare, color: 'purple' },
                       { label: 'Images', value: user.total_images_generated, icon: Image, color: 'blue' },
-                      { label: 'Voice Sessions', value: user.total_voice_sessions, icon: Mic, color: 'red' },
+                      { label: 'Videos', value: user.total_videos_generated, icon: Video, color: 'cyan' },
+                      { label: 'Voice', value: user.total_voice_sessions, icon: Mic, color: 'red' },
+                      { label: 'Web Searches', value: user.total_web_searches, icon: Search, color: 'indigo' },
                       { label: 'Session Time', value: formatDuration(user.total_session_seconds), icon: Clock, color: 'green' },
                     ].map((stat) => (
                       <div
                         key={stat.label}
-                        className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}
+                        className={`p-3 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}
                       >
-                        <stat.icon className={`w-5 h-5 text-${stat.color}-500 mb-2`} />
-                        <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        <stat.icon className={`w-4 h-4 text-${stat.color}-500 mb-1`} />
+                        <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                           {typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
                         </p>
-                        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                           {stat.label}
                         </p>
                       </div>
                     ))}
                   </div>
 
-                  {/* User Info - Row 1 */}
+                  {/* User Info - Row 1: Device & Location */}
                   <div className="flex flex-wrap gap-4 mt-4">
                     <div className="flex items-center gap-2">
                       <Globe className={`w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
@@ -412,20 +502,21 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                         {user.locale}
                       </span>
                     </div>
+                    {user.timezone && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className={`w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                        <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          {user.timezone}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <Smartphone className={`w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                       <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                         {user.device_model} • iOS {user.os_version} • v{user.app_version}
+                        {user.previous_version && ` (prev: v${user.previous_version})`}
                       </span>
                     </div>
-                    {user.is_premium && (
-                      <div className="flex items-center gap-2">
-                        <Crown className="w-4 h-4 text-yellow-500" />
-                        <span className="text-sm text-yellow-500 font-medium">
-                          Premium {user.subscription_type && `(${user.subscription_type})`}
-                        </span>
-                      </div>
-                    )}
                   </div>
 
                   {/* User Info - Row 2: Dates */}
@@ -459,14 +550,33 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                   </div>
 
                   {/* User Info - Row 3: Warnings/Alerts */}
-                  {(user.voice_failure_count > 0 || user.nsfw_attempt_count > 0) && (
+                  {(user.voice_failure_count > 0 || user.nsfw_attempt_count > 0 || user.error_count > 0 || user.image_failure_count > 0) && (
                     <div className="flex flex-wrap gap-4 mt-2">
+                      {user.error_count > 0 && (
+                        <div className="flex items-center gap-2">
+                          <CircleAlert className="w-4 h-4 text-red-500" />
+                          <span className="text-sm text-red-500">
+                            {user.error_count} errors
+                            {user.last_error_category && ` (${user.last_error_category})`}
+                            {user.last_error_code && ` - ${user.last_error_code}`}
+                          </span>
+                        </div>
+                      )}
                       {user.voice_failure_count > 0 && (
                         <div className="flex items-center gap-2">
                           <AlertTriangle className="w-4 h-4 text-orange-500" />
                           <span className="text-sm text-orange-500">
                             {user.voice_failure_count} voice failures
                             {user.last_voice_failure_type && ` (${user.last_voice_failure_type})`}
+                          </span>
+                        </div>
+                      )}
+                      {user.image_failure_count > 0 && (
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-orange-500" />
+                          <span className="text-sm text-orange-500">
+                            {user.image_failure_count} image failures
+                            {user.last_image_failure_type && ` (${user.last_image_failure_type})`}
                           </span>
                         </div>
                       )}
@@ -483,6 +593,25 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
 
                   {/* Feature Usage Badges */}
                   <div className="flex flex-wrap gap-2 mt-3">
+                    {user.is_subscribed && (
+                      <span className={`px-2 py-1 rounded-full text-xs ${isDark ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-700'}`}>
+                        Subscribed
+                      </span>
+                    )}
+                    {user.notification_granted ? (
+                      <span className={`px-2 py-1 rounded-full text-xs ${isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'}`}>
+                        Notifications Granted
+                      </span>
+                    ) : user.notification_prompted ? (
+                      <span className={`px-2 py-1 rounded-full text-xs ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'}`}>
+                        Notifications Denied
+                      </span>
+                    ) : null}
+                    {user.has_rated && (
+                      <span className={`px-2 py-1 rounded-full text-xs ${isDark ? 'bg-pink-900/30 text-pink-400' : 'bg-pink-100 text-pink-700'}`}>
+                        Rated: {user.rating_response || 'Yes'}
+                      </span>
+                    )}
                     {user.has_used_voice && (
                       <span className={`px-2 py-1 rounded-full text-xs ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
                         Voice User
@@ -490,17 +619,27 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                     )}
                     {user.has_generated_images && (
                       <span className={`px-2 py-1 rounded-full text-xs ${isDark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
-                        Image Generator
+                        Image Creator
+                      </span>
+                    )}
+                    {user.has_generated_videos && (
+                      <span className={`px-2 py-1 rounded-full text-xs ${isDark ? 'bg-cyan-900/30 text-cyan-400' : 'bg-cyan-100 text-cyan-700'}`}>
+                        Video Creator
+                      </span>
+                    )}
+                    {user.has_used_web_search && (
+                      <span className={`px-2 py-1 rounded-full text-xs ${isDark ? 'bg-indigo-900/30 text-indigo-400' : 'bg-indigo-100 text-indigo-700'}`}>
+                        Web Search User
                       </span>
                     )}
                     {user.has_used_lessons && (
                       <span className={`px-2 py-1 rounded-full text-xs ${isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'}`}>
-                        Lesson User ({user.lessons_completed}/{user.lessons_started})
+                        Lessons ({user.lessons_completed}/{user.lessons_started})
                       </span>
                     )}
-                    {user.push_enabled && (
+                    {user.assistant_name && (
                       <span className={`px-2 py-1 rounded-full text-xs ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
-                        Push Enabled
+                        Assistant: {user.assistant_name}
                       </span>
                     )}
                   </div>
@@ -535,6 +674,271 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                 <div className="p-6">
                   {activeTab === 'overview' && (
                     <div className="space-y-6">
+                      {/* Profile Section */}
+                      {(user.interests.length > 0 || user.goals.length > 0 || user.about_me || user.occupation) && (
+                        <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                          <h3 className={`text-sm font-medium mb-3 flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            <User className="w-4 h-4" />
+                            Profile
+                          </h3>
+                          <div className="space-y-3">
+                            {user.about_me && (
+                              <div>
+                                <p className={`text-xs font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>About</p>
+                                <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{user.about_me}</p>
+                              </div>
+                            )}
+                            {user.occupation && (
+                              <div>
+                                <p className={`text-xs font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Occupation</p>
+                                <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{user.occupation}</p>
+                              </div>
+                            )}
+                            {user.interests.length > 0 && (
+                              <div>
+                                <p className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Interests</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {user.interests.map((interest) => (
+                                    <span key={interest} className={`px-2 py-0.5 rounded-full text-xs ${isDark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
+                                      {interest}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {user.goals.length > 0 && (
+                              <div>
+                                <p className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Goals</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {user.goals.map((goal) => (
+                                    <span key={goal} className={`px-2 py-0.5 rounded-full text-xs ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
+                                      {goal}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            <div className="flex flex-wrap gap-4">
+                              {user.communication_style && (
+                                <div>
+                                  <p className={`text-xs font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Style</p>
+                                  <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{user.communication_style}</p>
+                                </div>
+                              )}
+                              {user.personalization_score > 0 && (
+                                <div>
+                                  <p className={`text-xs font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Personalization</p>
+                                  <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{user.personalization_score}%</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Subscription & Notifications */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                          <h3 className={`text-sm font-medium mb-3 flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            <Crown className="w-4 h-4 text-yellow-500" />
+                            Subscription
+                          </h3>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Status</span>
+                              <span className={`text-sm font-medium ${user.is_subscribed ? 'text-yellow-500' : isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                {user.is_subscribed ? 'Subscribed' : 'Free'}
+                              </span>
+                            </div>
+                            {user.subscription_updated_at && (
+                              <div className="flex items-center justify-between">
+                                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Since</span>
+                                <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{formatDate(user.subscription_updated_at)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                          <h3 className={`text-sm font-medium mb-3 flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            {user.notification_granted ? <BellRing className="w-4 h-4 text-green-500" /> : <BellOff className="w-4 h-4 text-red-500" />}
+                            Notifications
+                          </h3>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Permission</span>
+                              <span className={`text-sm font-medium ${user.notification_granted ? 'text-green-500' : 'text-red-500'}`}>
+                                {user.notification_granted ? 'Granted' : user.notification_prompted ? 'Denied' : 'Not Asked'}
+                              </span>
+                            </div>
+                            {user.notification_frequency && (
+                              <div className="flex items-center justify-between">
+                                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Frequency</span>
+                                <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{user.notification_frequency}</span>
+                              </div>
+                            )}
+                            {user.preferred_notification_time && (
+                              <div className="flex items-center justify-between">
+                                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Preferred Time</span>
+                                <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{user.preferred_notification_time}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rating & Feedback */}
+                      {(user.has_rated || user.feedback_count > 0) && (
+                        <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                          <h3 className={`text-sm font-medium mb-3 flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            <ThumbsUp className="w-4 h-4" />
+                            Rating & Feedback
+                          </h3>
+                          <div className="flex flex-wrap gap-6">
+                            {user.has_rated && (
+                              <div>
+                                <p className={`text-xs font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>App Rating</p>
+                                <p className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                  {user.rating_response || 'Rated'} (prompted {user.rating_prompt_count}x)
+                                </p>
+                              </div>
+                            )}
+                            {user.feedback_count > 0 && (
+                              <div>
+                                <p className={`text-xs font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Feedback</p>
+                                <p className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                  {user.feedback_count} feedback{user.feedback_count > 1 ? 's' : ''}
+                                  {user.last_feedback_trigger && ` (${user.last_feedback_trigger})`}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Activity Streaks & Patterns */}
+                      {(user.current_streak > 0 || user.longest_streak > 0 || user.active_dates.length > 0 || user.activity_hours.length > 0) && (
+                        <div className="space-y-4">
+                          {/* Streak Cards */}
+                          {(user.current_streak > 0 || user.longest_streak > 0) && (
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                              <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Flame className="w-4 h-4 text-orange-500" />
+                                  <p className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Current Streak</p>
+                                </div>
+                                <p className={`text-2xl font-bold ${user.current_streak > 0 ? 'text-orange-500' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                  {user.current_streak} <span className="text-sm font-normal">day{user.current_streak !== 1 ? 's' : ''}</span>
+                                </p>
+                              </div>
+                              <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <TrendingUp className="w-4 h-4 text-purple-500" />
+                                  <p className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Longest Streak</p>
+                                </div>
+                                <p className={`text-2xl font-bold text-purple-500`}>
+                                  {user.longest_streak} <span className="text-sm font-normal">day{user.longest_streak !== 1 ? 's' : ''}</span>
+                                </p>
+                              </div>
+                              <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Calendar className="w-4 h-4 text-blue-500" />
+                                  <p className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Total Active Days</p>
+                                </div>
+                                <p className={`text-2xl font-bold text-blue-500`}>
+                                  {user.active_dates.length} <span className="text-sm font-normal">day{user.active_dates.length !== 1 ? 's' : ''}</span>
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Activity Calendar (last 90 days heatmap) */}
+                          {user.active_dates.length > 0 && (
+                            <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                              <h3 className={`text-sm font-medium mb-3 flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                <Calendar className="w-4 h-4" />
+                                Activity Calendar (Last 90 Days)
+                              </h3>
+                              <div className="flex flex-wrap gap-[3px]">
+                                {(() => {
+                                  const activeDateSet = new Set(user.active_dates)
+                                  const days = []
+                                  for (let i = 89; i >= 0; i--) {
+                                    const d = new Date()
+                                    d.setDate(d.getDate() - i)
+                                    const dateStr = d.toISOString().split('T')[0]
+                                    const isActive = activeDateSet.has(dateStr)
+                                    days.push(
+                                      <div
+                                        key={dateStr}
+                                        title={`${dateStr}${isActive ? ' - Active' : ''}`}
+                                        className={`w-3 h-3 rounded-sm ${
+                                          isActive
+                                            ? 'bg-purple-500'
+                                            : isDark ? 'bg-gray-700' : 'bg-gray-200'
+                                        }`}
+                                      />
+                                    )
+                                  }
+                                  return days
+                                })()}
+                              </div>
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Less</span>
+                                <div className={`w-3 h-3 rounded-sm ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
+                                <div className="w-3 h-3 rounded-sm bg-purple-500" />
+                                <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>More</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Peak Hours */}
+                          {user.activity_hours.length > 0 && (
+                            <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                              <h3 className={`text-sm font-medium mb-3 flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                <BarChart3 className="w-4 h-4" />
+                                Peak Usage Hours
+                              </h3>
+                              <div className="flex items-end gap-[3px] h-16">
+                                {(() => {
+                                  // Count frequency of each hour
+                                  const hourCounts: Record<number, number> = {}
+                                  user.activity_hours.forEach(h => {
+                                    hourCounts[h] = (hourCounts[h] || 0) + 1
+                                  })
+                                  const maxCount = Math.max(...Object.values(hourCounts), 1)
+                                  const bars = []
+                                  for (let h = 0; h < 24; h++) {
+                                    const count = hourCounts[h] || 0
+                                    const heightPct = maxCount > 0 ? (count / maxCount) * 100 : 0
+                                    const label = h === 0 ? '12a' : h < 12 ? `${h}a` : h === 12 ? '12p' : `${h - 12}p`
+                                    bars.push(
+                                      <div key={h} className="flex-1 flex flex-col items-center" title={`${label}: ${count} sessions`}>
+                                        <div
+                                          className={`w-full rounded-t-sm transition-all ${
+                                            count > 0
+                                              ? heightPct > 66 ? 'bg-purple-500' : heightPct > 33 ? 'bg-purple-400' : 'bg-purple-300'
+                                              : isDark ? 'bg-gray-700' : 'bg-gray-200'
+                                          }`}
+                                          style={{ height: `${Math.max(heightPct, 4)}%` }}
+                                        />
+                                      </div>
+                                    )
+                                  }
+                                  return bars
+                                })()}
+                              </div>
+                              <div className="flex justify-between mt-1">
+                                <span className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>12am</span>
+                                <span className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>6am</span>
+                                <span className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>12pm</span>
+                                <span className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>6pm</span>
+                                <span className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>12am</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Activity Chart */}
                       <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
                         <h3 className={`text-sm font-medium mb-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>

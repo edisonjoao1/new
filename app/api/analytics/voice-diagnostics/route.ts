@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getFirestoreDb } from '@/lib/firebase/admin'
 
+// Cache for voice diagnostics (10 min TTL)
+let voiceCache: { data: any; timestamp: number; days: number } | null = null
+const CACHE_TTL = 10 * 60 * 1000
+
 /**
  * Voice Diagnostics API
  * Fetches actual voice failure data from Firestore to understand WHY connections fail
@@ -13,6 +17,11 @@ export async function GET(request: NextRequest) {
   const validKey = process.env.ANALYTICS_PASSWORD
   if (!key || key !== validKey) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Check cache
+  if (voiceCache && voiceCache.days === days && Date.now() - voiceCache.timestamp < CACHE_TTL) {
+    return NextResponse.json({ ...voiceCache.data, cached: true })
   }
 
   try {
@@ -203,7 +212,7 @@ export async function GET(request: NextRequest) {
       ? Math.round(((totalVoiceSessions - totalVoiceFailures) / totalVoiceSessions) * 100 * 10) / 10
       : 0
 
-    return NextResponse.json({
+    const result = {
       summary: {
         totalFailures: failuresSnapshot.size,
         totalVoiceSessions,
@@ -221,7 +230,12 @@ export async function GET(request: NextRequest) {
       recentErrors: allErrors,
       usersWithFailures: usersWithFailures.slice(0, 20),
       generatedAt: new Date().toISOString()
-    })
+    }
+
+    // Update cache
+    voiceCache = { data: result, timestamp: Date.now(), days }
+
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Voice diagnostics error:', error)
     return NextResponse.json(

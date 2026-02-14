@@ -82,18 +82,17 @@ export default function UsersAnalyticsPage() {
     setLoadingOverview(true)
     try {
       const key = password || sessionStorage.getItem('analytics_key')
-      const response = await fetch(`/api/analytics/users?key=${encodeURIComponent(key || '')}&limit=1`)
+      const response = await fetch(`/api/analytics/users?key=${encodeURIComponent(key || '')}&dashboard=true`)
       const data = await response.json()
 
       if (response.ok) {
-        // We'll calculate overview from the filters returned
         setOverview({
-          totalUsers: data.total,
-          activeUsers24h: 0, // Would need separate query
-          activeUsers7d: 0, // Would need separate query
-          avgMessagesPerUser: 0, // Would need calculation
-          topLocales: data.filters?.locales?.slice(0, 5).map((l: string) => ({ locale: l, count: 0 })) || [],
-          topDevices: data.filters?.devices?.slice(0, 5).map((d: string) => ({ device: d, count: 0 })) || [],
+          totalUsers: data.overview.totalUsers,
+          activeUsers24h: data.overview.activeToday,
+          activeUsers7d: data.overview.activeThisWeek,
+          avgMessagesPerUser: data.overview.avgMessagesPerUser,
+          topLocales: data.topLocales?.slice(0, 5) || [],
+          topDevices: data.topDevices?.slice(0, 5) || [],
         })
       }
     } catch (err) {

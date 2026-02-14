@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getFirestoreDb, getFirebaseStorage, STORAGE_BUCKET } from '@/lib/firebase/admin'
 
+// Server-side cache to reduce Firestore reads (5 min TTL)
+const CACHE_TTL = 5 * 60 * 1000
+let dashboardCache: { data: any; timestamp: number; timelineDays: number } | null = null
+let userListCache: { data: any; timestamp: number; key: string } | null = null
+
+function getCacheKey(params: Record<string, string | number | null | undefined>): string {
+  return Object.entries(params).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${v ?? ''}`).join('&')
+}
+
 // GET - Fetch users list or single user detail
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -17,6 +26,7 @@ export async function GET(request: NextRequest) {
   const dateTo = searchParams.get('dateTo')
   const segment = searchParams.get('segment') // 'all' | 'today' | 'new' | 'power' | 'at_risk' | 'voice' | 'images'
   const getDashboard = searchParams.get('dashboard') === 'true'
+  const timelineDays = parseInt(searchParams.get('timelineDays') || '90')
 
   const validKey = process.env.ANALYTICS_PASSWORD
   if (!key || key !== validKey) {
@@ -28,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     // Dashboard overview - comprehensive stats
     if (getDashboard) {
-      return await getDashboardStats(db)
+      return await getDashboardStats(db, timelineDays)
     }
 
     // Single user detail
@@ -36,6 +46,7 @@ export async function GET(request: NextRequest) {
       return await getUserDetail(db, userId)
     }
 
+    // User list with segments (cache by query params)
     // User list with segments
     return await getUserList(db, {
       page,
@@ -59,13 +70,22 @@ export async function GET(request: NextRequest) {
 }
 
 // Comprehensive dashboard stats
-async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>) {
+async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>, timelineDays: number = 90) {
+  // Check cache
+  if (dashboardCache && dashboardCache.timelineDays === timelineDays && Date.now() - dashboardCache.timestamp < CACHE_TTL) {
+    return NextResponse.json({ ...dashboardCache.data, cached: true })
+  }
+
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const sevenDaysAgo = new Date(today)
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  const fourteenDaysAgo = new Date(today)
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
   const thirtyDaysAgo = new Date(today)
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const sixtyDaysAgo = new Date(today)
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
 
   // Get all users for segment calculation
   const allUsersSnapshot = await db.collection('users').get()
@@ -80,7 +100,22 @@ async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>) {
     at_risk: 0,
     voice: 0,
     images: 0,
-    premium: 0,
+    subscribed: 0,
+    notification_granted: 0,
+    has_rated: 0,
+    videos: 0,
+  }
+
+  // Notification analytics
+  const notificationStats = {
+    granted: 0,
+    denied: 0,
+    notYetAsked: 0,
+    hasToken: 0,
+    noToken: 0,
+    notificationsSent: 0,
+    engagedAfterNotification: 0,
+    preferredHours: {} as Record<number, number>,
   }
 
   let totalMessages = 0
@@ -88,9 +123,16 @@ async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>) {
   let totalVoiceSessions = 0
   let totalSessionSeconds = 0
   let totalAppOpens = 0
+  let totalVideos = 0
+  let totalWebSearches = 0
+  let totalPersonalizationScore = 0
   let activeToday = 0
   let activeThisWeek = 0
+  let activePrevWeek = 0
   let activeThisMonth = 0
+  let activePrevMonth = 0
+  let newUsersThisWeek = 0
+  let newUsersPrevWeek = 0
 
   const locales: Record<string, number> = {}
   const devices: Record<string, number> = {}
@@ -108,6 +150,9 @@ async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>) {
     totalVoiceSessions += user.total_voice_sessions || 0
     totalSessionSeconds += user.total_session_seconds || 0
     totalAppOpens += user.total_app_opens || 0
+    totalVideos += user.total_videos_generated || 0
+    totalWebSearches += user.total_web_searches || 0
+    totalPersonalizationScore += user.personalization_score || 0
 
     // Active segments
     if (lastActive) {
@@ -116,7 +161,9 @@ async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>) {
         activeToday++
       }
       if (lastActive >= sevenDaysAgo) activeThisWeek++
+      if (lastActive >= fourteenDaysAgo && lastActive < sevenDaysAgo) activePrevWeek++
       if (lastActive >= thirtyDaysAgo) activeThisMonth++
+      if (lastActive >= sixtyDaysAgo && lastActive < thirtyDaysAgo) activePrevMonth++
       if (lastActive < sevenDaysAgo) segmentCounts.at_risk++
 
       // Daily active tracking
@@ -128,6 +175,10 @@ async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>) {
     const registerDate = firstOpen || createdAt
     if (registerDate && registerDate >= sevenDaysAgo) {
       segmentCounts.new++
+      newUsersThisWeek++
+    }
+    if (registerDate && registerDate >= fourteenDaysAgo && registerDate < sevenDaysAgo) {
+      newUsersPrevWeek++
     }
 
     // Daily signups tracking
@@ -142,7 +193,35 @@ async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>) {
     // Feature users
     if ((user.total_voice_sessions || 0) > 0) segmentCounts.voice++
     if ((user.total_images_generated || 0) > 0) segmentCounts.images++
-    if (user.is_premium) segmentCounts.premium++
+    if ((user.total_videos_generated || 0) > 0) segmentCounts.videos++
+    if (user.is_subscribed || user.is_premium) segmentCounts.subscribed++
+    if (user.notification_granted) segmentCounts.notification_granted++
+    if (user.has_rated) segmentCounts.has_rated++
+
+    // Notification analytics — 3-way split: granted / denied / not yet asked
+    if (user.notification_granted) {
+      notificationStats.granted++
+    } else if (user.notification_prompted) {
+      notificationStats.denied++
+    } else {
+      notificationStats.notYetAsked++
+    }
+    if (user.fcm_token) {
+      notificationStats.hasToken++
+    } else {
+      notificationStats.noToken++
+    }
+    if (user.notification_attempts && user.notification_attempts > 0) {
+      notificationStats.notificationsSent += user.notification_attempts
+    }
+    if (user.last_engagement_after_notification) {
+      notificationStats.engagedAfterNotification++
+    }
+    // Track preferred hours from activity_hours array
+    const activityHours = user.activity_hours || []
+    activityHours.forEach((hour: number) => {
+      notificationStats.preferredHours[hour] = (notificationStats.preferredHours[hour] || 0) + 1
+    })
 
     // Locale distribution
     if (user.locale) {
@@ -166,9 +245,9 @@ async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>) {
     .slice(0, 10)
     .map(([device, count]) => ({ device, count, percentage: Math.round(count / allUsers.length * 100) }))
 
-  // Build daily timeline (last 30 days)
+  // Build daily timeline (configurable days)
   const timeline: { date: string; signups: number; active: number }[] = []
-  for (let i = 29; i >= 0; i--) {
+  for (let i = timelineDays - 1; i >= 0; i--) {
     const date = new Date(today)
     date.setDate(date.getDate() - i)
     const dateKey = date.toISOString().split('T')[0]
@@ -179,7 +258,13 @@ async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>) {
     })
   }
 
-  return NextResponse.json({
+  // Helper to calculate % change
+  const pctChange = (current: number, previous: number): number | null => {
+    if (previous === 0) return current > 0 ? 100 : null
+    return Math.round(((current - previous) / previous) * 1000) / 10
+  }
+
+  const result = {
     overview: {
       totalUsers: allUsers.length,
       activeToday,
@@ -189,20 +274,51 @@ async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>) {
       totalImages,
       totalVoiceSessions,
       totalAppOpens,
+      totalVideos,
+      totalWebSearches,
       totalSessionHours: Math.round(totalSessionSeconds / 3600),
       avgMessagesPerUser: allUsers.length > 0 ? Math.round(totalMessages / allUsers.length * 10) / 10 : 0,
       avgImagesPerUser: allUsers.length > 0 ? Math.round(totalImages / allUsers.length * 10) / 10 : 0,
       avgAppOpensPerUser: allUsers.length > 0 ? Math.round(totalAppOpens / allUsers.length * 10) / 10 : 0,
+      avgPersonalizationScore: allUsers.length > 0 ? Math.round(totalPersonalizationScore / allUsers.length * 10) / 10 : 0,
+    },
+    changes: {
+      activeThisWeek: pctChange(activeThisWeek, activePrevWeek),
+      activeThisMonth: pctChange(activeThisMonth, activePrevMonth),
+      newUsers: pctChange(newUsersThisWeek, newUsersPrevWeek),
     },
     segmentCounts,
     topLocales,
     topDevices,
     timeline,
+    timelineDays,
     retentionRate: {
       day1: activeThisWeek > 0 ? Math.round(activeToday / activeThisWeek * 100) : 0,
       day7: activeThisMonth > 0 ? Math.round(activeThisWeek / activeThisMonth * 100) : 0,
     },
-  })
+    notifications: {
+      granted: notificationStats.granted,
+      denied: notificationStats.denied,
+      notYetAsked: notificationStats.notYetAsked,
+      reachable: notificationStats.hasToken,
+      unreachable: notificationStats.noToken,
+      totalSent: notificationStats.notificationsSent,
+      engagedAfterNotification: notificationStats.engagedAfterNotification,
+      engagementRate: notificationStats.notificationsSent > 0
+        ? Math.round(notificationStats.engagedAfterNotification / notificationStats.notificationsSent * 100)
+        : 0,
+      // Top activity hours (for smart notification timing)
+      peakHours: Object.entries(notificationStats.preferredHours)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([hour, count]) => ({ hour: parseInt(hour), count })),
+    },
+  }
+
+  // Update cache
+  dashboardCache = { data: result, timestamp: Date.now(), timelineDays }
+
+  return NextResponse.json(result)
 }
 
 interface UserListOptions {
@@ -220,6 +336,12 @@ interface UserListOptions {
 
 async function getUserList(db: ReturnType<typeof getFirestoreDb>, options: UserListOptions) {
   const { page, limit, sortBy, sortOrder, localeFilter, deviceFilter, minMessages, dateFrom, dateTo, segment } = options
+
+  // Check cache
+  const cacheKey = getCacheKey({ page, limit, sortBy, sortOrder, localeFilter, deviceFilter, minMessages, dateFrom, dateTo, segment })
+  if (userListCache && userListCache.key === cacheKey && Date.now() - userListCache.timestamp < CACHE_TTL) {
+    return NextResponse.json({ ...userListCache.data, cached: true })
+  }
 
   // For segment-based filtering, we need to fetch all users first then filter
   // This is because Firestore doesn't support complex date comparisons
@@ -260,6 +382,7 @@ async function getUserList(db: ReturnType<typeof getFirestoreDb>, options: UserL
     return {
       id: doc.id,
       device_id: data.device_id || doc.id,
+      user_name: data.user_name || null,
       locale: data.locale || 'unknown',
       device_model: data.device_model || 'Unknown',
       os_version: data.os_version || 'Unknown',
@@ -267,7 +390,9 @@ async function getUserList(db: ReturnType<typeof getFirestoreDb>, options: UserL
       total_app_opens: data.total_app_opens || 0,
       total_messages_sent: data.total_messages_sent || 0,
       total_images_generated: data.total_images_generated || 0,
+      total_videos_generated: data.total_videos_generated || 0,
       total_voice_sessions: data.total_voice_sessions || 0,
+      total_web_searches: data.total_web_searches || 0,
       total_session_seconds: data.total_session_seconds || 0,
       created_at: data.created_at?.toDate?.()?.toISOString() || data.created_at || null,
       last_active: data.last_active?.toDate?.()?.toISOString() || data.last_active || null,
@@ -276,7 +401,11 @@ async function getUserList(db: ReturnType<typeof getFirestoreDb>, options: UserL
       days_since_first_open: data.days_since_first_open || 0,
       voice_failure_count: data.voice_failure_count || 0,
       nsfw_attempt_count: data.nsfw_attempt_count || 0,
-      is_premium: data.is_premium || false,
+      is_subscribed: data.is_subscribed || data.is_premium || false,
+      notification_granted: data.notification_granted || false,
+      has_rated: data.has_rated || false,
+      engagement_level: data.engagement_level || null,
+      personalization_score: data.personalization_score || 0,
       conversation_count: conversationCount,
       engagement_score: engagementScore,
       // Internal date objects for filtering
@@ -298,6 +427,8 @@ async function getUserList(db: ReturnType<typeof getFirestoreDb>, options: UserL
     at_risk: allMatchingUsers.filter(u => u._lastActive && u._lastActive < sevenDaysAgo).length,
     voice: allMatchingUsers.filter(u => (u.total_voice_sessions || 0) > 0).length,
     images: allMatchingUsers.filter(u => (u.total_images_generated || 0) > 0).length,
+    subscribed: allMatchingUsers.filter(u => u.is_subscribed).length,
+    videos: allMatchingUsers.filter(u => (u.total_videos_generated || 0) > 0).length,
   }
 
   // Apply segment filter
@@ -317,6 +448,10 @@ async function getUserList(db: ReturnType<typeof getFirestoreDb>, options: UserL
           return (u.total_voice_sessions || 0) > 0
         case 'images':
           return (u.total_images_generated || 0) > 0
+        case 'subscribed':
+          return u.is_subscribed
+        case 'videos':
+          return (u.total_videos_generated || 0) > 0
         default:
           return true
       }
@@ -350,7 +485,7 @@ async function getUserList(db: ReturnType<typeof getFirestoreDb>, options: UserL
   }
 
   // Apply sorting (in-memory)
-  const validSortFields = ['last_active', 'created_at', 'total_messages_sent', 'total_images_generated', 'total_voice_sessions', 'total_app_opens', 'first_open_date', 'engagement_score']
+  const validSortFields = ['last_active', 'created_at', 'total_messages_sent', 'total_images_generated', 'total_videos_generated', 'total_voice_sessions', 'total_web_searches', 'total_app_opens', 'first_open_date', 'engagement_score', 'personalization_score']
   const sortField = validSortFields.includes(sortBy) ? sortBy : 'last_active'
 
   allMatchingUsers.sort((a: any, b: any) => {
@@ -392,7 +527,7 @@ async function getUserList(db: ReturnType<typeof getFirestoreDb>, options: UserL
     if (user.device_model) devices.add(user.device_model)
   })
 
-  return NextResponse.json({
+  const result = {
     users: cleanUsers,
     total,
     page,
@@ -403,7 +538,12 @@ async function getUserList(db: ReturnType<typeof getFirestoreDb>, options: UserL
       locales: Array.from(locales).sort(),
       devices: Array.from(devices).sort(),
     },
-  })
+  }
+
+  // Update cache
+  userListCache = { data: result, timestamp: Date.now(), key: cacheKey }
+
+  return NextResponse.json(result)
 }
 
 async function getUserDetail(db: ReturnType<typeof getFirestoreDb>, userId: string) {
@@ -607,25 +747,76 @@ async function getUserDetail(db: ReturnType<typeof getFirestoreDb>, userId: stri
       id: userDoc.id,
       device_id: userData.device_id || userDoc.id,
 
+      // Profile
+      user_name: userData.user_name || null,
+      about_me: userData.about_me || null,
+      occupation: userData.occupation || null,
+      interests: userData.interests || [],
+      goals: userData.goals || [],
+      assistant_name: userData.assistant_name || null,
+      communication_style: userData.communication_style || null,
+      timezone: userData.timezone || null,
+
       // Device Info
       locale: userData.locale || 'unknown',
       device_model: userData.device_model || 'Unknown',
       os_version: userData.os_version || 'Unknown',
       app_version: userData.app_version || 'Unknown',
+      previous_version: userData.previous_version || null,
 
       // Core Usage Stats
       total_app_opens: userData.total_app_opens || 0,
       total_messages_sent: userData.total_messages_sent || 0,
       total_images_generated: userData.total_images_generated || 0,
+      total_videos_generated: userData.total_videos_generated || 0,
       total_voice_sessions: userData.total_voice_sessions || 0,
+      total_web_searches: userData.total_web_searches || 0,
+      total_learn_lessons_viewed: userData.total_learn_lessons_viewed || 0,
       total_session_seconds: userData.total_session_seconds || 0,
 
-      // Dates (COMPREHENSIVE)
+      // Dates
       first_open_date: parseDate(userData.first_open_date),
       last_open_date: parseDate(userData.last_open_date),
       created_at: parseDate(userData.created_at),
       last_active: parseDate(userData.last_active),
       days_since_first_open: userData.days_since_first_open || 0,
+
+      // Subscription
+      is_subscribed: userData.is_subscribed || userData.is_premium || false,
+      subscription_updated_at: parseDate(userData.subscription_updated_at),
+
+      // Notifications
+      notification_granted: userData.notification_granted || false,
+      notifications_enabled: userData.notifications_enabled || false,
+      notification_prompted: userData.notification_prompted || false,
+      notification_frequency: userData.notification_frequency || null,
+      preferred_notification_time: userData.preferred_notification_time || null,
+      notification_preferences_updated_at: parseDate(userData.notification_preferences_updated_at),
+
+      // Personalization
+      personalization_score: userData.personalization_score || 0,
+      personalization_fields: userData.personalization_fields || null,
+      has_basic_personalization: userData.has_basic_personalization || false,
+      missing_personalizations: userData.missing_personalizations || [],
+
+      // Rating & Feedback
+      has_rated: userData.has_rated || false,
+      rating_response: userData.rating_response || null,
+      rating_prompt_count: userData.rating_prompt_count || 0,
+      last_rating_event: userData.last_rating_event || null,
+      last_rating_event_at: parseDate(userData.last_rating_event_at),
+      feedback_count: userData.feedback_count || 0,
+      last_feedback: parseDate(userData.last_feedback),
+      last_feedback_trigger: userData.last_feedback_trigger || null,
+
+      // Error Tracking
+      error_count: userData.error_count || 0,
+      last_error: parseDate(userData.last_error),
+      last_error_category: userData.last_error_category || null,
+      last_error_code: userData.last_error_code || null,
+      image_failure_count: userData.image_failure_count || 0,
+      last_image_failure: parseDate(userData.last_image_failure),
+      last_image_failure_type: userData.last_image_failure_type || null,
 
       // Voice Failure Tracking
       voice_failure_count: userData.voice_failure_count || 0,
@@ -637,29 +828,34 @@ async function getUserDetail(db: ReturnType<typeof getFirestoreDb>, userId: stri
       last_nsfw_attempt: parseDate(userData.last_nsfw_attempt),
 
       // Lesson Progress
-      lessons_completed: userData.lessons_completed || 0,
-      lessons_started: userData.lessons_started || 0,
+      lessons_completed: (userData.completed_lesson_ids || []).length,
+      lessons_started: (userData.viewed_lesson_ids || []).length,
+      completed_lesson_ids: userData.completed_lesson_ids || [],
+      viewed_lesson_ids: userData.viewed_lesson_ids || [],
       current_lesson: userData.current_lesson || null,
 
-      // Subscription/Premium (if tracked)
-      is_premium: userData.is_premium || false,
-      subscription_type: userData.subscription_type || null,
+      // Engagement
+      engagement_score: engagementScore,
+      engagement_level: userData.engagement_level || null,
+
+      // Activity Patterns
+      active_dates: userData.active_dates || [],
+      activity_hours: userData.activity_hours || [],
+      ...calculateStreaks(userData.active_dates || []),
 
       // Referral/Source
       referral_source: userData.referral_source || null,
       install_source: userData.install_source || null,
 
-      // Engagement
-      engagement_score: engagementScore,
-
-      // Push Notifications (if tracked)
-      push_enabled: userData.push_enabled ?? null,
-      push_token: userData.push_token ? '(token exists)' : null,
+      // Push Token
+      has_push_token: !!userData.fcm_token,
 
       // Feature Usage Flags
       has_used_voice: (userData.total_voice_sessions || 0) > 0,
       has_generated_images: (userData.total_images_generated || 0) > 0,
-      has_used_lessons: (userData.lessons_started || 0) > 0,
+      has_generated_videos: (userData.total_videos_generated || 0) > 0,
+      has_used_web_search: (userData.total_web_searches || 0) > 0,
+      has_used_lessons: (userData.total_learn_lessons_viewed || 0) > 0 || (userData.viewed_lesson_ids || []).length > 0,
     },
     conversations,
     images,
@@ -746,24 +942,41 @@ export async function POST(request: NextRequest) {
 function calculateEngagementScore(userData: any, conversationCount: number): number {
   let score = 0
 
-  // Messages (up to 40 points)
+  // Messages (up to 30 points) — core engagement
   const messages = userData.total_messages_sent || 0
-  score += Math.min(40, Math.floor(messages / 5))
+  score += Math.min(30, Math.floor(messages / 5))
 
-  // Conversations (up to 20 points)
-  score += Math.min(20, conversationCount * 2)
+  // Conversations (up to 15 points) — return usage
+  score += Math.min(15, conversationCount * 2)
 
-  // Images (up to 15 points)
+  // Images (up to 10 points)
   const images = userData.total_images_generated || 0
-  score += Math.min(15, images * 3)
+  score += Math.min(10, images * 2)
 
-  // Voice sessions (up to 15 points)
+  // Voice sessions (up to 10 points)
   const voice = userData.total_voice_sessions || 0
-  score += Math.min(15, voice * 5)
+  score += Math.min(10, voice * 3)
 
-  // Session time (up to 10 points)
+  // Videos (up to 10 points) — high-value feature
+  const videos = userData.total_videos_generated || 0
+  score += Math.min(10, videos * 5)
+
+  // Web searches (up to 8 points)
+  const webSearches = userData.total_web_searches || 0
+  score += Math.min(8, webSearches * 2)
+
+  // Session time (up to 7 points)
   const sessionMinutes = (userData.total_session_seconds || 0) / 60
-  score += Math.min(10, Math.floor(sessionMinutes / 10))
+  score += Math.min(7, Math.floor(sessionMinutes / 10))
+
+  // Personalization bonus (up to 5 points) — invested in the app
+  const personalization = userData.personalization_score || 0
+  score += Math.min(5, Math.floor(personalization / 20))
+
+  // Subscription bonus (5 points) — highest commitment
+  if (userData.is_subscribed || userData.is_premium) {
+    score += 5
+  }
 
   return Math.min(100, score)
 }
@@ -868,4 +1081,49 @@ function buildActivityTimeline(conversations: any[], images: any[], startDate: D
     date,
     ...data,
   })).sort((a, b) => a.date.localeCompare(b.date))
+}
+
+function calculateStreaks(activeDates: string[]): { current_streak: number; longest_streak: number } {
+  if (!activeDates || activeDates.length === 0) return { current_streak: 0, longest_streak: 0 }
+
+  // Sort dates ascending
+  const sorted = [...activeDates].sort()
+  const today = new Date().toISOString().split('T')[0]
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+
+  let longestStreak = 1
+  let currentRun = 1
+
+  // Calculate longest streak
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = new Date(sorted[i - 1])
+    const curr = new Date(sorted[i])
+    const diffDays = Math.round((curr.getTime() - prev.getTime()) / 86400000)
+    if (diffDays === 1) {
+      currentRun++
+      longestStreak = Math.max(longestStreak, currentRun)
+    } else if (diffDays > 1) {
+      currentRun = 1
+    }
+  }
+
+  // Calculate current streak (must include today or yesterday)
+  const lastDate = sorted[sorted.length - 1]
+  if (lastDate !== today && lastDate !== yesterday) {
+    return { current_streak: 0, longest_streak: longestStreak }
+  }
+
+  let currentStreak = 1
+  for (let i = sorted.length - 2; i >= 0; i--) {
+    const curr = new Date(sorted[i + 1])
+    const prev = new Date(sorted[i])
+    const diffDays = Math.round((curr.getTime() - prev.getTime()) / 86400000)
+    if (diffDays === 1) {
+      currentStreak++
+    } else {
+      break
+    }
+  }
+
+  return { current_streak: currentStreak, longest_streak: Math.max(longestStreak, currentStreak) }
 }
