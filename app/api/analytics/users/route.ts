@@ -943,7 +943,8 @@ function calculateEngagementScore(userData: any, conversationCount: number): num
   let score = 0
 
   // Messages (up to 30 points) — core engagement
-  const messages = userData.total_messages_sent || 0
+  // Use max of counter and conversation count since counter lags until next app open
+  const messages = Math.max(userData.total_messages_sent || 0, conversationCount)
   score += Math.min(30, Math.floor(messages / 5))
 
   // Conversations (up to 15 points) — return usage
