@@ -877,6 +877,7 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
                   <tr>
                     {[
                       { key: 'device_id', label: 'User', icon: Users, hasInfo: false },
+                      { key: 'locale', label: 'Locale', icon: Globe, hasInfo: false },
                       { key: 'total_messages_sent', label: 'Messages', icon: MessageSquare, hasInfo: false },
                       { key: 'total_images_generated', label: 'Images', icon: Image, hasInfo: false },
                       { key: 'total_videos_generated', label: 'Videos', icon: Video, hasInfo: false },
@@ -933,7 +934,7 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
                   {loading ? (
                     [...Array(10)].map((_, i) => (
                       <tr key={i} className={isDark ? 'bg-gray-900' : 'bg-white'}>
-                        {[...Array(10)].map((_, j) => (
+                        {[...Array(11)].map((_, j) => (
                           <td key={j} className="px-4 py-3">
                             <div className={`h-4 rounded ${isDark ? 'bg-gray-700' : 'bg-gray-200'} animate-pulse`}></div>
                           </td>
@@ -942,7 +943,7 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
                     ))
                   ) : filteredUsers.length === 0 ? (
                     <tr className={isDark ? 'bg-gray-900' : 'bg-white'}>
-                      <td colSpan={10} className={`px-4 py-8 text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <td colSpan={11} className={`px-4 py-8 text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                         No users found
                       </td>
                     </tr>
@@ -979,8 +980,11 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
                             </div>
                           </div>
                         </td>
+                        <td className={`px-4 py-3 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          {user.locale}
+                        </td>
                         <td className={`px-4 py-3 text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                          {user.total_messages_sent.toLocaleString()}
+                          {Math.max(user.total_messages_sent, user.conversation_count).toLocaleString()}
                         </td>
                         <td className={`px-4 py-3 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                           {user.total_images_generated}
