@@ -4,7 +4,7 @@ import { getState } from '@/lib/command-center';
 
 export const dynamic = 'force-dynamic';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY || 'dummy_key_for_build');
 
 // Helper to get stats for a date range
 function getStatsForRange(state: any, startDate: Date, endDate: Date) {
