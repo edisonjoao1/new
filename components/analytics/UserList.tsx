@@ -39,6 +39,7 @@ import {
   SearchIcon,
   Star,
   BellRing,
+  DollarSign,
 } from 'lucide-react'
 import RetentionCohorts from './RetentionCohorts'
 import ConversionFunnel from './ConversionFunnel'
@@ -117,6 +118,20 @@ interface DashboardStats {
     activeThisWeek: number | null
     activeThisMonth: number | null
     newUsers: number | null
+  }
+  costs: {
+    images: number
+    voice: number
+    webSearches: number
+    chat: number
+    total: number
+    breakdown: {
+      imageRate: number
+      voiceRate: number
+      voiceAvgMin: number
+      webSearchRate: number
+      chatRate: number
+    }
   }
   segmentCounts: Record<string, number>
   topLocales: { locale: string; count: number; percentage: number }[]
@@ -506,6 +521,83 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
               </div>
             ))}
           </div>
+
+          {/* Estimated API Costs */}
+          {dashboard.costs && (
+            <div className={`p-6 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex items-center gap-2 mb-4">
+                <DollarSign className="w-5 h-5 text-green-500" />
+                <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Estimated API Costs
+                </h3>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+                  All time
+                </span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Image className="w-3.5 h-3.5 text-pink-500" />
+                    <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Images</span>
+                  </div>
+                  <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    ${dashboard.costs.images.toFixed(2)}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {formatNumber(dashboard.overview.totalImages)} × ${dashboard.costs.breakdown.imageRate}
+                  </p>
+                </div>
+                <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Mic className="w-3.5 h-3.5 text-red-500" />
+                    <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Voice</span>
+                  </div>
+                  <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    ${dashboard.costs.voice.toFixed(2)}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {formatNumber(dashboard.overview.totalVoiceSessions)} × ~{dashboard.costs.breakdown.voiceAvgMin}min × ${dashboard.costs.breakdown.voiceRate}
+                  </p>
+                </div>
+                <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Search className="w-3.5 h-3.5 text-indigo-500" />
+                    <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Web Search</span>
+                  </div>
+                  <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    ${dashboard.costs.webSearches.toFixed(2)}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {formatNumber(dashboard.overview.totalWebSearches)} × ${dashboard.costs.breakdown.webSearchRate}
+                  </p>
+                </div>
+                <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <MessageSquare className="w-3.5 h-3.5 text-indigo-500" />
+                    <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Chat</span>
+                  </div>
+                  <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    ${dashboard.costs.chat.toFixed(2)}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {formatNumber(dashboard.overview.totalMessages)} × ~${dashboard.costs.breakdown.chatRate}
+                  </p>
+                </div>
+                <div className={`p-4 rounded-xl border-2 ${isDark ? 'bg-green-900/20 border-green-800' : 'bg-green-50 border-green-200'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <DollarSign className="w-3.5 h-3.5 text-green-500" />
+                    <span className={`text-xs font-medium ${isDark ? 'text-green-400' : 'text-green-600'}`}>Total</span>
+                  </div>
+                  <p className={`text-xl font-bold text-green-500`}>
+                    ${dashboard.costs.total.toFixed(2)}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    ~${dashboard.overview.totalUsers > 0 ? (dashboard.costs.total / dashboard.overview.totalUsers).toFixed(3) : '0'}/user
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

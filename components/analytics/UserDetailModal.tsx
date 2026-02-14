@@ -44,6 +44,7 @@ import {
   CircleAlert,
   Flame,
   BarChart3,
+  DollarSign,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -164,6 +165,15 @@ interface UserDetail {
 
   // Push Token
   has_push_token: boolean
+
+  // Estimated API Costs
+  estimated_cost: {
+    images: number
+    voice: number
+    webSearches: number
+    chat: number
+    total: number
+  }
 
   // Feature Usage Flags
   has_used_voice: boolean
@@ -493,6 +503,24 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                       </div>
                     ))}
                   </div>
+
+                  {/* Estimated Cost */}
+                  {user.estimated_cost && user.estimated_cost.total > 0 && (
+                    <div className={`flex items-center gap-4 mt-3 px-4 py-2.5 rounded-xl ${isDark ? 'bg-green-900/20 border border-green-800/50' : 'bg-green-50 border border-green-200'}`}>
+                      <div className="flex items-center gap-1.5">
+                        <DollarSign className="w-4 h-4 text-green-500" />
+                        <span className={`text-sm font-medium ${isDark ? 'text-green-400' : 'text-green-700'}`}>
+                          Est. Cost: ${user.estimated_cost.total.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className={`flex items-center gap-3 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {user.estimated_cost.images > 0 && <span>Images: ${user.estimated_cost.images.toFixed(2)}</span>}
+                        {user.estimated_cost.voice > 0 && <span>Voice: ${user.estimated_cost.voice.toFixed(2)}</span>}
+                        {user.estimated_cost.webSearches > 0 && <span>Search: ${user.estimated_cost.webSearches.toFixed(2)}</span>}
+                        {user.estimated_cost.chat > 0 && <span>Chat: ${user.estimated_cost.chat.toFixed(2)}</span>}
+                      </div>
+                    </div>
+                  )}
 
                   {/* User Info - Row 1: Device & Location */}
                   <div className="flex flex-wrap gap-4 mt-4">

@@ -282,6 +282,21 @@ async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>, timeline
       avgAppOpensPerUser: allUsers.length > 0 ? Math.round(totalAppOpens / allUsers.length * 10) / 10 : 0,
       avgPersonalizationScore: allUsers.length > 0 ? Math.round(totalPersonalizationScore / allUsers.length * 10) / 10 : 0,
     },
+    // Estimated API costs based on OpenAI pricing (Feb 2026)
+    costs: {
+      images: Math.round(totalImages * 0.19 * 100) / 100,           // gpt-image-1 high quality @ $0.19/image
+      voice: Math.round(totalVoiceSessions * 2 * 0.30 * 100) / 100, // gpt-realtime ~2min avg @ $0.30/min
+      webSearches: Math.round(totalWebSearches * 0.013 * 100) / 100, // web search tool @ $0.013/call
+      chat: Math.round(totalMessages * 0.001 * 100) / 100,          // gpt-4.1-mini ~500 tokens @ ~$0.001/msg
+      total: Math.round((totalImages * 0.19 + totalVoiceSessions * 2 * 0.30 + totalWebSearches * 0.013 + totalMessages * 0.001) * 100) / 100,
+      breakdown: {
+        imageRate: 0.19,       // per image (high quality)
+        voiceRate: 0.30,       // per minute
+        voiceAvgMin: 2,        // avg session minutes
+        webSearchRate: 0.013,  // per search
+        chatRate: 0.001,       // per message (estimated)
+      }
+    },
     changes: {
       activeThisWeek: pctChange(activeThisWeek, activePrevWeek),
       activeThisMonth: pctChange(activeThisMonth, activePrevMonth),
@@ -856,6 +871,15 @@ async function getUserDetail(db: ReturnType<typeof getFirestoreDb>, userId: stri
       has_generated_videos: (userData.total_videos_generated || 0) > 0,
       has_used_web_search: (userData.total_web_searches || 0) > 0,
       has_used_lessons: (userData.total_learn_lessons_viewed || 0) > 0 || (userData.viewed_lesson_ids || []).length > 0,
+
+      // Estimated API costs for this user
+      estimated_cost: {
+        images: Math.round((userData.total_images_generated || 0) * 0.19 * 100) / 100,
+        voice: Math.round((userData.total_voice_sessions || 0) * 2 * 0.30 * 100) / 100,
+        webSearches: Math.round((userData.total_web_searches || 0) * 0.013 * 100) / 100,
+        chat: Math.round((userData.total_messages_sent || 0) * 0.001 * 100) / 100,
+        total: Math.round(((userData.total_images_generated || 0) * 0.19 + (userData.total_voice_sessions || 0) * 2 * 0.30 + (userData.total_web_searches || 0) * 0.013 + (userData.total_messages_sent || 0) * 0.001) * 100) / 100,
+      },
     },
     conversations,
     images,
