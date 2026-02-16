@@ -64,7 +64,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { app, plan, price, isTrial } = body;
+    const { app, plan, price, isTrial, trialEndDate } = body;
 
     if (!app || !plan || !price) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -82,6 +82,7 @@ export async function POST(request: Request) {
       price: parseFloat(price),
       startDate: new Date().toISOString().split('T')[0],
       isTrial: isTrial || false,
+      trialEndDate: trialEndDate || undefined,
       isActive: true,
     };
 
@@ -108,6 +109,40 @@ export async function POST(request: Request) {
   }
 }
 
+// PATCH to update a subscription
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, isTrial, trialEndDate, isActive } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'Missing subscription ID' }, { status: 400 });
+    }
+
+    const state = await getState();
+    const subIndex = state.subscriptions?.findIndex(s => s.id === id);
+
+    if (subIndex === undefined || subIndex === -1) {
+      return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
+    }
+
+    if (isTrial !== undefined) state.subscriptions[subIndex].isTrial = isTrial;
+    if (trialEndDate !== undefined) state.subscriptions[subIndex].trialEndDate = trialEndDate || undefined;
+    if (isActive !== undefined) state.subscriptions[subIndex].isActive = isActive;
+
+    await saveState(state);
+
+    return NextResponse.json({
+      success: true,
+      subscription: state.subscriptions[subIndex],
+      message: 'Subscription updated',
+    });
+  } catch (error) {
+    console.error('Subscription update error:', error);
+    return NextResponse.json({ error: 'Failed to update subscription' }, { status: 500 });
+  }
+}
+
 // DELETE to remove/deactivate a subscription
 export async function DELETE(request: Request) {
   try {
@@ -125,12 +160,19 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
     }
 
-    // Mark as inactive instead of deleting
     state.subscriptions[subIndex].isActive = false;
     await saveState(state);
 
+    let totalNetMRR = 0;
+    for (const sub of state.subscriptions) {
+      if (sub.isActive) {
+        totalNetMRR += sub.price * MRR_MULTIPLIER[sub.plan] * (1 - APPLE_CUT);
+      }
+    }
+
     return NextResponse.json({
       success: true,
+      newMRR: Math.round(totalNetMRR * 100) / 100,
       message: 'Subscription deactivated',
     });
   } catch (error) {

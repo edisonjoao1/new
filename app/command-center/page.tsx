@@ -125,6 +125,7 @@ interface Subscription {
   price: number;
   startDate: string;
   isTrial: boolean;
+  trialEndDate?: string;
   isActive: boolean;
 }
 
@@ -186,9 +187,12 @@ export default function CommandCenter() {
     app: 'frenchAI',
     type: 'weekly',
     count: 1,
-    isTrial: false
+    isTrial: false,
+    trialEndDate: ''
   });
   const [revenueSaving, setRevenueSaving] = useState(false);
+  const [editingSub, setEditingSub] = useState<string | null>(null);
+  const [editTrialEnd, setEditTrialEnd] = useState('');
 
   useEffect(() => {
     loadData();
@@ -288,7 +292,8 @@ export default function CommandCenter() {
             app: revenueInput.app,
             plan: revenueInput.type,
             price: price,
-            isTrial: revenueInput.isTrial
+            isTrial: revenueInput.isTrial,
+            trialEndDate: revenueInput.isTrial && revenueInput.trialEndDate ? revenueInput.trialEndDate : undefined
           })
         });
       }
@@ -296,11 +301,49 @@ export default function CommandCenter() {
       // Reload data
       await loadData();
       setShowRevenueInput(false);
-      setRevenueInput({ app: 'frenchAI', type: 'weekly', count: 1, isTrial: false });
+      setRevenueInput({ app: 'frenchAI', type: 'weekly', count: 1, isTrial: false, trialEndDate: '' });
     } catch (err) {
       console.error('Revenue save error:', err);
     }
     setRevenueSaving(false);
+  }
+
+  async function deleteSub(id: string) {
+    if (!confirm('Deactivate this subscription? (churned/cancelled)')) return;
+    try {
+      await fetch(`/api/command-center/subscriptions?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      await loadData();
+    } catch (err) {
+      console.error('Delete error:', err);
+    }
+  }
+
+  async function updateSubTrialEnd(id: string, trialEndDate: string) {
+    try {
+      await fetch('/api/command-center/subscriptions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, trialEndDate: trialEndDate || null }),
+      });
+      await loadData();
+      setEditingSub(null);
+      setEditTrialEnd('');
+    } catch (err) {
+      console.error('Update error:', err);
+    }
+  }
+
+  async function convertTrial(id: string) {
+    try {
+      await fetch('/api/command-center/subscriptions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, isTrial: false, trialEndDate: null }),
+      });
+      await loadData();
+    } catch (err) {
+      console.error('Convert error:', err);
+    }
   }
 
   if (!status || !admin) {
@@ -585,7 +628,7 @@ export default function CommandCenter() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">How many?</label>
                   <input
@@ -601,12 +644,23 @@ export default function CommandCenter() {
                     <input
                       type="checkbox"
                       checked={revenueInput.isTrial}
-                      onChange={(e) => setRevenueInput({...revenueInput, isTrial: e.target.checked})}
+                      onChange={(e) => setRevenueInput({...revenueInput, isTrial: e.target.checked, trialEndDate: e.target.checked ? revenueInput.trialEndDate : ''})}
                       className="rounded"
                     />
-                    <span className="text-yellow-400">On trial (pending)</span>
+                    <span className="text-yellow-400">Trial</span>
                   </label>
                 </div>
+                {revenueInput.isTrial && (
+                  <div>
+                    <label className="text-xs text-yellow-400 block mb-1">Trial ends</label>
+                    <input
+                      type="date"
+                      value={revenueInput.trialEndDate || ''}
+                      onChange={(e) => setRevenueInput({...revenueInput, trialEndDate: e.target.value})}
+                      className="w-full bg-white/5 border border-yellow-500/30 rounded-lg px-3 py-2 text-sm text-yellow-400"
+                    />
+                  </div>
+                )}
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-white/10">
                 <div className="text-sm">
@@ -765,11 +819,64 @@ export default function CommandCenter() {
           {subData?.subscriptions && subData.subscriptions.filter(s => s.isActive).length > 0 && (
             <div className="mt-3 pt-3 border-t border-white/10">
               <div className="text-xs font-semibold text-gray-400 mb-2">ACTIVE SUBSCRIPTIONS</div>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
+              <div className="space-y-1 max-h-48 overflow-y-auto">
                 {subData.subscriptions.filter(s => s.isActive).map(sub => (
-                  <div key={sub.id} className="flex justify-between items-center text-xs bg-white/5 rounded px-2 py-1">
-                    <span className="text-gray-300">{APP_NAMES[sub.app] || sub.app} - {sub.plan}</span>
-                    <span className="text-emerald-400">${sub.price} {sub.isTrial && <span className="text-yellow-400">(trial)</span>}</span>
+                  <div key={sub.id} className="flex justify-between items-center text-xs bg-white/5 rounded px-2 py-1.5 group">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => deleteSub(sub.id)}
+                        className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Deactivate (churned)"
+                      >✕</button>
+                      <span className="text-gray-300">{APP_NAMES[sub.app] || sub.app} - {sub.plan}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-emerald-400">${sub.price}</span>
+                      {sub.isTrial && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-yellow-400">(trial</span>
+                          {editingSub === sub.id ? (
+                            <input
+                              type="date"
+                              value={editTrialEnd}
+                              onChange={(e) => setEditTrialEnd(e.target.value)}
+                              onBlur={() => updateSubTrialEnd(sub.id, editTrialEnd)}
+                              onKeyDown={(e) => e.key === 'Enter' && updateSubTrialEnd(sub.id, editTrialEnd)}
+                              className="bg-gray-800 text-yellow-400 text-xs px-1 rounded w-28"
+                              autoFocus
+                            />
+                          ) : (
+                            <button
+                              onClick={() => { setEditingSub(sub.id); setEditTrialEnd(sub.trialEndDate || ''); }}
+                              className="text-yellow-400 hover:text-yellow-300 underline"
+                            >
+                              {sub.trialEndDate ? `ends ${sub.trialEndDate}` : 'set end'}
+                            </button>
+                          )}
+                          <span className="text-yellow-400">)</span>
+                          <button
+                            onClick={() => convertTrial(sub.id)}
+                            className="text-green-400 hover:text-green-300 ml-1"
+                            title="Mark as converted"
+                          >→paid</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Churned Subscriptions */}
+          {subData?.subscriptions && subData.subscriptions.filter(s => !s.isActive).length > 0 && (
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <div className="text-xs font-semibold text-red-400 mb-2">CHURNED ({subData.subscriptions.filter(s => !s.isActive).length})</div>
+              <div className="space-y-1 max-h-24 overflow-y-auto">
+                {subData.subscriptions.filter(s => !s.isActive).map(sub => (
+                  <div key={sub.id} className="flex justify-between items-center text-xs bg-red-900/20 rounded px-2 py-1 text-gray-500">
+                    <span>{APP_NAMES[sub.app] || sub.app} - {sub.plan}</span>
+                    <span>${sub.price}</span>
                   </div>
                 ))}
               </div>

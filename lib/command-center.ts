@@ -10,6 +10,7 @@ export interface Subscription {
   price: number;         // gross price
   startDate: string;
   isTrial: boolean;
+  trialEndDate?: string; // When trial converts (YYYY-MM-DD)
   isActive: boolean;
 }
 
