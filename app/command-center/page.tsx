@@ -142,6 +142,11 @@ interface SubscriptionData {
     readyToConvert: number;
     potentialMRR: number;
   };
+  collected: {
+    churned: Array<{ id: string; app: string; plan: string; price: number; startDate: string }>;
+    churnedCount: number;
+    totalCollected: number;
+  };
   progress: {
     current: number;
     potential: number;
@@ -875,15 +880,30 @@ export default function CommandCenter() {
             </div>
           )}
 
-          {/* Churned Subscriptions */}
+          {/* Churned Subscriptions - show revenue collected */}
           {subData?.subscriptions && subData.subscriptions.filter(s => !s.isActive).length > 0 && (
             <div className="mt-3 pt-3 border-t border-white/10">
-              <div className="text-xs font-semibold text-red-400 mb-2">CHURNED ({subData.subscriptions.filter(s => !s.isActive).length})</div>
+              <div className="flex justify-between items-center mb-2">
+                <div className="text-xs font-semibold text-red-400">CHURNED ({subData.subscriptions.filter(s => !s.isActive).length})</div>
+                {subData.collected && subData.collected.totalCollected > 0 && (
+                  <div className="text-xs text-emerald-400">
+                    💰 Collected: <span className="font-bold">${subData.collected.totalCollected}</span> (net)
+                  </div>
+                )}
+              </div>
               <div className="space-y-1 max-h-24 overflow-y-auto">
                 {subData.subscriptions.filter(s => !s.isActive).map(sub => (
-                  <div key={sub.id} className="flex justify-between items-center text-xs bg-red-900/20 rounded px-2 py-1 text-gray-500">
-                    <span>{APP_NAMES[sub.app] || sub.app} - {sub.plan}</span>
-                    <span>${sub.price}</span>
+                  <div key={sub.id} className="flex justify-between items-center text-xs bg-red-900/20 rounded px-2 py-1">
+                    <span className="text-gray-500">{APP_NAMES[sub.app] || sub.app} - {sub.plan}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500">${sub.price}</span>
+                      {!sub.isTrial && (
+                        <span className="text-emerald-500 text-[10px]">✓ paid</span>
+                      )}
+                      {sub.isTrial && (
+                        <span className="text-gray-600 text-[10px]">trial</span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

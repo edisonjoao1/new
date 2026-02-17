@@ -44,7 +44,24 @@ export async function GET() {
   const trials: Array<{ id: string; app: string; plan: string; price: number; trialEndDate?: string; daysLeft?: number }> = [];
   let trialsReadyToConvert = 0;
 
+  // Track churned paid subs (revenue we actually collected)
+  const churnedPaid: Array<{ id: string; app: string; plan: string; price: number; startDate: string }> = [];
+  let totalCollected = 0;
+
   for (const sub of subs) {
+    // Track churned PAID subscribers (not trials - they never paid)
+    if (!sub.isActive && !sub.isTrial) {
+      churnedPaid.push({
+        id: sub.id,
+        app: sub.app,
+        plan: sub.plan,
+        price: sub.price,
+        startDate: sub.startDate
+      });
+      // They paid at least once
+      totalCollected += sub.price * (1 - APPLE_CUT);
+    }
+
     if (!sub.isActive) continue;
 
     // Track active trials
@@ -107,6 +124,11 @@ export async function GET() {
       count: trials.length,
       readyToConvert: trialsReadyToConvert,
       potentialMRR: Math.round(potentialMRR * 100) / 100,
+    },
+    collected: {
+      churned: churnedPaid,
+      churnedCount: churnedPaid.length,
+      totalCollected: Math.round(totalCollected * 100) / 100,
     },
     progress: {
       current: Math.round(totalNetMRR * 100) / 100,
