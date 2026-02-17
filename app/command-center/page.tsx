@@ -136,8 +136,15 @@ interface SubscriptionData {
     net: number;
     byApp: Record<string, { gross: number; net: number; count: number; breakdown: Record<string, number> }>;
   };
+  trials: {
+    active: Array<{ id: string; app: string; plan: string; price: number; trialEndDate?: string; daysLeft?: number }>;
+    count: number;
+    readyToConvert: number;
+    potentialMRR: number;
+  };
   progress: {
     current: number;
+    potential: number;
     goal1k: number;
     goal10k: number;
     percent1k: string;
@@ -904,10 +911,46 @@ export default function CommandCenter() {
                 <div className="text-xs text-gray-600 dark:text-gray-400">Conservative (50% churn)</div>
               </div>
               <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-3 text-center">
-                <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{subData.subscriptions.filter(s => s.isTrial).length}</div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">on trial (convert?)</div>
+                <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{subData.trials?.count || 0}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">on trial</div>
               </div>
             </div>
+
+            {/* Trials pending conversion */}
+            {subData.trials && subData.trials.count > 0 && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 mt-3 border border-yellow-200 dark:border-yellow-500/30">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="text-xs font-semibold text-yellow-600 dark:text-yellow-400">⏳ TRIALS PENDING ({subData.trials.count})</div>
+                  <div className="text-xs text-gray-500">
+                    Potential MRR: <span className="text-emerald-500 font-bold">${subData.trials.potentialMRR}</span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  {subData.trials.active.map(trial => (
+                    <div key={trial.id} className="flex justify-between items-center text-xs bg-white/50 dark:bg-black/20 rounded px-2 py-1.5">
+                      <span className="text-gray-700 dark:text-gray-300">{APP_NAMES[trial.app] || trial.app} - {trial.plan}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">${trial.price}</span>
+                        {trial.daysLeft !== undefined ? (
+                          trial.daysLeft <= 0 ? (
+                            <span className="text-red-500 font-bold animate-pulse">READY!</span>
+                          ) : (
+                            <span className="text-yellow-600">{trial.daysLeft}d left</span>
+                          )
+                        ) : (
+                          <span className="text-gray-400">no date</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {subData.trials.readyToConvert > 0 && (
+                  <div className="mt-2 text-xs text-center text-red-500 font-bold">
+                    🔔 {subData.trials.readyToConvert} trial(s) ready to convert! Mark them as paid above.
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Lifetime Value - Dynamic based on YOUR subs */}
             {(() => {

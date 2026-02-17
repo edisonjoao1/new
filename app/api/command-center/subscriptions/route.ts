@@ -12,18 +12,62 @@ const MRR_MULTIPLIER = {
   yearly: 1 / 12,
 };
 
+// Check if a subscription should count towards MRR
+function countsTowardsMRR(sub: Subscription): boolean {
+  if (!sub.isActive) return false;
+
+  // Paid subscribers always count
+  if (!sub.isTrial) return true;
+
+  // Trials only count if their end date has passed (they converted)
+  if (sub.trialEndDate) {
+    const today = new Date().toISOString().split('T')[0];
+    return sub.trialEndDate <= today; // Trial ended = converted
+  }
+
+  // Trial with no end date set = doesn't count yet
+  return false;
+}
+
 // GET all subscriptions with MRR calculations
 export async function GET() {
   const state = await getState();
   const subs = state.subscriptions || [];
+  const today = new Date().toISOString().split('T')[0];
 
-  // Calculate MRR by app
+  // Calculate MRR by app (only counting converted/paid subs)
   const byApp: Record<string, { gross: number; net: number; count: number; breakdown: Record<string, number> }> = {};
   let totalGrossMRR = 0;
   let totalNetMRR = 0;
 
+  // Track trials separately
+  const trials: Array<{ id: string; app: string; plan: string; price: number; trialEndDate?: string; daysLeft?: number }> = [];
+  let trialsReadyToConvert = 0;
+
   for (const sub of subs) {
     if (!sub.isActive) continue;
+
+    // Track active trials
+    if (sub.isTrial) {
+      let daysLeft: number | undefined;
+      if (sub.trialEndDate) {
+        const endDate = new Date(sub.trialEndDate);
+        const todayDate = new Date(today);
+        daysLeft = Math.ceil((endDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysLeft <= 0) trialsReadyToConvert++;
+      }
+      trials.push({
+        id: sub.id,
+        app: sub.app,
+        plan: sub.plan,
+        price: sub.price,
+        trialEndDate: sub.trialEndDate,
+        daysLeft
+      });
+    }
+
+    // Only count towards MRR if paid or trial ended
+    if (!countsTowardsMRR(sub)) continue;
 
     const grossMRR = sub.price * MRR_MULTIPLIER[sub.plan];
     const netMRR = grossMRR * (1 - APPLE_CUT);
@@ -41,6 +85,16 @@ export async function GET() {
     totalNetMRR += netMRR;
   }
 
+  // Calculate potential MRR if all trials convert
+  let potentialMRR = totalNetMRR;
+  for (const trial of trials) {
+    if (trial.daysLeft === undefined || trial.daysLeft > 0) {
+      // Not yet converted, add to potential
+      const grossMRR = trial.price * MRR_MULTIPLIER[trial.plan as keyof typeof MRR_MULTIPLIER];
+      potentialMRR += grossMRR * (1 - APPLE_CUT);
+    }
+  }
+
   return NextResponse.json({
     subscriptions: subs,
     mrr: {
@@ -48,8 +102,15 @@ export async function GET() {
       net: Math.round(totalNetMRR * 100) / 100,
       byApp,
     },
+    trials: {
+      active: trials,
+      count: trials.length,
+      readyToConvert: trialsReadyToConvert,
+      potentialMRR: Math.round(potentialMRR * 100) / 100,
+    },
     progress: {
       current: Math.round(totalNetMRR * 100) / 100,
+      potential: Math.round(potentialMRR * 100) / 100,
       goal1k: 1000,
       goal10k: 10000,
       percent1k: ((totalNetMRR / 1000) * 100).toFixed(2) + '%',
@@ -89,10 +150,10 @@ export async function POST(request: Request) {
     state.subscriptions.push(newSub);
     await saveState(state);
 
-    // Recalculate MRR
+    // Recalculate MRR (only paid/converted subs count)
     let totalNetMRR = 0;
     for (const sub of state.subscriptions) {
-      if (sub.isActive) {
+      if (countsTowardsMRR(sub)) {
         totalNetMRR += sub.price * MRR_MULTIPLIER[sub.plan] * (1 - APPLE_CUT);
       }
     }
@@ -101,7 +162,7 @@ export async function POST(request: Request) {
       success: true,
       subscription: newSub,
       newMRR: Math.round(totalNetMRR * 100) / 100,
-      message: `Added ${app} ${plan} subscription`,
+      message: `Added ${app} ${plan} subscription${isTrial ? ' (trial - not counted in MRR yet)' : ''}`,
     });
   } catch (error) {
     console.error('Subscription add error:', error);
@@ -160,12 +221,13 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
     }
 
+    const churnedSub = state.subscriptions[subIndex];
     state.subscriptions[subIndex].isActive = false;
     await saveState(state);
 
     let totalNetMRR = 0;
     for (const sub of state.subscriptions) {
-      if (sub.isActive) {
+      if (countsTowardsMRR(sub)) {
         totalNetMRR += sub.price * MRR_MULTIPLIER[sub.plan] * (1 - APPLE_CUT);
       }
     }
@@ -173,7 +235,8 @@ export async function DELETE(request: Request) {
     return NextResponse.json({
       success: true,
       newMRR: Math.round(totalNetMRR * 100) / 100,
-      message: 'Subscription deactivated',
+      wasTrial: churnedSub.isTrial,
+      message: churnedSub.isTrial ? 'Trial cancelled (no MRR impact)' : 'Subscription churned',
     });
   } catch (error) {
     console.error('Subscription delete error:', error);
