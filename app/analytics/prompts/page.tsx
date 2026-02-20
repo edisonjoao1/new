@@ -78,6 +78,11 @@ export default function PromptsPage() {
   const [importText, setImportText] = useState('')
   const [showImport, setShowImport] = useState(false)
 
+  // App config (consent cutoff date, etc.)
+  const [consentCutoffDate, setConsentCutoffDate] = useState('')
+  const [consentDateSaving, setConsentDateSaving] = useState(false)
+  const [consentDateLoaded, setConsentDateLoaded] = useState(false)
+
   // Check for stored auth
   useEffect(() => {
     const storedKey = sessionStorage.getItem('analytics_key')
@@ -93,6 +98,13 @@ export default function PromptsPage() {
       fetchPrompt(selectedType)
     }
   }, [selectedType, authenticated])
+
+  // Fetch app config (consent date) when authenticated
+  useEffect(() => {
+    if (authenticated && !consentDateLoaded) {
+      fetchAppConfig()
+    }
+  }, [authenticated])
 
   // Track changes
   useEffect(() => {
@@ -277,6 +289,42 @@ export default function PromptsPage() {
     }
   }
 
+  const fetchAppConfig = async () => {
+    try {
+      const response = await fetch('/api/app-config')
+      const data = await response.json()
+      if (data.consentCutoffDate) {
+        setConsentCutoffDate(data.consentCutoffDate)
+      }
+      setConsentDateLoaded(true)
+    } catch (err) {
+      console.error('Failed to fetch app config:', err)
+    }
+  }
+
+  const saveConsentDate = async (date: string) => {
+    setConsentDateSaving(true)
+    try {
+      const response = await fetch('/api/app-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: password,
+          consentCutoffDate: date,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to save')
+      setConsentCutoffDate(date)
+      setSuccess(`Consent cutoff date updated to ${date}`)
+      setTimeout(() => setSuccess(null), 4000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save consent date')
+    } finally {
+      setConsentDateSaving(false)
+    }
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -440,6 +488,48 @@ export default function PromptsPage() {
             {currentPrompt && (
               <span className={`ml-auto px-3 py-1 rounded-full text-xs font-medium ${colorClasses.bg} ${colorClasses.text}`}>
                 Version {currentPrompt.version}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* App Settings (Consent Date) */}
+        <div className={`p-4 rounded-xl mb-6 ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+          <h2 className={`text-sm font-medium mb-3 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>APP SETTINGS</h2>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className={`p-2 rounded-lg ${darkMode ? 'bg-indigo-900/30' : 'bg-indigo-100'}`}>
+                <AlertTriangle className="w-5 h-5 text-indigo-500" />
+              </div>
+              <div>
+                <div className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>AI Consent Card Cutoff</div>
+                <div className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Card stops showing after this date</div>
+              </div>
+            </div>
+            <input
+              type="date"
+              value={consentCutoffDate}
+              onChange={(e) => {
+                const newDate = e.target.value
+                setConsentCutoffDate(newDate)
+                if (newDate) saveConsentDate(newDate)
+              }}
+              className={`px-4 py-2 rounded-lg border text-sm ${
+                darkMode
+                  ? 'bg-gray-900 border-gray-700 text-white'
+                  : 'bg-gray-50 border-gray-200 text-gray-900'
+              } focus:outline-none focus:ring-2 focus:ring-indigo-500/20`}
+            />
+            {consentDateSaving && (
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent" />
+            )}
+            {consentCutoffDate && (
+              <span className={`text-xs px-3 py-1 rounded-full ${
+                new Date(consentCutoffDate + 'T23:59:59') > new Date()
+                  ? 'bg-green-500/10 text-green-500 border border-green-500/20'
+                  : 'bg-red-500/10 text-red-500 border border-red-500/20'
+              }`}>
+                {new Date(consentCutoffDate + 'T23:59:59') > new Date() ? 'Active' : 'Expired'}
               </span>
             )}
           </div>
