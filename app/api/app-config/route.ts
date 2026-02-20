@@ -430,6 +430,7 @@ interface AppConfig {
     dismissible: boolean
     expiresAt?: string
   }[]
+  consentCutoffDate?: string // ISO date string, e.g. "2026-02-24" — controls AI data consent card expiry
 }
 
 // ============================================================================
@@ -601,6 +602,9 @@ export async function GET(request: NextRequest) {
         if (!a.expiresAt) return true
         return new Date(a.expiresAt) > new Date()
       })
+      if (storedConfig?.consentCutoffDate) {
+        config.consentCutoffDate = storedConfig.consentCutoffDate
+      }
     }
 
     // For backwards compatibility, also include single systemPrompt field
@@ -642,7 +646,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { key, appId = 'default', features, announcements } = body
+    const { key, appId = 'default', features, announcements, consentCutoffDate } = body
 
     const validKey = process.env.ANALYTICS_PASSWORD
     if (!key || key !== validKey) {
@@ -661,6 +665,10 @@ export async function POST(request: NextRequest) {
 
     if (announcements !== undefined) {
       configUpdate.announcements = announcements
+    }
+
+    if (consentCutoffDate !== undefined) {
+      configUpdate.consentCutoffDate = consentCutoffDate
     }
 
     await db.collection(CONFIG_COLLECTION).doc(appId).set(configUpdate, { merge: true })
