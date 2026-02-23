@@ -142,6 +142,13 @@ interface SubscriptionData {
     readyToConvert: number;
     potentialMRR: number;
   };
+  revenueThisMonth: {
+    month: string;
+    gross: number;
+    net: number;
+    payments: Array<{ app: string; plan: string; price: number; payments: number; total: number }>;
+    totalPayments: number;
+  };
   collected: {
     churned: Array<{ id: string; app: string; plan: string; price: number; startDate: string }>;
     churnedCount: number;
@@ -387,6 +394,19 @@ export default function CommandCenter() {
             <span className="text-gray-500">·</span>
             <span className="text-gray-500">Mom counting on you</span>
           </div>
+
+          {/* Revenue This Month - Actual Cash */}
+          {subData?.revenueThisMonth && subData.revenueThisMonth.net > 0 && (
+            <div className="mt-4 inline-block bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 rounded-xl px-6 py-3">
+              <div className="text-xs text-emerald-400 font-semibold mb-1">{subData.revenueThisMonth.month.toUpperCase()} REVENUE (ACTUAL)</div>
+              <div className="text-2xl font-bold text-white">
+                ${subData.revenueThisMonth.net.toFixed(2)} <span className="text-sm text-gray-400">net</span>
+              </div>
+              <div className="text-xs text-gray-400 mt-1">
+                ${subData.revenueThisMonth.gross.toFixed(2)} gross · {subData.revenueThisMonth.totalPayments} payment{subData.revenueThisMonth.totalPayments !== 1 ? 's' : ''}
+              </div>
+            </div>
+          )}
         </header>
 
         {/* AI Coach Section */}

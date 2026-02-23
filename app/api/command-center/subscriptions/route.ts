@@ -12,6 +12,55 @@ const MRR_MULTIPLIER = {
   yearly: 1 / 12,
 };
 
+// Calculate payments this month for a subscription
+function getPaymentsThisMonth(sub: { startDate: string; plan: string; price: number; isActive: boolean; isTrial: boolean }): number {
+  if (sub.isTrial) return 0; // Trials don't generate revenue
+
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const startDate = new Date(sub.startDate + 'T00:00:00');
+
+  // If sub started after this month, no payments yet
+  if (startDate > now) return 0;
+
+  let payments = 0;
+
+  if (sub.plan === 'yearly') {
+    // Yearly: one payment on start date
+    if (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) {
+      payments = 1;
+    }
+  } else if (sub.plan === 'monthly') {
+    // Monthly: payment on same day each month
+    // Check if a payment falls in this month
+    const startDay = startDate.getDate();
+    const monthsSinceStart = (currentYear - startDate.getFullYear()) * 12 + (currentMonth - startDate.getMonth());
+    if (monthsSinceStart >= 0) {
+      payments = 1; // At least one payment this month if active
+    }
+  } else if (sub.plan === 'weekly') {
+    // Weekly: payment every 7 days
+    // Count how many payment dates fall in this month
+    const firstOfMonth = new Date(currentYear, currentMonth, 1);
+    const lastOfMonth = new Date(currentYear, currentMonth + 1, 0);
+
+    // Find the first payment date on or after the first of this month
+    let paymentDate = new Date(startDate);
+    while (paymentDate < firstOfMonth) {
+      paymentDate.setDate(paymentDate.getDate() + 7);
+    }
+
+    // Count payments in this month
+    while (paymentDate <= lastOfMonth && paymentDate <= now) {
+      payments++;
+      paymentDate.setDate(paymentDate.getDate() + 7);
+    }
+  }
+
+  return payments;
+}
+
 // Check if a subscription should count towards MRR
 function countsTowardsMRR(sub: Subscription): boolean {
   if (!sub.isActive) return false;
@@ -48,7 +97,28 @@ export async function GET() {
   const churnedPaid: Array<{ id: string; app: string; plan: string; price: number; startDate: string }> = [];
   let totalCollected = 0;
 
+  // Calculate revenue THIS MONTH (actual payments, not normalized)
+  let revenueThisMonthGross = 0;
+  let revenueThisMonthNet = 0;
+  const paymentsThisMonth: Array<{ app: string; plan: string; price: number; payments: number; total: number }> = [];
+
   for (const sub of subs) {
+    // Calculate payments this month (for all subs, active or churned)
+    const payments = getPaymentsThisMonth(sub);
+    if (payments > 0) {
+      const grossTotal = sub.price * payments;
+      const netTotal = grossTotal * (1 - APPLE_CUT);
+      revenueThisMonthGross += grossTotal;
+      revenueThisMonthNet += netTotal;
+      paymentsThisMonth.push({
+        app: sub.app,
+        plan: sub.plan,
+        price: sub.price,
+        payments,
+        total: grossTotal
+      });
+    }
+
     // Track churned PAID subscribers (not trials - they never paid)
     if (!sub.isActive && !sub.isTrial) {
       churnedPaid.push({
@@ -112,12 +182,23 @@ export async function GET() {
     }
   }
 
+  // Get current month name
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const currentMonthName = monthNames[new Date().getMonth()];
+
   return NextResponse.json({
     subscriptions: subs,
     mrr: {
       gross: Math.round(totalGrossMRR * 100) / 100,
       net: Math.round(totalNetMRR * 100) / 100,
       byApp,
+    },
+    revenueThisMonth: {
+      month: currentMonthName,
+      gross: Math.round(revenueThisMonthGross * 100) / 100,
+      net: Math.round(revenueThisMonthNet * 100) / 100,
+      payments: paymentsThisMonth,
+      totalPayments: paymentsThisMonth.reduce((sum, p) => sum + p.payments, 0),
     },
     trials: {
       active: trials,
