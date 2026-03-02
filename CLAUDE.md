@@ -118,12 +118,16 @@ npm run type-check   # TypeScript check
 
 ## Environment Variables (`.env.local`)
 ```
-OPENAI_API_KEY          # For AI evaluation features
+OPENAI_API_KEY          # For AI evaluation features + AI-generated push notifications
 GOOGLE_CLIENT_ID        # GA4 OAuth
 GOOGLE_CLIENT_SECRET    # GA4 OAuth
 GOOGLE_REFRESH_TOKEN    # GA4 OAuth
 ANALYTICS_PASSWORD      # Dashboard login password
 RESEND_API_KEY          # Email service
+ASC_KEY_ID              # App Store Connect API key ID (9BP2A7V89P)
+ASC_ISSUER_ID           # ASC API issuer ID
+ASC_PRIVATE_KEY         # ASC .p8 private key (single-line with \n)
+ASC_VENDOR_NUMBER       # ASC vendor number (find in Sales & Trends)
 ```
 
 Firebase credentials: `serviceAccountKey.json` in project root (not committed).
@@ -157,6 +161,13 @@ Firebase credentials: `serviceAccountKey.json` in project root (not committed).
 | `system-prompt/route.ts` | System prompt management |
 | `prompt-insights/route.ts` | Prompt analytics |
 | `onboarding/route.ts` | Onboarding funnel + per-user onboarding/churn events (GA4) |
+| `asc-revenue/route.ts` | ASC revenue data — MRR, subs, refunds, daily timeline (GET cached, POST refresh) |
+| `push-notifications/route.ts` | Send push notifications — individual, AI-generated, template, segment broadcast |
+
+### API Routes (`app/api/webhooks/`)
+| Route | Purpose |
+|-------|---------|
+| `apple-notifications/route.ts` | Apple Server Notifications v2 — subscription lifecycle events (trial, renew, churn, refund) |
 
 ### Components (`components/analytics/`)
 | Component | Purpose |
@@ -172,6 +183,15 @@ Firebase credentials: `serviceAccountKey.json` in project root (not committed).
 | `ConversationViewer.tsx` | Chat thread viewer |
 | `EnhancedAIDashboard.tsx` | AI quality dashboard |
 | `VoiceDiagnostics.tsx` | Voice feature analysis |
+
+### Libraries (`lib/`)
+| File | Purpose |
+|------|---------|
+| `firebase/admin.ts` | Firebase Admin SDK — Firestore + Messaging exports |
+| `apple/asc-client.ts` | ASC API client — JWT auth, sales report fetching, MRR calculation |
+| `apple/jwt-validator.ts` | JWS validation for Apple Server Notifications (x5c chain) |
+| `apple/notification-types.ts` | TypeScript types for Apple Server Notification v2 payloads |
+| `notifications/templates.ts` | Push notification templates with placeholder resolution |
 
 ### Key Patterns
 - **Segment filtering**: `UserSegment` type defines user segments (all, today, new, power, at_risk, voice, images, subscribed, videos, churned, billing_retry)
@@ -224,6 +244,65 @@ Body: { key, userId, status }
 Status values: billing_retry | churned | subscribed | free
 ```
 Writes `subscription_status_override`, `subscription_status_override_at`, and relevant Firestore fields directly. Invalidates caches.
+
+## What's Done (Mar 2, 2026) — Intelligence Layer
+All features work with the current live iOS app — no app update required.
+
+### Feature 1: Apple Server Notifications v2 Webhook
+- [x] `app/api/webhooks/apple-notifications/route.ts` — POST handler for Apple's signed JWS payloads
+- [x] `lib/apple/jwt-validator.ts` — JWS validation using Apple's root certificate (x5c chain)
+- [x] `lib/apple/notification-types.ts` — TypeScript enums/interfaces for all notification types
+- [x] Handles: SUBSCRIBED, DID_RENEW, DID_FAIL_TO_RENEW, EXPIRED, GRACE_PERIOD_EXPIRED, REFUND, RENEWAL_EXTENDED, DID_CHANGE_RENEWAL_STATUS
+- [x] Transaction map lookup for device ID resolution (without appAccountToken)
+- [x] Audit log to `subscription_events/{docId}` Firestore collection
+- [x] Unmatched events stored in `unmatched_subscription_events/{docId}` until app update adds appAccountToken
+- **Edison TODO**: Configure webhook URL in ASC → App Info → Server Notifications → `https://new-gold-eta.vercel.app/api/webhooks/apple-notifications`, Version 2
+
+### Feature 2: Dashboard Push Notifications
+- [x] `app/api/analytics/push-notifications/route.ts` — 4 POST modes (individual, ai, template, segment) + GET for templates/history
+- [x] `lib/notifications/templates.ts` — 5 templates (win_back, feature_discovery, milestone, billing_issue, conversation_continuation) with placeholder resolution
+- [x] `lib/firebase/admin.ts` — Added `getFirebaseMessaging()` export
+- [x] **UserDetailModal.tsx** — "Send Push Notification" section with 3 modes:
+  - AI-Generated (reads conversations + memories, calls gpt-4.1-mini to craft personalized message)
+  - Template (dropdown of predefined templates)
+  - Custom (title/body/targetView inputs)
+  - History toggle showing last 3 sent notifications
+  - Disabled gracefully when user has no FCM token
+- [x] **UserList.tsx** — Segment broadcast UI (appears for subscribed/churned/billing_retry/at_risk segments)
+  - Title/body/targetView inputs, recipient count preview, confirmation dialog
+  - Results summary (sent/failed/no-token)
+- This is an OPTIONAL manual tool — does NOT replace the automated Cloud Functions (3 daily crons)
+
+### Feature 3: Billing Retry Filter in Cloud Functions
+- [x] `~/Desktop/Inteligencia Artificial Gratis/functions/index.js` — 6-line addition
+  - Checks `is_in_billing_retry` field in processNotificationsForWindow
+  - Skips standard re-engagement for billing retry users
+  - Tracks skip count in `stats.skipped.billingRetry`
+- **Edison TODO**: Deploy with `firebase deploy --only functions`
+
+### Feature 4: ASC Revenue Integration
+- [x] `lib/apple/asc-client.ts` — Full ASC API client
+  - JWT generation (ES256 with .p8 key, 20-min expiry)
+  - Sales report fetching (gzipped TSV → parsed records)
+  - Revenue calculation (filters for subscription product types: IA1, IA9, IAY, 1F)
+  - MRR estimation (weekly×4.33, monthly×1, yearly÷12)
+- [x] `app/api/analytics/asc-revenue/route.ts` — GET with dual cache (30-min memory + Firestore `asc_revenue/{date}`) + POST refresh
+- [x] **UserList.tsx** — Revenue cards (MRR, This Month, New Subs, Renewals, Refunds) + Recharts AreaChart daily timeline + product breakdown pills
+- **Edison TODO**: Add `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`, `ASC_VENDOR_NUMBER` env vars to Vercel
+
+### New Firestore Collections
+| Collection | Purpose |
+|------------|---------|
+| `subscription_events/{docId}` | Audit log of every Apple Server Notification |
+| `unmatched_subscription_events/{docId}` | Events that couldn't be matched to a device ID (temporary) |
+| `transaction_map/{originalTransactionId}` | Maps Apple transaction IDs to device IDs |
+| `asc_revenue/{date}` | Cached daily ASC revenue data |
+
+### Edison's Manual Steps (after deploy)
+1. Register `device_id` as GA4 custom dimension — GA4 Admin → Custom Definitions → Create → Name: `device_id`, Scope: Event, Parameter: `device_id`
+2. Configure Apple Server Notifications URL in ASC — App Info → Server Notifications → URL: `https://new-gold-eta.vercel.app/api/webhooks/apple-notifications`, Version 2
+3. Add ASC env vars to Vercel — `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`, `ASC_VENDOR_NUMBER`
+4. Deploy Cloud Functions — `firebase deploy --only functions` (billing retry filter)
 
 ## Known Issues
 - `UserDetailModal.tsx` and `UserList.tsx` are large files (1500+ lines each) — be careful with edits

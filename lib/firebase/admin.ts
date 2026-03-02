@@ -1,10 +1,12 @@
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app'
 import { getFirestore, Firestore } from 'firebase-admin/firestore'
 import { getStorage, Storage } from 'firebase-admin/storage'
+import { getMessaging, Messaging } from 'firebase-admin/messaging'
 
 let app: App | null = null
 let db: Firestore | null = null
 let storage: Storage | null = null
+let messaging: Messaging | null = null
 
 const STORAGE_BUCKET = 'inteligencia-artificial-6a543.firebasestorage.app'
 
@@ -53,6 +55,14 @@ export function getFirestoreDb(): Firestore {
 
 export function getFirebaseStorage(): Storage {
   return getFirebaseAdmin().storage
+}
+
+export function getFirebaseMessaging(): Messaging {
+  const { app: firebaseApp } = getFirebaseAdmin()
+  if (!messaging) {
+    messaging = getMessaging(firebaseApp)
+  }
+  return messaging
 }
 
 export { STORAGE_BUCKET }

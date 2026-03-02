@@ -212,6 +212,18 @@ export default function CommandCenter() {
   const [revenueSaving, setRevenueSaving] = useState(false);
   const [editingSub, setEditingSub] = useState<string | null>(null);
   const [editTrialEnd, setEditTrialEnd] = useState('');
+  const [ascRevenue, setAscRevenue] = useState<{
+    mrr: number;
+    revenueThisMonth: number;
+    activeSubscribers: number;
+    newSubscriptions: number;
+    renewals: number;
+    refunds: number;
+    byProduct: Record<string, { revenue: number; units: number }>;
+    dailyTimeline: { date: string; revenue: number; units: number }[];
+    warning?: string;
+  } | null>(null);
+  const [ascLoading, setAscLoading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -243,6 +255,15 @@ export default function CommandCenter() {
       if (!activityData.error) {
         setActivity(activityData);
       }
+
+      // Fetch ASC revenue (non-blocking — won't fail the rest if env vars missing)
+      try {
+        const ascRes = await fetch(`/api/analytics/asc-revenue?key=${encodeURIComponent(process.env.NEXT_PUBLIC_ANALYTICS_PASSWORD || 'edison2024analytics')}&range=30d`);
+        if (ascRes.ok) {
+          const ascData = await ascRes.json();
+          if (!ascData.error) setAscRevenue(ascData);
+        }
+      } catch {}
     } catch (err) {
       console.error('Failed to load:', err);
     }
@@ -930,6 +951,59 @@ export default function CommandCenter() {
             </div>
           )}
         </section>
+
+        {/* ASC LIVE REVENUE (App Store Connect) */}
+        {ascRevenue && (
+          <section className="bg-gradient-to-br from-blue-500/10 to-indigo-500/5 border border-blue-500/30 rounded-2xl p-5 mb-6">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-xs font-semibold tracking-wider text-blue-400">APP STORE REVENUE (LIVE)</h2>
+              {ascRevenue.warning && (
+                <span className="text-xs text-yellow-400">cached</span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+              <div className="bg-white/5 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-blue-400">${ascRevenue.mrr.toFixed(2)}</div>
+                <div className="text-xs text-gray-500">MRR (ASC)</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-emerald-400">${ascRevenue.revenueThisMonth.toFixed(2)}</div>
+                <div className="text-xs text-gray-500">This Month</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-green-400">{ascRevenue.newSubscriptions}</div>
+                <div className="text-xs text-gray-500">New Subs</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-cyan-400">{ascRevenue.renewals}</div>
+                <div className="text-xs text-gray-500">Renewals</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-red-400">{ascRevenue.refunds}</div>
+                <div className="text-xs text-gray-500">Refunds</div>
+              </div>
+            </div>
+
+            {/* By Product */}
+            {Object.keys(ascRevenue.byProduct).length > 0 && (
+              <div className="bg-gray-900/30 rounded-lg p-3">
+                <div className="text-xs font-semibold text-gray-400 mb-2">BY PRODUCT (SKU)</div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {Object.entries(ascRevenue.byProduct)
+                    .sort(([,a], [,b]) => b.revenue - a.revenue)
+                    .map(([sku, data]) => (
+                    <div key={sku} className="bg-white/5 rounded p-2">
+                      <div className="text-sm font-semibold text-blue-400">${data.revenue.toFixed(2)}</div>
+                      <div className="text-xs text-gray-500 truncate" title={sku}>{sku}</div>
+                      <div className="text-xs text-gray-600">{data.units} unit{data.units !== 1 ? 's' : ''}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* PROJECTIONS & RETENTION */}
         {subData && subData.mrr.net > 0 && (

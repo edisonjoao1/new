@@ -43,6 +43,8 @@ import {
   UserX,
   Footprints,
   CreditCard,
+  Loader2,
+  Megaphone,
 } from 'lucide-react'
 import RetentionCohorts from './RetentionCohorts'
 import ConversionFunnel from './ConversionFunnel'
@@ -220,6 +222,18 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date())
   const [timelineDays, setTimelineDays] = useState(90)
 
+  // Revenue state
+  const [revenue, setRevenue] = useState<any>(null)
+  const [loadingRevenue, setLoadingRevenue] = useState(false)
+
+  // Segment broadcast state
+  const [showBroadcast, setShowBroadcast] = useState(false)
+  const [broadcastTitle, setBroadcastTitle] = useState('')
+  const [broadcastBody, setBroadcastBody] = useState('')
+  const [broadcastTargetView, setBroadcastTargetView] = useState('chat')
+  const [broadcastSending, setBroadcastSending] = useState(false)
+  const [broadcastResult, setBroadcastResult] = useState<{ sent: number; failed: number; noToken: number; total: number } | null>(null)
+
   // Fetch dashboard stats
   const fetchDashboard = async (silent = false) => {
     if (!silent) setLoadingDashboard(true)
@@ -235,6 +249,21 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
     } finally {
       if (!silent) setLoadingDashboard(false)
     }
+  }
+
+  // Fetch ASC revenue
+  const fetchRevenue = async () => {
+    setLoadingRevenue(true)
+    try {
+      const res = await fetch(`/api/analytics/asc-revenue?key=${encodeURIComponent(analyticsKey)}&range=30d`)
+      if (res.ok) {
+        const data = await res.json()
+        setRevenue(data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch revenue:', err)
+    }
+    setLoadingRevenue(false)
   }
 
   // Fetch users
@@ -287,6 +316,7 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
     if (analyticsKey) {
       fetchDashboard()
       fetchUsers()
+      fetchRevenue()
     }
   }, [analyticsKey])
 
@@ -339,6 +369,48 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
   const handleSegmentChange = (segment: UserSegment) => {
     setActiveSegment(segment)
     setPage(1)
+    setShowBroadcast(false)
+    setBroadcastResult(null)
+  }
+
+  // Segment broadcast
+  const sendSegmentBroadcast = async () => {
+    if (!broadcastTitle || !broadcastBody || broadcastSending) return
+
+    const segmentMap: Record<string, string> = {
+      subscribed: 'subscribed',
+      churned: 'churned',
+      billing_retry: 'billing_retry',
+      at_risk: 'at_risk',
+    }
+    const segment = segmentMap[activeSegment]
+    if (!segment) return
+
+    if (!confirm(`Send "${broadcastTitle}" to all ${segmentCounts[activeSegment] || 0} ${activeSegment} users?`)) return
+
+    setBroadcastSending(true)
+    setBroadcastResult(null)
+    try {
+      const res = await fetch('/api/analytics/push-notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: analyticsKey,
+          mode: 'segment',
+          segment,
+          title: broadcastTitle,
+          body: broadcastBody,
+          targetView: broadcastTargetView,
+        }),
+      })
+      const data = await res.json()
+      setBroadcastResult({ sent: data.sent || 0, failed: data.failed || 0, noToken: data.noToken || 0, total: data.total || 0 })
+      setBroadcastTitle('')
+      setBroadcastBody('')
+    } catch (err) {
+      setBroadcastResult({ sent: 0, failed: 1, noToken: 0, total: 0 })
+    }
+    setBroadcastSending(false)
   }
 
   const formatDate = (dateString: string | null) => {
@@ -547,6 +619,114 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
               </div>
             ))}
           </div>
+
+          {/* ASC Revenue */}
+          {revenue && !revenue.error && (
+            <div className={`p-6 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-green-500" />
+                  <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    Revenue (ASC)
+                  </h3>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+                    Last 30 days
+                  </span>
+                </div>
+                <button
+                  onClick={fetchRevenue}
+                  disabled={loadingRevenue}
+                  className={`text-xs px-2 py-1 rounded ${isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  {loadingRevenue ? <RefreshCw className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+                  <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>MRR</span>
+                  <p className={`text-xl font-bold text-green-500`}>${revenue.mrr?.toFixed(2) || '0.00'}</p>
+                </div>
+                <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+                  <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>This Month</span>
+                  <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>${revenue.revenueThisMonth?.toFixed(2) || '0.00'}</p>
+                </div>
+                <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+                  <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>New Subs</span>
+                  <p className={`text-xl font-bold text-blue-500`}>{revenue.newSubscriptions || 0}</p>
+                </div>
+                <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+                  <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Renewals</span>
+                  <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{revenue.renewals || 0}</p>
+                </div>
+                <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+                  <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Refunds</span>
+                  <p className={`text-xl font-bold text-red-500`}>{revenue.refunds || 0}</p>
+                </div>
+              </div>
+              {/* Revenue Timeline Chart */}
+              {revenue.dailyTimeline?.length > 0 && (
+                <div className="mt-4">
+                  <ResponsiveContainer width="100%" height={160}>
+                    <AreaChart data={revenue.dailyTimeline}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#374151' : '#e5e7eb'} />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 10 }}
+                        tickFormatter={(d: string) => new Date(d).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                      />
+                      <YAxis
+                        tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 10 }}
+                        tickFormatter={(v: number) => `$${v}`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: isDark ? '#1f2937' : '#fff',
+                          border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                          borderRadius: '8px',
+                          fontSize: 12,
+                        }}
+                        formatter={(value: number | undefined) => [`$${(value ?? 0).toFixed(2)}`, 'Revenue']}
+                        labelFormatter={(d: string) => new Date(d).toLocaleDateString('en', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke="#10b981"
+                        fill="#10b981"
+                        fillOpacity={0.15}
+                        strokeWidth={2}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              {/* By Product Breakdown */}
+              {revenue.byProduct && Object.keys(revenue.byProduct).length > 0 && (
+                <div className="mt-4">
+                  <p className={`text-xs font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>By Product</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(revenue.byProduct).map(([sku, data]: [string, any]) => (
+                      <span
+                        key={sku}
+                        className={`text-xs px-2.5 py-1 rounded-lg ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}
+                      >
+                        {sku}: ${data.revenue.toFixed(2)} ({data.units} units)
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {revenue.warning && (
+                <p className={`text-xs mt-2 ${isDark ? 'text-yellow-500' : 'text-yellow-600'}`}>{revenue.warning}</p>
+              )}
+            </div>
+          )}
+          {loadingRevenue && !revenue && (
+            <div className={`p-6 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center gap-2`}>
+              <RefreshCw className="w-4 h-4 animate-spin text-green-500" />
+              <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Loading revenue data...</span>
+            </div>
+          )}
 
           {/* Estimated API Costs */}
           {dashboard.costs && (
@@ -849,6 +1029,96 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
               })}
             </div>
           </div>
+
+          {/* Segment Broadcast */}
+          {['subscribed', 'churned', 'billing_retry', 'at_risk'].includes(activeSegment) && (
+            <div className={`rounded-xl ${isDark ? 'bg-gray-800/50' : 'bg-gray-50'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <button
+                onClick={() => { setShowBroadcast(!showBroadcast); setBroadcastResult(null) }}
+                className={`w-full flex items-center justify-between p-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}
+              >
+                <div className="flex items-center gap-2">
+                  <Megaphone className="w-4 h-4 text-purple-500" />
+                  <span className="text-sm font-medium">Send to {SEGMENTS.find(s => s.id === activeSegment)?.label}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-600'}`}>
+                    {segmentCounts[activeSegment] || 0} users
+                  </span>
+                </div>
+                {showBroadcast ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+
+              {showBroadcast && (
+                <div className="px-4 pb-4 space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Title (max 27 chars)</label>
+                      <input
+                        type="text"
+                        maxLength={27}
+                        placeholder="Tu IA tiene algo nuevo"
+                        value={broadcastTitle}
+                        onChange={(e) => setBroadcastTitle(e.target.value)}
+                        className={`w-full mt-1 text-sm rounded-lg px-3 py-2 ${
+                          isDark ? 'bg-gray-900 text-gray-200 border-gray-700 placeholder-gray-600' : 'bg-white text-gray-800 border-gray-200 placeholder-gray-400'
+                        } border`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Target View</label>
+                      <select
+                        value={broadcastTargetView}
+                        onChange={(e) => setBroadcastTargetView(e.target.value)}
+                        className={`w-full mt-1 text-sm rounded-lg px-3 py-2 ${
+                          isDark ? 'bg-gray-900 text-gray-200 border-gray-700' : 'bg-white text-gray-800 border-gray-200'
+                        } border`}
+                      >
+                        <option value="chat">Open → Chat</option>
+                        <option value="images">Open → Images</option>
+                        <option value="voice">Open → Voice</option>
+                        <option value="learn">Open → Learn</option>
+                        <option value="settings">Open → Settings</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Body (max 80 chars)</label>
+                    <input
+                      type="text"
+                      maxLength={80}
+                      placeholder="Message body..."
+                      value={broadcastBody}
+                      onChange={(e) => setBroadcastBody(e.target.value)}
+                      className={`w-full mt-1 text-sm rounded-lg px-3 py-2 ${
+                        isDark ? 'bg-gray-900 text-gray-200 border-gray-700 placeholder-gray-600' : 'bg-white text-gray-800 border-gray-200 placeholder-gray-400'
+                      } border`}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={sendSegmentBroadcast}
+                      disabled={broadcastSending || !broadcastTitle || !broadcastBody}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        broadcastSending
+                          ? 'bg-purple-500/20 text-purple-400 cursor-wait'
+                          : 'bg-purple-600 hover:bg-purple-700 text-white'
+                      } disabled:opacity-40 disabled:cursor-not-allowed`}
+                    >
+                      {broadcastSending ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
+                      ) : (
+                        <><Send className="w-4 h-4" /> Send to Segment</>
+                      )}
+                    </button>
+                    {broadcastResult && (
+                      <span className={`text-sm ${broadcastResult.sent > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {broadcastResult.sent} sent · {broadcastResult.failed} failed · {broadcastResult.noToken} no token
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Filters */}
           <div className={`rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>

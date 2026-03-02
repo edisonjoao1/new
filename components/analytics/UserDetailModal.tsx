@@ -50,6 +50,11 @@ import {
   Circle,
   Footprints,
   CreditCard,
+  Send,
+  Loader2,
+  Wand2,
+  FileText,
+  PenLine,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -277,6 +282,18 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
   const [onboardingData, setOnboardingData] = useState<any>(null)
   const [churnData, setChurnData] = useState<any>(null)
 
+  // Push notification state
+  const [notifMode, setNotifMode] = useState<'ai' | 'template' | 'custom'>('ai')
+  const [notifTitle, setNotifTitle] = useState('')
+  const [notifBody, setNotifBody] = useState('')
+  const [notifTargetView, setNotifTargetView] = useState('chat')
+  const [notifTemplateId, setNotifTemplateId] = useState('')
+  const [notifTemplates, setNotifTemplates] = useState<{ id: string; label: string; title: string; body: string; targetView: string }[]>([])
+  const [notifSending, setNotifSending] = useState(false)
+  const [notifResult, setNotifResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [notifHistory, setNotifHistory] = useState<any[]>([])
+  const [notifHistoryLoading, setNotifHistoryLoading] = useState(false)
+
   // Filter images by source - check multiple indicators
   const getImageSource = (img: ImageItem): 'chat' | 'generator' => {
     // If we have explicit metadata about source, use it
@@ -392,6 +409,76 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
       setTimeout(() => setCopied(false), 2000)
     }
   }
+
+  // Push notification functions
+  const fetchNotifTemplates = async () => {
+    try {
+      const res = await fetch(`/api/analytics/push-notifications?key=${encodeURIComponent(analyticsKey)}&action=templates`)
+      const data = await res.json()
+      if (data.templates) {
+        setNotifTemplates(data.templates)
+        if (data.templates.length > 0) setNotifTemplateId(data.templates[0].id)
+      }
+    } catch { /* ignore */ }
+  }
+
+  const fetchNotifHistory = async () => {
+    if (!userId) return
+    setNotifHistoryLoading(true)
+    try {
+      const res = await fetch(`/api/analytics/push-notifications?key=${encodeURIComponent(analyticsKey)}&action=history&userId=${encodeURIComponent(userId)}`)
+      const data = await res.json()
+      setNotifHistory(data.history || [])
+    } catch { /* ignore */ }
+    setNotifHistoryLoading(false)
+  }
+
+  const sendNotification = async () => {
+    if (!userId || notifSending) return
+    setNotifSending(true)
+    setNotifResult(null)
+
+    try {
+      let payload: Record<string, unknown> = { key: analyticsKey, userId }
+
+      if (notifMode === 'ai') {
+        payload.mode = 'ai'
+      } else if (notifMode === 'template') {
+        payload.mode = 'template'
+        payload.templateId = notifTemplateId
+      } else {
+        payload.mode = 'individual'
+        payload.title = notifTitle
+        payload.body = notifBody
+        payload.targetView = notifTargetView
+      }
+
+      const res = await fetch('/api/analytics/push-notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+
+      if (data.sent) {
+        const notif = data.notification || { title: notifTitle, body: notifBody }
+        setNotifResult({ success: true, message: `Sent: "${notif.title}"` })
+        setNotifTitle('')
+        setNotifBody('')
+        fetchNotifHistory()
+      } else {
+        setNotifResult({ success: false, message: data.error || 'Failed to send' })
+      }
+    } catch (err) {
+      setNotifResult({ success: false, message: err instanceof Error ? err.message : 'Network error' })
+    }
+    setNotifSending(false)
+  }
+
+  // Fetch templates on mount
+  useEffect(() => {
+    fetchNotifTemplates()
+  }, [])
 
   const getEngagementColor = (score: number) => {
     if (score >= 70) return 'text-green-500'
@@ -1009,6 +1096,160 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                             )}
                           </div>
                         </div>
+                      </div>
+
+                      {/* Send Push Notification */}
+                      <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                        <h3 className={`text-sm font-medium mb-3 flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          <Send className="w-4 h-4 text-purple-500" />
+                          Send Push Notification
+                        </h3>
+
+                        {!user.has_push_token ? (
+                          <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                            No FCM token — user hasn&apos;t enabled push notifications
+                          </p>
+                        ) : (
+                          <div className="space-y-3">
+                            {/* Mode Tabs */}
+                            <div className="flex gap-1">
+                              {[
+                                { mode: 'ai' as const, label: 'AI', icon: Wand2, desc: 'AI-generated from conversations' },
+                                { mode: 'template' as const, label: 'Template', icon: FileText, desc: 'Use a template' },
+                                { mode: 'custom' as const, label: 'Custom', icon: PenLine, desc: 'Write your own' },
+                              ].map(({ mode, label, icon: Icon }) => (
+                                <button
+                                  key={mode}
+                                  onClick={() => { setNotifMode(mode); setNotifResult(null) }}
+                                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                                    notifMode === mode
+                                      ? 'bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/40'
+                                      : isDark ? 'bg-gray-700 text-gray-400 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                                  }`}
+                                >
+                                  <Icon className="w-3 h-3" />
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* AI Mode */}
+                            {notifMode === 'ai' && (
+                              <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                AI reads this user&apos;s conversations, memories, and interests to craft a personalized message.
+                              </p>
+                            )}
+
+                            {/* Template Mode */}
+                            {notifMode === 'template' && (
+                              <select
+                                value={notifTemplateId}
+                                onChange={(e) => setNotifTemplateId(e.target.value)}
+                                className={`w-full text-xs rounded-lg px-3 py-2 ${
+                                  isDark ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-white text-gray-700 border-gray-300'
+                                } border`}
+                              >
+                                {notifTemplates.map(t => (
+                                  <option key={t.id} value={t.id}>{t.label} — {t.title}</option>
+                                ))}
+                              </select>
+                            )}
+
+                            {/* Custom Mode */}
+                            {notifMode === 'custom' && (
+                              <div className="space-y-2">
+                                <input
+                                  type="text"
+                                  placeholder="Title (max 27 chars)"
+                                  maxLength={27}
+                                  value={notifTitle}
+                                  onChange={(e) => setNotifTitle(e.target.value)}
+                                  className={`w-full text-xs rounded-lg px-3 py-2 ${
+                                    isDark ? 'bg-gray-700 text-gray-300 border-gray-600 placeholder-gray-500' : 'bg-white text-gray-700 border-gray-300 placeholder-gray-400'
+                                  } border`}
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Body (max 80 chars)"
+                                  maxLength={80}
+                                  value={notifBody}
+                                  onChange={(e) => setNotifBody(e.target.value)}
+                                  className={`w-full text-xs rounded-lg px-3 py-2 ${
+                                    isDark ? 'bg-gray-700 text-gray-300 border-gray-600 placeholder-gray-500' : 'bg-white text-gray-700 border-gray-300 placeholder-gray-400'
+                                  } border`}
+                                />
+                                <select
+                                  value={notifTargetView}
+                                  onChange={(e) => setNotifTargetView(e.target.value)}
+                                  className={`w-full text-xs rounded-lg px-3 py-2 ${
+                                    isDark ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-white text-gray-700 border-gray-300'
+                                  } border`}
+                                >
+                                  <option value="chat">Open → Chat</option>
+                                  <option value="images">Open → Images</option>
+                                  <option value="voice">Open → Voice</option>
+                                  <option value="learn">Open → Learn</option>
+                                  <option value="settings">Open → Settings</option>
+                                </select>
+                              </div>
+                            )}
+
+                            {/* Send Button */}
+                            <button
+                              onClick={sendNotification}
+                              disabled={notifSending || (notifMode === 'custom' && (!notifTitle || !notifBody))}
+                              className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                                notifSending
+                                  ? 'bg-purple-500/20 text-purple-400 cursor-wait'
+                                  : 'bg-purple-600 hover:bg-purple-700 text-white'
+                              } disabled:opacity-40 disabled:cursor-not-allowed`}
+                            >
+                              {notifSending ? (
+                                <>
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  {notifMode === 'ai' ? 'Generating & Sending...' : 'Sending...'}
+                                </>
+                              ) : (
+                                <>
+                                  <Send className="w-3 h-3" />
+                                  Send {notifMode === 'ai' ? 'AI Notification' : notifMode === 'template' ? 'Template' : 'Notification'}
+                                </>
+                              )}
+                            </button>
+
+                            {/* Result */}
+                            {notifResult && (
+                              <div className={`text-xs px-3 py-2 rounded-lg ${
+                                notifResult.success
+                                  ? isDark ? 'bg-green-900/20 text-green-400' : 'bg-green-50 text-green-700'
+                                  : isDark ? 'bg-red-900/20 text-red-400' : 'bg-red-50 text-red-700'
+                              }`}>
+                                {notifResult.message}
+                              </div>
+                            )}
+
+                            {/* History Toggle */}
+                            <button
+                              onClick={fetchNotifHistory}
+                              className={`text-xs ${isDark ? 'text-gray-500 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'} transition-colors`}
+                            >
+                              {notifHistoryLoading ? 'Loading...' : `View sent history →`}
+                            </button>
+
+                            {notifHistory.length > 0 && (
+                              <div className="space-y-1.5">
+                                {notifHistory.slice(0, 3).map((h: any, i: number) => (
+                                  <div key={h.id || i} className={`text-xs rounded-lg px-2.5 py-1.5 ${isDark ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
+                                    <div className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{h.title}</div>
+                                    <div className={isDark ? 'text-gray-500' : 'text-gray-400'}>
+                                      {h.body?.substring(0, 60)}{h.body?.length > 60 ? '...' : ''} · {h.source} · {h.sent_at ? new Date(h.sent_at).toLocaleDateString() : ''}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Onboarding Journey */}

@@ -12,6 +12,11 @@ let churnedDeviceIdsCache: { data: Set<string>; timestamp: number } | null = nul
 
 const GA4_PROPERTY_ID = process.env.GA4_PROPERTY_ID || '488396770'
 
+// Test/internal device IDs — excluded from subscriber counts and segment metrics
+const TEST_DEVICE_IDS = new Set([
+  '7B0A1EF1-DC13-4D01-8537-9230DA5A9BD4', // Apple sandbox tester
+])
+
 async function getGA4AccessToken(): Promise<string> {
   const clientId = process.env.GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
@@ -277,8 +282,9 @@ async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>, timeline
     if ((user.total_voice_sessions || 0) > 0) segmentCounts.voice++
     if ((user.total_images_generated || 0) > 0) segmentCounts.images++
     if ((user.total_videos_generated || 0) > 0) segmentCounts.videos++
-    const isCurrentlySubscribed = user.is_subscribed || user.is_premium
-    const isInBillingRetry = user.is_in_billing_retry || false
+    const isTestDevice = TEST_DEVICE_IDS.has(user.id)
+    const isCurrentlySubscribed = !isTestDevice && (user.is_subscribed || user.is_premium)
+    const isInBillingRetry = !isTestDevice && (user.is_in_billing_retry || false)
     const isChurned = (user.was_previously_premium || ga4ChurnedIds.has(user.id)) && !isCurrentlySubscribed && !isInBillingRetry
     if (isCurrentlySubscribed) segmentCounts.subscribed++
     if (isInBillingRetry) segmentCounts.billing_retry++
@@ -507,8 +513,9 @@ async function getUserList(db: ReturnType<typeof getFirestoreDb>, options: UserL
       days_since_first_open: data.days_since_first_open || 0,
       voice_failure_count: data.voice_failure_count || 0,
       nsfw_attempt_count: data.nsfw_attempt_count || 0,
-      is_subscribed: data.is_subscribed || data.is_premium || false,
+      is_subscribed: TEST_DEVICE_IDS.has(doc.id) ? false : (data.is_subscribed || data.is_premium || false),
       was_previously_premium: data.was_previously_premium || ga4ChurnedIds.has(doc.id) || false,
+      is_test_device: TEST_DEVICE_IDS.has(doc.id),
       is_in_billing_retry: data.is_in_billing_retry || false,
       notification_granted: data.notification_granted || false,
       has_rated: data.has_rated || false,
@@ -896,9 +903,10 @@ async function getUserDetail(db: ReturnType<typeof getFirestoreDb>, userId: stri
       days_since_first_open: userData.days_since_first_open || 0,
 
       // Subscription (GA4 subscriber_churned supplements Firestore was_previously_premium)
-      is_subscribed: userData.is_subscribed || userData.is_premium || false,
+      is_subscribed: TEST_DEVICE_IDS.has(userId) ? false : (userData.is_subscribed || userData.is_premium || false),
       was_previously_premium: userData.was_previously_premium || (await getChurnedDeviceIds()).has(userId) || false,
-      is_in_billing_retry: userData.is_in_billing_retry || false,
+      is_in_billing_retry: TEST_DEVICE_IDS.has(userId) ? false : (userData.is_in_billing_retry || false),
+      is_test_device: TEST_DEVICE_IDS.has(userId),
       subscription_updated_at: parseDate(userData.subscription_updated_at),
       subscription_status_override: userData.subscription_status_override || null,
       subscription_status_override_at: parseDate(userData.subscription_status_override_at),
