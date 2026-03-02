@@ -6,6 +6,84 @@ const CACHE_TTL = 5 * 60 * 1000
 let dashboardCache: { data: any; timestamp: number; timelineDays: number } | null = null
 let userListCache: { data: any; timestamp: number; key: string } | null = null
 
+// GA4 churned device IDs cache (10 min TTL)
+const GA4_CHURNED_CACHE_TTL = 10 * 60 * 1000
+let churnedDeviceIdsCache: { data: Set<string>; timestamp: number } | null = null
+
+const GA4_PROPERTY_ID = process.env.GA4_PROPERTY_ID || '488396770'
+
+async function getGA4AccessToken(): Promise<string> {
+  const clientId = process.env.GOOGLE_CLIENT_ID
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error('Missing Google OAuth credentials')
+  }
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  })
+  if (!response.ok) throw new Error('Failed to refresh GA4 token')
+  const data = await response.json()
+  return data.access_token
+}
+
+async function getChurnedDeviceIds(): Promise<Set<string>> {
+  // Return cached if fresh
+  if (churnedDeviceIdsCache && Date.now() - churnedDeviceIdsCache.timestamp < GA4_CHURNED_CACHE_TTL) {
+    return churnedDeviceIdsCache.data
+  }
+  try {
+    const accessToken = await getGA4AccessToken()
+    const response = await fetch(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${GA4_PROPERTY_ID}:runReport`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dateRanges: [{ startDate: '2024-01-01', endDate: 'today' }],
+          dimensions: [{ name: 'customEvent:device_id' }],
+          metrics: [{ name: 'eventCount' }],
+          dimensionFilter: {
+            filter: {
+              fieldName: 'eventName',
+              stringFilter: { matchType: 'EXACT', value: 'subscriber_churned' },
+            },
+          },
+        }),
+      }
+    )
+    if (!response.ok) {
+      console.error('GA4 churned query failed:', await response.text())
+      return new Set()
+    }
+    const data = await response.json()
+    const deviceIds = new Set<string>()
+    if (data.rows) {
+      for (const row of data.rows) {
+        const deviceId = row.dimensionValues?.[0]?.value
+        if (deviceId && deviceId !== '(not set)') {
+          deviceIds.add(deviceId)
+        }
+      }
+    }
+    churnedDeviceIdsCache = { data: deviceIds, timestamp: Date.now() }
+    return deviceIds
+  } catch (error) {
+    console.error('Failed to fetch churned device IDs from GA4:', error)
+    return new Set()
+  }
+}
+
 function getCacheKey(params: Record<string, string | number | null | undefined>): string {
   return Object.entries(params).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${v ?? ''}`).join('&')
 }
@@ -87,8 +165,11 @@ async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>, timeline
   const sixtyDaysAgo = new Date(today)
   sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
 
-  // Get all users for segment calculation
-  const allUsersSnapshot = await db.collection('users').get()
+  // Get all users for segment calculation + GA4 churned device IDs in parallel
+  const [allUsersSnapshot, ga4ChurnedIds] = await Promise.all([
+    db.collection('users').get(),
+    getChurnedDeviceIds(),
+  ])
   const allUsers = allUsersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
 
   // Calculate segment counts
@@ -101,6 +182,8 @@ async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>, timeline
     voice: 0,
     images: 0,
     subscribed: 0,
+    churned: 0,
+    billing_retry: 0,
     notification_granted: 0,
     has_rated: 0,
     videos: 0,
@@ -194,7 +277,12 @@ async function getDashboardStats(db: ReturnType<typeof getFirestoreDb>, timeline
     if ((user.total_voice_sessions || 0) > 0) segmentCounts.voice++
     if ((user.total_images_generated || 0) > 0) segmentCounts.images++
     if ((user.total_videos_generated || 0) > 0) segmentCounts.videos++
-    if (user.is_subscribed || user.is_premium) segmentCounts.subscribed++
+    const isCurrentlySubscribed = user.is_subscribed || user.is_premium
+    const isInBillingRetry = user.is_in_billing_retry || false
+    const isChurned = (user.was_previously_premium || ga4ChurnedIds.has(user.id)) && !isCurrentlySubscribed && !isInBillingRetry
+    if (isCurrentlySubscribed) segmentCounts.subscribed++
+    if (isInBillingRetry) segmentCounts.billing_retry++
+    if (isChurned) segmentCounts.churned++
     if (user.notification_granted) segmentCounts.notification_granted++
     if (user.has_rated) segmentCounts.has_rated++
 
@@ -374,8 +462,11 @@ async function getUserList(db: ReturnType<typeof getFirestoreDb>, options: UserL
   // Other sorting will be done in-memory
   query = query.orderBy('last_active', 'desc')
 
-  // Get all users
-  const snapshot = await query.get()
+  // Get all users + GA4 churned IDs in parallel
+  const [snapshot, ga4ChurnedIds] = await Promise.all([
+    query.get(),
+    getChurnedDeviceIds(),
+  ])
 
   let allMatchingUsers = await Promise.all(snapshot.docs.map(async (doc: any) => {
     const data = doc.data()
@@ -417,6 +508,8 @@ async function getUserList(db: ReturnType<typeof getFirestoreDb>, options: UserL
       voice_failure_count: data.voice_failure_count || 0,
       nsfw_attempt_count: data.nsfw_attempt_count || 0,
       is_subscribed: data.is_subscribed || data.is_premium || false,
+      was_previously_premium: data.was_previously_premium || ga4ChurnedIds.has(doc.id) || false,
+      is_in_billing_retry: data.is_in_billing_retry || false,
       notification_granted: data.notification_granted || false,
       has_rated: data.has_rated || false,
       engagement_level: data.engagement_level || null,
@@ -443,6 +536,8 @@ async function getUserList(db: ReturnType<typeof getFirestoreDb>, options: UserL
     voice: allMatchingUsers.filter(u => (u.total_voice_sessions || 0) > 0).length,
     images: allMatchingUsers.filter(u => (u.total_images_generated || 0) > 0).length,
     subscribed: allMatchingUsers.filter(u => u.is_subscribed).length,
+    billing_retry: allMatchingUsers.filter(u => u.is_in_billing_retry).length,
+    churned: allMatchingUsers.filter(u => u.was_previously_premium && !u.is_subscribed && !u.is_in_billing_retry).length,
     videos: allMatchingUsers.filter(u => (u.total_videos_generated || 0) > 0).length,
   }
 
@@ -465,6 +560,10 @@ async function getUserList(db: ReturnType<typeof getFirestoreDb>, options: UserL
           return (u.total_images_generated || 0) > 0
         case 'subscribed':
           return u.is_subscribed
+        case 'billing_retry':
+          return u.is_in_billing_retry
+        case 'churned':
+          return u.was_previously_premium && !u.is_subscribed && !u.is_in_billing_retry
         case 'videos':
           return (u.total_videos_generated || 0) > 0
         default:
@@ -796,9 +895,13 @@ async function getUserDetail(db: ReturnType<typeof getFirestoreDb>, userId: stri
       last_active: parseDate(userData.last_active),
       days_since_first_open: userData.days_since_first_open || 0,
 
-      // Subscription
+      // Subscription (GA4 subscriber_churned supplements Firestore was_previously_premium)
       is_subscribed: userData.is_subscribed || userData.is_premium || false,
+      was_previously_premium: userData.was_previously_premium || (await getChurnedDeviceIds()).has(userId) || false,
+      is_in_billing_retry: userData.is_in_billing_retry || false,
       subscription_updated_at: parseDate(userData.subscription_updated_at),
+      subscription_status_override: userData.subscription_status_override || null,
+      subscription_status_override_at: parseDate(userData.subscription_status_override_at),
 
       // Notifications
       notification_granted: userData.notification_granted || false,
@@ -807,6 +910,11 @@ async function getUserDetail(db: ReturnType<typeof getFirestoreDb>, userId: stri
       notification_frequency: userData.notification_frequency || null,
       preferred_notification_time: userData.preferred_notification_time || null,
       notification_preferences_updated_at: parseDate(userData.notification_preferences_updated_at),
+
+      // AI Memory
+      ai_memory_count: userData.ai_memory_count || 0,
+      ai_memories_sample: userData.ai_memories_sample || [],
+      ai_memory_at_free_limit: (userData.ai_memory_count || 0) >= 10 && !(userData.is_subscribed || userData.is_premium),
 
       // Personalization
       personalization_score: userData.personalization_score || 0,
@@ -903,6 +1011,76 @@ async function getUserDetail(db: ReturnType<typeof getFirestoreDb>, userId: stri
         : 0,
     },
   })
+}
+
+// PATCH - Manual subscription status override (for billing retry, churned, etc.)
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { key, userId, status } = body
+
+    const validKey = process.env.ANALYTICS_PASSWORD
+    if (!key || key !== validKey) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!userId || !status) {
+      return NextResponse.json({ error: 'userId and status required' }, { status: 400 })
+    }
+
+    const db = getFirestoreDb()
+    const userRef = db.collection('users').doc(userId)
+    const userDoc = await userRef.get()
+    if (!userDoc.exists) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Apply status override
+    const updates: Record<string, any> = {
+      subscription_status_override: status,
+      subscription_status_override_at: new Date().toISOString(),
+    }
+
+    switch (status) {
+      case 'billing_retry':
+        updates.is_in_billing_retry = true
+        break
+      case 'churned':
+        updates.is_in_billing_retry = false
+        updates.was_previously_premium = true
+        updates.is_subscribed = false
+        updates.is_premium = false
+        break
+      case 'subscribed':
+        updates.is_in_billing_retry = false
+        updates.is_subscribed = true
+        updates.is_premium = true
+        updates.was_previously_premium = false
+        break
+      case 'free':
+        updates.is_in_billing_retry = false
+        updates.is_subscribed = false
+        updates.is_premium = false
+        updates.was_previously_premium = false
+        break
+      default:
+        return NextResponse.json({ error: 'Invalid status. Use: billing_retry, churned, subscribed, free' }, { status: 400 })
+    }
+
+    await userRef.update(updates)
+
+    // Invalidate caches
+    dashboardCache = null
+    userListCache = null
+
+    return NextResponse.json({ success: true, status, userId, updates })
+  } catch (error) {
+    console.error('Failed to update user status:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to update user status' },
+      { status: 500 }
+    )
+  }
 }
 
 // GET conversation messages

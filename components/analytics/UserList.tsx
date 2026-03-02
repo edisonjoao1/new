@@ -40,6 +40,9 @@ import {
   Star,
   BellRing,
   DollarSign,
+  UserX,
+  Footprints,
+  CreditCard,
 } from 'lucide-react'
 import RetentionCohorts from './RetentionCohorts'
 import ConversionFunnel from './ConversionFunnel'
@@ -63,7 +66,7 @@ import {
   Cell,
 } from 'recharts'
 
-type UserSegment = 'all' | 'today' | 'new' | 'power' | 'at_risk' | 'voice' | 'images' | 'subscribed' | 'videos'
+type UserSegment = 'all' | 'today' | 'new' | 'power' | 'at_risk' | 'voice' | 'images' | 'subscribed' | 'billing_retry' | 'churned' | 'videos'
 
 interface User {
   id: string
@@ -88,6 +91,8 @@ interface User {
   voice_failure_count: number
   nsfw_attempt_count: number
   is_subscribed: boolean
+  was_previously_premium: boolean
+  is_in_billing_retry: boolean
   notification_granted: boolean
   has_rated: boolean
   engagement_level: string | null
@@ -158,6 +163,8 @@ const SEGMENTS: { id: UserSegment; label: string; icon: any; description: string
   { id: 'today', label: 'Active Today', icon: Zap, description: 'Users active in last 24h', color: 'green' },
   { id: 'new', label: 'New Users', icon: UserPlus, description: 'Registered in last 7 days', color: 'blue' },
   { id: 'subscribed', label: 'Subscribed', icon: Crown, description: 'Active subscribers', color: 'yellow' },
+  { id: 'billing_retry', label: 'Billing Retry', icon: CreditCard, description: 'Payment failing', color: 'orange' },
+  { id: 'churned', label: 'Churned', icon: UserX, description: 'Previously subscribed', color: 'red' },
   { id: 'power', label: 'Power Users', icon: Star, description: '50+ messages sent', color: 'orange' },
   { id: 'at_risk', label: 'At Risk', icon: AlertTriangle, description: 'Inactive 7+ days', color: 'red' },
   { id: 'voice', label: 'Voice Users', icon: Mic, description: 'Used voice chat', color: 'pink' },
@@ -198,11 +205,15 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
   const [minMessages, setMinMessages] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [segmentCounts, setSegmentCounts] = useState<Record<UserSegment, number>>({
-    all: 0, today: 0, new: 0, power: 0, at_risk: 0, voice: 0, images: 0, subscribed: 0, videos: 0
+    all: 0, today: 0, new: 0, power: 0, at_risk: 0, voice: 0, images: 0, subscribed: 0, billing_retry: 0, churned: 0, videos: 0
   })
 
   // View mode
-  const [viewMode, setViewMode] = useState<'dashboard' | 'users' | 'notifications' | 'retention' | 'funnel' | 'insights' | 'errors' | 'alerts' | 'performance'>('dashboard')
+  const [viewMode, setViewMode] = useState<'dashboard' | 'users' | 'notifications' | 'retention' | 'funnel' | 'onboarding' | 'insights' | 'errors' | 'alerts' | 'performance'>('dashboard')
+
+  // Onboarding funnel state
+  const [onboardingData, setOnboardingData] = useState<any>(null)
+  const [loadingOnboarding, setLoadingOnboarding] = useState(false)
 
   // Auto-refresh state
   const [autoRefresh, setAutoRefresh] = useState(false)
@@ -302,6 +313,18 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
 
     return () => clearInterval(interval)
   }, [autoRefresh, analyticsKey, page, sortBy, sortOrder, localeFilter, deviceFilter, activeSegment, dateFrom, dateTo, minMessages])
+
+  // Fetch onboarding funnel on-demand
+  useEffect(() => {
+    if (viewMode === 'onboarding' && !onboardingData && !loadingOnboarding && analyticsKey) {
+      setLoadingOnboarding(true)
+      fetch(`/api/analytics/onboarding?key=${encodeURIComponent(analyticsKey)}&mode=funnel`)
+        .then(res => res.json())
+        .then(data => setOnboardingData(data))
+        .catch(err => console.error('Failed to fetch onboarding data:', err))
+        .finally(() => setLoadingOnboarding(false))
+    }
+  }, [viewMode, analyticsKey])
 
   const handleSort = (field: string) => {
     if (sortBy === field) {
@@ -423,6 +446,7 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
               { id: 'performance', label: 'Performance', icon: Activity },
               { id: 'retention', label: 'Retention', icon: Target },
               { id: 'funnel', label: 'Funnel', icon: GitBranch },
+              { id: 'onboarding', label: 'Onboarding', icon: Footprints },
               { id: 'insights', label: 'AI Insights', icon: Sparkles },
               { id: 'errors', label: 'Errors', icon: AlertTriangle },
               { id: 'alerts', label: 'Alerts', icon: Bell },
@@ -491,6 +515,8 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
               { label: 'MAU', value: formatNumber(dashboard.overview.activeThisMonth), icon: Activity, color: 'green', change: dashboard.changes?.activeThisMonth ?? null },
               { label: 'New Users (7d)', value: formatNumber(dashboard.segmentCounts.new || 0), icon: UserPlus, color: 'cyan', change: dashboard.changes?.newUsers ?? null },
               { label: 'Subscribed', value: formatNumber(dashboard.segmentCounts.subscribed || 0), icon: Crown, color: 'yellow', change: null },
+              { label: 'Billing Retry', value: formatNumber(dashboard.segmentCounts.billing_retry || 0), icon: CreditCard, color: 'orange', change: null },
+              { label: 'Churned', value: formatNumber(dashboard.segmentCounts.churned || 0), icon: UserX, color: 'red', change: null },
               { label: 'Messages', value: formatNumber(dashboard.overview.totalMessages), icon: MessageSquare, color: 'indigo', change: null },
               { label: 'Images', value: formatNumber(dashboard.overview.totalImages), icon: Image, color: 'pink', change: null },
               { label: 'Videos', value: formatNumber(dashboard.overview.totalVideos), icon: Video, color: 'cyan', change: null },
@@ -1052,7 +1078,9 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            {user.is_subscribed && <Crown className="w-3 h-3 text-yellow-500 flex-shrink-0" />}
+                            {user.is_subscribed && !user.is_in_billing_retry && <Crown className="w-3 h-3 text-yellow-500 flex-shrink-0" />}
+                            {user.is_in_billing_retry && <CreditCard className="w-3 h-3 text-orange-500 flex-shrink-0" />}
+                            {user.was_previously_premium && !user.is_subscribed && !user.is_in_billing_retry && <UserX className="w-3 h-3 text-red-500 flex-shrink-0" />}
                             {user.notification_granted && <BellRing className="w-3 h-3 text-green-500 flex-shrink-0" />}
                             <div className="min-w-0">
                               {user.user_name ? (
@@ -1424,6 +1452,127 @@ export default function UserList({ analyticsKey, isDark, onUserSelect }: UserLis
       {/* Alerts View */}
       {viewMode === 'alerts' && (
         <AlertsPanel analyticsKey={analyticsKey} />
+      )}
+
+      {/* Onboarding View */}
+      {viewMode === 'onboarding' && (
+        <div className="space-y-6">
+          {loadingOnboarding && (
+            <div className="flex items-center justify-center py-20">
+              <RefreshCw className="w-8 h-8 animate-spin text-purple-500" />
+            </div>
+          )}
+          {onboardingData && !onboardingData.error && (
+            <>
+              {/* Metric Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: 'Completion Rate', value: `${onboardingData.metrics?.completionRate || 0}%`, color: 'green' },
+                  { label: 'Skip Rate', value: `${onboardingData.metrics?.skipRate || 0}%`, color: 'red' },
+                  { label: 'Name Entry Rate', value: `${onboardingData.metrics?.nameEntryRate || 0}%`, color: 'blue' },
+                  { label: 'Trial Tap Rate', value: `${onboardingData.metrics?.trialTapRate || 0}%`, color: 'purple' },
+                ].map((metric) => (
+                  <div
+                    key={metric.label}
+                    className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}
+                  >
+                    <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{metric.label}</p>
+                    <p className={`text-2xl font-bold text-${metric.color}-500`}>{metric.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Totals */}
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                {[
+                  { label: 'Started', value: onboardingData.totals?.started || 0 },
+                  { label: 'Completed', value: onboardingData.totals?.completed || 0 },
+                  { label: 'Skipped', value: onboardingData.totals?.skipped || 0 },
+                  { label: 'Name Entered', value: onboardingData.totals?.nameEntered || 0 },
+                  { label: 'Name Skipped', value: onboardingData.totals?.nameSkipped || 0 },
+                  { label: 'Chat Exchanges', value: onboardingData.totals?.chatExchanges || 0 },
+                ].map((stat) => (
+                  <div
+                    key={stat.label}
+                    className={`p-3 rounded-lg text-center ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}
+                  >
+                    <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {stat.value.toLocaleString()}
+                    </p>
+                    <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Funnel Visualization */}
+              <div className={`p-6 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                <h3 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Onboarding Funnel
+                </h3>
+                <div className="space-y-3">
+                  {(onboardingData.steps || []).map((step: any, index: number) => {
+                    const maxCount = Math.max(...(onboardingData.steps || []).map((s: any) => s.count))
+                    const widthPercent = maxCount > 0 ? (step.count / maxCount) * 100 : 0
+                    const colors = ['bg-blue-500', 'bg-cyan-500', 'bg-teal-500', 'bg-green-500', 'bg-lime-500', 'bg-yellow-500', 'bg-emerald-500']
+
+                    return (
+                      <div key={step.step}>
+                        <div className="relative rounded-lg overflow-hidden">
+                          <div
+                            className={`absolute inset-y-0 left-0 ${colors[index % colors.length]} opacity-20`}
+                            style={{ width: `${widthPercent}%` }}
+                          />
+                          <div className="relative flex items-center justify-between p-3">
+                            <div>
+                              <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{step.step}</p>
+                            </div>
+                            <div className="flex items-center gap-4 text-right">
+                              <div>
+                                <p className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                  {step.count.toLocaleString()}
+                                </p>
+                                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                  {step.percentage}% of started
+                                </p>
+                              </div>
+                              {index > 0 && (
+                                <div className={`text-sm ${step.dropoffFromPrevious > 30 ? 'text-red-500' : isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  <span className="font-medium">{step.conversionFromPrevious}%</span>
+                                  <p className="text-xs">from prev</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        {index < (onboardingData.steps || []).length - 1 && step.dropoffFromPrevious > 0 && (
+                          <div className="flex items-center justify-center py-1">
+                            <div className={`text-xs px-2 py-0.5 rounded ${
+                              step.dropoffFromPrevious > 30
+                                ? isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-600'
+                                : isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'
+                            }`}>
+                              ↓ {step.dropoffFromPrevious}% dropoff
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'} text-right`}>
+                {onboardingData.cached && '(cached) '}
+                GA4 data may have 24-48h delay
+              </p>
+            </>
+          )}
+          {onboardingData?.error && (
+            <div className={`p-6 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <p className="text-red-500">Error: {onboardingData.error}</p>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )

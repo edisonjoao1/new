@@ -45,6 +45,11 @@ import {
   Flame,
   BarChart3,
   DollarSign,
+  UserX,
+  CheckCircle2,
+  Circle,
+  Footprints,
+  CreditCard,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -98,7 +103,11 @@ interface UserDetail {
 
   // Subscription
   is_subscribed: boolean
+  was_previously_premium: boolean
+  is_in_billing_retry: boolean
   subscription_updated_at: string | null
+  subscription_status_override: string | null
+  subscription_status_override_at: string | null
 
   // Notifications
   notification_granted: boolean
@@ -107,6 +116,11 @@ interface UserDetail {
   notification_frequency: string | null
   preferred_notification_time: string | null
   notification_preferences_updated_at: string | null
+
+  // AI Memory
+  ai_memory_count: number
+  ai_memories_sample: string[]
+  ai_memory_at_free_limit: boolean
 
   // Personalization
   personalization_score: number
@@ -260,6 +274,8 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
   const [activeTab, setActiveTab] = useState<'overview' | 'conversations' | 'images' | 'voice'>('overview')
   const [imageFilter, setImageFilter] = useState<'all' | 'chat' | 'generator'>('all')
   const [copied, setCopied] = useState(false)
+  const [onboardingData, setOnboardingData] = useState<any>(null)
+  const [churnData, setChurnData] = useState<any>(null)
 
   // Filter images by source - check multiple indicators
   const getImageSource = (img: ImageItem): 'chat' | 'generator' => {
@@ -327,6 +343,23 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
       setVoiceFailures(data.voice_failures || [])
       setActivityTimeline(data.activity_timeline)
       setStats(data.stats)
+
+      // Fetch GA4 onboarding and churn data in parallel
+      const deviceId = data.user?.device_id
+      if (deviceId) {
+        fetch(`/api/analytics/onboarding?key=${encodeURIComponent(analyticsKey)}&mode=user&deviceId=${encodeURIComponent(deviceId)}`)
+          .then(res => res.json())
+          .then(d => setOnboardingData(d))
+          .catch(() => setOnboardingData(null))
+
+        // Only fetch churn data if user is churned
+        if (data.user?.was_previously_premium && !data.user?.is_subscribed) {
+          fetch(`/api/analytics/onboarding?key=${encodeURIComponent(analyticsKey)}&mode=churn&deviceId=${encodeURIComponent(deviceId)}`)
+            .then(res => res.json())
+            .then(d => setChurnData(d))
+            .catch(() => setChurnData(null))
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch user')
     } finally {
@@ -435,9 +468,21 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                             <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                               {user.user_name || 'Unnamed User'}
                             </h2>
-                            {user.is_subscribed && (
+                            {user.is_in_billing_retry && (
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-orange-500/20 text-orange-500 font-medium flex items-center gap-1">
+                                <CreditCard className="w-3 h-3" />
+                                Billing Retry
+                              </span>
+                            )}
+                            {user.is_subscribed && !user.is_in_billing_retry && (
                               <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-500/20 text-yellow-500 font-medium">
                                 Subscribed
+                              </span>
+                            )}
+                            {user.was_previously_premium && !user.is_subscribed && !user.is_in_billing_retry && (
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-red-500/20 text-red-500 font-medium flex items-center gap-1">
+                                <UserX className="w-3 h-3" />
+                                Churned
                               </span>
                             )}
                             <button
@@ -621,9 +666,19 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
 
                   {/* Feature Usage Badges */}
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {user.is_subscribed && (
+                    {user.is_in_billing_retry && (
+                      <span className={`px-2 py-1 rounded-full text-xs ${isDark ? 'bg-orange-900/30 text-orange-400' : 'bg-orange-100 text-orange-700'}`}>
+                        Billing Retry
+                      </span>
+                    )}
+                    {user.is_subscribed && !user.is_in_billing_retry && (
                       <span className={`px-2 py-1 rounded-full text-xs ${isDark ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-700'}`}>
                         Subscribed
+                      </span>
+                    )}
+                    {user.was_previously_premium && !user.is_subscribed && !user.is_in_billing_retry && (
+                      <span className={`px-2 py-1 rounded-full text-xs ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'}`}>
+                        Previously Subscribed
                       </span>
                     )}
                     {user.notification_granted ? (
@@ -746,44 +801,186 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                                 </div>
                               </div>
                             )}
-                            <div className="flex flex-wrap gap-4">
-                              {user.communication_style && (
-                                <div>
-                                  <p className={`text-xs font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Style</p>
-                                  <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{user.communication_style}</p>
+                            {user.communication_style && (
+                              <div>
+                                <p className={`text-xs font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Style</p>
+                                <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{user.communication_style}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Profile Completeness */}
+                      {(() => {
+                        const fields = [
+                          { label: 'Name', set: !!user.user_name },
+                          { label: 'Assistant Name', set: !!user.assistant_name },
+                          { label: 'Interests', set: user.interests.length > 0 },
+                          { label: 'Occupation', set: !!user.occupation },
+                          { label: 'Goals', set: user.goals.length > 0 },
+                          { label: 'Style', set: !!user.communication_style },
+                          { label: 'About Me', set: !!user.about_me },
+                          { label: 'Timezone', set: !!user.timezone },
+                        ]
+                        const setCount = fields.filter(f => f.set).length
+                        const progressColor = setCount >= 6 ? 'green' : setCount >= 3 ? 'yellow' : 'red'
+                        return (
+                          <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                            <h3 className={`text-sm font-medium mb-3 flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                              <Target className="w-4 h-4 text-blue-500" />
+                              Profile Completeness
+                              <span className={`text-xs font-bold ${
+                                progressColor === 'green' ? 'text-green-500' : progressColor === 'yellow' ? 'text-yellow-500' : 'text-red-500'
+                              }`}>
+                                {setCount}/8
+                              </span>
+                            </h3>
+                            <div className={`h-1.5 rounded-full mb-3 ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  progressColor === 'green' ? 'bg-green-500' : progressColor === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
+                                }`}
+                                style={{ width: `${(setCount / 8) * 100}%` }}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                              {fields.map((field) => (
+                                <div key={field.label} className="flex items-center gap-1.5">
+                                  {field.set ? (
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                                  ) : (
+                                    <Circle className={`w-3.5 h-3.5 flex-shrink-0 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
+                                  )}
+                                  <span className={`text-xs ${field.set ? (isDark ? 'text-gray-300' : 'text-gray-700') : (isDark ? 'text-gray-600' : 'text-gray-400')}`}>
+                                    {field.label}
+                                  </span>
                                 </div>
-                              )}
-                              {user.personalization_score > 0 && (
-                                <div>
-                                  <p className={`text-xs font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Personalization</p>
-                                  <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{user.personalization_score}%</p>
-                                </div>
-                              )}
+                              ))}
                             </div>
                           </div>
+                        )
+                      })()}
+
+                      {/* AI Memories */}
+                      {user.ai_memory_count > 0 && (
+                        <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                          <h3 className={`text-sm font-medium mb-3 flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            <Brain className="w-4 h-4 text-purple-500" />
+                            AI Memories
+                            <span className={`px-1.5 py-0.5 rounded-full text-xs ${isDark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
+                              {user.ai_memory_count}
+                            </span>
+                            {user.ai_memory_at_free_limit && (
+                              <span className={`px-1.5 py-0.5 rounded-full text-xs ${isDark ? 'bg-orange-900/30 text-orange-400' : 'bg-orange-100 text-orange-700'}`}>
+                                At Free Limit (10)
+                              </span>
+                            )}
+                          </h3>
+                          {user.ai_memories_sample.length > 0 ? (
+                            <div className="space-y-2">
+                              {user.ai_memories_sample.map((memory, idx) => (
+                                <div key={idx} className={`p-2.5 rounded-lg text-sm ${isDark ? 'bg-gray-900 text-gray-300' : 'bg-white text-gray-700'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                                  {memory}
+                                </div>
+                              ))}
+                              {user.ai_memory_count > user.ai_memories_sample.length && (
+                                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                  ... and {user.ai_memory_count - user.ai_memories_sample.length} more memories
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                              {user.ai_memory_count} memories stored (samples not available)
+                            </p>
+                          )}
                         </div>
                       )}
 
                       {/* Subscription & Notifications */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                        <div className={`p-4 rounded-xl ${user.is_in_billing_retry ? (isDark ? 'bg-orange-900/20 border border-orange-900/30' : 'bg-orange-50 border border-orange-200') : (isDark ? 'bg-gray-800' : 'bg-gray-50')}`}>
                           <h3 className={`text-sm font-medium mb-3 flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                            <Crown className="w-4 h-4 text-yellow-500" />
+                            {user.is_in_billing_retry ? <CreditCard className="w-4 h-4 text-orange-500" /> : <Crown className="w-4 h-4 text-yellow-500" />}
                             Subscription
                           </h3>
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
                               <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Status</span>
-                              <span className={`text-sm font-medium ${user.is_subscribed ? 'text-yellow-500' : isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                                {user.is_subscribed ? 'Subscribed' : 'Free'}
+                              <span className={`text-sm font-medium ${
+                                user.is_in_billing_retry ? 'text-orange-500' :
+                                user.is_subscribed ? 'text-yellow-500' :
+                                user.was_previously_premium ? 'text-red-500' :
+                                isDark ? 'text-gray-400' : 'text-gray-600'
+                              }`}>
+                                {user.is_in_billing_retry ? 'Billing Retry' :
+                                 user.is_subscribed ? 'Subscribed' :
+                                 user.was_previously_premium ? 'Churned' : 'Free'}
                               </span>
                             </div>
+                            {user.is_in_billing_retry && (
+                              <p className={`text-xs ${isDark ? 'text-orange-400/70' : 'text-orange-600'}`}>
+                                Apple is retrying payment — subscription may recover within 60 days
+                              </p>
+                            )}
                             {user.subscription_updated_at && (
                               <div className="flex items-center justify-between">
-                                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Since</span>
+                                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Updated</span>
                                 <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{formatDate(user.subscription_updated_at)}</span>
                               </div>
                             )}
+                            {user.subscription_status_override && (
+                              <div className="flex items-center justify-between">
+                                <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Manual override</span>
+                                <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                  {user.subscription_status_override_at ? formatDate(user.subscription_status_override_at) : ''}
+                                </span>
+                              </div>
+                            )}
+                            {/* Manual Override Buttons */}
+                            <div className="pt-2 border-t border-dashed ${isDark ? 'border-gray-700' : 'border-gray-200'}">
+                              <p className={`text-xs mb-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Set status from ASC:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {[
+                                  { status: 'billing_retry', label: 'Billing Retry', color: 'orange' },
+                                  { status: 'churned', label: 'Churned', color: 'red' },
+                                  { status: 'subscribed', label: 'Subscribed', color: 'yellow' },
+                                  { status: 'free', label: 'Free', color: 'gray' },
+                                ].map(({ status: s, label, color }) => (
+                                  <button
+                                    key={s}
+                                    onClick={async (e) => {
+                                      e.stopPropagation()
+                                      if (!confirm(`Set ${user.user_name || user.device_id} to "${label}"?`)) return
+                                      try {
+                                        const res = await fetch('/api/analytics/users', {
+                                          method: 'PATCH',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ key: analyticsKey, userId: user.id, status: s }),
+                                        })
+                                        if (res.ok) {
+                                          // Refresh user detail
+                                          fetchUserDetail()
+                                        }
+                                      } catch (err) {
+                                        console.error('Failed to update status:', err)
+                                      }
+                                    }}
+                                    className={`px-2 py-0.5 rounded text-xs transition-colors ${
+                                      (s === 'billing_retry' && user.is_in_billing_retry) ||
+                                      (s === 'churned' && user.was_previously_premium && !user.is_subscribed && !user.is_in_billing_retry) ||
+                                      (s === 'subscribed' && user.is_subscribed && !user.is_in_billing_retry) ||
+                                      (s === 'free' && !user.is_subscribed && !user.was_previously_premium && !user.is_in_billing_retry)
+                                        ? `bg-${color}-500/30 text-${color}-400 ring-1 ring-${color}-500/50`
+                                        : isDark ? 'bg-gray-700 text-gray-400 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                                    }`}
+                                  >
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         </div>
                         <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
@@ -813,6 +1010,128 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                           </div>
                         </div>
                       </div>
+
+                      {/* Onboarding Journey */}
+                      {onboardingData?.available && (
+                        <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                          <h3 className={`text-sm font-medium mb-3 flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            <Footprints className="w-4 h-4 text-purple-500" />
+                            Onboarding Journey
+                            {onboardingData.completed && (
+                              <span className={`px-1.5 py-0.5 rounded-full text-xs ${isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'}`}>
+                                Completed
+                              </span>
+                            )}
+                            {onboardingData.skipped && !onboardingData.completed && (
+                              <span className={`px-1.5 py-0.5 rounded-full text-xs ${isDark ? 'bg-orange-900/30 text-orange-400' : 'bg-orange-100 text-orange-700'}`}>
+                                Skipped
+                              </span>
+                            )}
+                            {!onboardingData.completed && !onboardingData.skipped && onboardingData.started && (
+                              <span className={`px-1.5 py-0.5 rounded-full text-xs ${isDark ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-700'}`}>
+                                Incomplete
+                              </span>
+                            )}
+                          </h3>
+                          <div className="space-y-3">
+                            {/* Step Progress Bar */}
+                            <div className="flex gap-1">
+                              {[1, 2, 3, 4, 5].map((step) => (
+                                <div
+                                  key={step}
+                                  className={`h-2 flex-1 rounded-full ${
+                                    step <= onboardingData.stepsReached
+                                      ? 'bg-purple-500'
+                                      : isDark ? 'bg-gray-700' : 'bg-gray-200'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                              Reached step {onboardingData.stepsReached} of 5
+                            </p>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
+                                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Name</p>
+                                <p className={`text-sm font-medium ${onboardingData.nameEntered ? 'text-green-500' : 'text-red-500'}`}>
+                                  {onboardingData.nameEntered ? 'Entered' : onboardingData.nameSkipped ? 'Skipped' : '—'}
+                                </p>
+                              </div>
+                              <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
+                                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Chat</p>
+                                <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                  {onboardingData.chatExchanges} exchanges
+                                </p>
+                              </div>
+                              <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
+                                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Trial</p>
+                                <p className={`text-sm font-medium ${onboardingData.trialTapped ? 'text-green-500' : isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  {onboardingData.trialTapped ? 'Tapped' : 'No'}
+                                </p>
+                              </div>
+                              <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
+                                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Status</p>
+                                <p className={`text-sm font-medium ${
+                                  onboardingData.completed ? 'text-green-500' : onboardingData.skipped ? 'text-orange-500' : 'text-yellow-500'
+                                }`}>
+                                  {onboardingData.completed ? 'Done' : onboardingData.skipped ? 'Skipped' : 'Partial'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {onboardingData && !onboardingData.available && (
+                        <div className={`p-3 rounded-lg text-xs ${isDark ? 'bg-gray-800 text-gray-500' : 'bg-gray-50 text-gray-400'}`}>
+                          Onboarding data unavailable — device_id may not be registered as a GA4 custom dimension
+                        </div>
+                      )}
+
+                      {/* Churn & Win-back Events */}
+                      {churnData?.available && user.was_previously_premium && !user.is_subscribed && (
+                        <div className={`p-4 rounded-xl border ${isDark ? 'bg-red-900/10 border-red-900/30' : 'bg-red-50 border-red-200'}`}>
+                          <h3 className={`text-sm font-medium mb-3 flex items-center gap-2 ${isDark ? 'text-red-400' : 'text-red-700'}`}>
+                            <UserX className="w-4 h-4" />
+                            Churn & Win-back
+                            {churnData.resubscribed && (
+                              <span className={`px-1.5 py-0.5 rounded-full text-xs ${isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'}`}>
+                                Resubscribed
+                              </span>
+                            )}
+                          </h3>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
+                              <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                {churnData.winback?.bannerShown || 0}
+                              </p>
+                              <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Banner Shown</p>
+                            </div>
+                            <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
+                              <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                {churnData.winback?.bannerTapped || 0}
+                              </p>
+                              <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Banner Tapped</p>
+                            </div>
+                            <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
+                              <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                {churnData.winback?.bannerDismissed || 0}
+                              </p>
+                              <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Dismissed</p>
+                            </div>
+                            <div className={`p-2 rounded-lg text-center ${churnData.resubscribed ? (isDark ? 'bg-green-900/20' : 'bg-green-50') : (isDark ? 'bg-gray-900' : 'bg-white')}`}>
+                              <p className={`text-lg font-bold ${churnData.resubscribed ? 'text-green-500' : isDark ? 'text-white' : 'text-gray-900'}`}>
+                                {churnData.winback?.resubscribed || 0}
+                              </p>
+                              <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Resubscribed</p>
+                            </div>
+                          </div>
+                          {churnData.churnCount > 1 && (
+                            <p className={`text-xs mt-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                              Churned {churnData.churnCount} times
+                            </p>
+                          )}
+                        </div>
+                      )}
 
                       {/* Rating & Feedback */}
                       {(user.has_rated || user.feedback_count > 0) && (
