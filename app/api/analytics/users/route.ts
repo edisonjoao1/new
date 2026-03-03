@@ -713,6 +713,8 @@ async function getUserDetail(db: ReturnType<typeof getFirestoreDb>, userId: stri
       preview: preview + (preview.length >= 100 ? '...' : ''),
       topics,
       success_score: successScore,
+      is_voice: data.metadata?.type === 'voice_conversation' || doc.id.startsWith('voice_'),
+      title: data.title || null,
       behavioral_signals: data.behavioral_signals || null,
       // Include full messages for detail view
       messages: messages.map((m: any) => ({

@@ -55,6 +55,7 @@ import {
   Wand2,
   FileText,
   PenLine,
+  Eye,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -209,6 +210,8 @@ interface Conversation {
   preview: string
   topics: string[]
   success_score: number
+  is_voice?: boolean
+  title?: string | null
 }
 
 interface ImageItem {
@@ -293,6 +296,7 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
   const [notifResult, setNotifResult] = useState<{ success: boolean; message: string } | null>(null)
   const [notifHistory, setNotifHistory] = useState<any[]>([])
   const [notifHistoryLoading, setNotifHistoryLoading] = useState(false)
+  const [notifPreview, setNotifPreview] = useState<{ title: string; body: string; targetView: string } | null>(null)
 
   // Filter images by source - check multiple indicators
   const getImageSource = (img: ImageItem): 'chat' | 'generator' => {
@@ -433,7 +437,33 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
     setNotifHistoryLoading(false)
   }
 
-  const sendNotification = async () => {
+  // AI preview: generate notification without sending
+  const previewAINotification = async () => {
+    if (!userId || notifSending) return
+    setNotifSending(true)
+    setNotifResult(null)
+    setNotifPreview(null)
+
+    try {
+      const res = await fetch('/api/analytics/push-notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: analyticsKey, userId, mode: 'ai', preview: true }),
+      })
+      const data = await res.json()
+      if (data.notification) {
+        setNotifPreview(data.notification)
+      } else {
+        setNotifResult({ success: false, message: data.error || 'AI generation failed' })
+      }
+    } catch (err) {
+      setNotifResult({ success: false, message: err instanceof Error ? err.message : 'Network error' })
+    }
+    setNotifSending(false)
+  }
+
+  // Confirm and send a previewed AI notification (or send template/custom directly)
+  const sendNotification = async (confirmedPreview?: { title: string; body: string; targetView: string }) => {
     if (!userId || notifSending) return
     setNotifSending(true)
     setNotifResult(null)
@@ -441,8 +471,12 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
     try {
       let payload: Record<string, unknown> = { key: analyticsKey, userId }
 
-      if (notifMode === 'ai') {
-        payload.mode = 'ai'
+      if (confirmedPreview) {
+        // Sending a confirmed AI preview
+        payload.mode = 'ai_send'
+        payload.title = confirmedPreview.title
+        payload.body = confirmedPreview.body
+        payload.targetView = confirmedPreview.targetView
       } else if (notifMode === 'template') {
         payload.mode = 'template'
         payload.templateId = notifTemplateId
@@ -465,6 +499,7 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
         setNotifResult({ success: true, message: `Sent: "${notif.title}"` })
         setNotifTitle('')
         setNotifBody('')
+        setNotifPreview(null)
         fetchNotifHistory()
       } else {
         setNotifResult({ success: false, message: data.error || 'Failed to send' })
@@ -478,6 +513,7 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
   // Fetch templates on mount
   useEffect(() => {
     fetchNotifTemplates()
+    fetchNotifHistory()
   }, [])
 
   const getEngagementColor = (score: number) => {
@@ -822,7 +858,7 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                       { id: 'overview', label: 'Overview', icon: Activity },
                       { id: 'conversations', label: `Conversations (${stats?.conversation_count || 0})`, icon: MessageSquare },
                       { id: 'images', label: `Images (${images.length})`, icon: Image },
-                      { id: 'voice', label: `Voice (${voiceSessions.length})`, icon: Mic },
+                      { id: 'voice', label: `Voice (${user?.total_voice_sessions || voiceSessions.length})`, icon: Mic },
                     ].map((tab) => (
                       <button
                         key={tab.id}
@@ -1120,7 +1156,7 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                               ].map(({ mode, label, icon: Icon }) => (
                                 <button
                                   key={mode}
-                                  onClick={() => { setNotifMode(mode); setNotifResult(null) }}
+                                  onClick={() => { setNotifMode(mode); setNotifResult(null); setNotifPreview(null) }}
                                   className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
                                     notifMode === mode
                                       ? 'bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/40'
@@ -1134,10 +1170,49 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                             </div>
 
                             {/* AI Mode */}
-                            {notifMode === 'ai' && (
+                            {notifMode === 'ai' && !notifPreview && (
                               <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                AI reads this user&apos;s conversations, memories, and interests to craft a personalized message.
+                                AI reads this user&apos;s conversations, memories, and interests to craft a personalized message. You&apos;ll preview before sending.
                               </p>
+                            )}
+
+                            {/* AI Preview Card */}
+                            {notifMode === 'ai' && notifPreview && (
+                              <div className={`rounded-xl p-3 space-y-2 border ${isDark ? 'bg-gray-700/50 border-purple-500/30' : 'bg-purple-50 border-purple-200'}`}>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Eye className="w-3 h-3 text-purple-400" />
+                                  <span className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>Preview</span>
+                                </div>
+                                <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{notifPreview.title}</p>
+                                <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{notifPreview.body}</p>
+                                <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                  {notifPreview.title.length} chars title · {notifPreview.body.length} chars body · opens {notifPreview.targetView}
+                                </p>
+                                <div className="flex gap-2 pt-1">
+                                  <button
+                                    onClick={() => sendNotification(notifPreview)}
+                                    disabled={notifSending}
+                                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-40 transition-colors"
+                                  >
+                                    {notifSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                                    {notifSending ? 'Sending...' : 'Send This'}
+                                  </button>
+                                  <button
+                                    onClick={previewAINotification}
+                                    disabled={notifSending}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isDark ? 'bg-gray-600 hover:bg-gray-500 text-gray-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'} disabled:opacity-40`}
+                                  >
+                                    <RefreshCw className="w-3 h-3" />
+                                    Regenerate
+                                  </button>
+                                  <button
+                                    onClick={() => setNotifPreview(null)}
+                                    className={`px-2 py-1.5 rounded-lg text-xs transition-colors ${isDark ? 'text-gray-500 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'}`}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
                             )}
 
                             {/* Template Mode */}
@@ -1160,8 +1235,8 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                               <div className="space-y-2">
                                 <input
                                   type="text"
-                                  placeholder="Title (max 27 chars)"
-                                  maxLength={27}
+                                  placeholder="Title (max 25 chars)"
+                                  maxLength={25}
                                   value={notifTitle}
                                   onChange={(e) => setNotifTitle(e.target.value)}
                                   className={`w-full text-xs rounded-lg px-3 py-2 ${
@@ -1170,8 +1245,8 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                                 />
                                 <input
                                   type="text"
-                                  placeholder="Body (max 80 chars)"
-                                  maxLength={80}
+                                  placeholder="Body (max 65 chars)"
+                                  maxLength={65}
                                   value={notifBody}
                                   onChange={(e) => setNotifBody(e.target.value)}
                                   className={`w-full text-xs rounded-lg px-3 py-2 ${
@@ -1194,28 +1269,30 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                               </div>
                             )}
 
-                            {/* Send Button */}
-                            <button
-                              onClick={sendNotification}
-                              disabled={notifSending || (notifMode === 'custom' && (!notifTitle || !notifBody))}
-                              className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                                notifSending
-                                  ? 'bg-purple-500/20 text-purple-400 cursor-wait'
-                                  : 'bg-purple-600 hover:bg-purple-700 text-white'
-                              } disabled:opacity-40 disabled:cursor-not-allowed`}
-                            >
-                              {notifSending ? (
-                                <>
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                  {notifMode === 'ai' ? 'Generating & Sending...' : 'Sending...'}
-                                </>
-                              ) : (
-                                <>
-                                  <Send className="w-3 h-3" />
-                                  Send {notifMode === 'ai' ? 'AI Notification' : notifMode === 'template' ? 'Template' : 'Notification'}
-                                </>
-                              )}
-                            </button>
+                            {/* Send / Preview Button — hidden when AI preview is showing (buttons are in the preview card) */}
+                            {!(notifMode === 'ai' && notifPreview) && (
+                              <button
+                                onClick={notifMode === 'ai' ? previewAINotification : () => sendNotification()}
+                                disabled={notifSending || (notifMode === 'custom' && (!notifTitle || !notifBody))}
+                                className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                                  notifSending
+                                    ? 'bg-purple-500/20 text-purple-400 cursor-wait'
+                                    : 'bg-purple-600 hover:bg-purple-700 text-white'
+                                } disabled:opacity-40 disabled:cursor-not-allowed`}
+                              >
+                                {notifSending ? (
+                                  <>
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                    {notifMode === 'ai' ? 'Generating Preview...' : 'Sending...'}
+                                  </>
+                                ) : (
+                                  <>
+                                    {notifMode === 'ai' ? <Eye className="w-3 h-3" /> : <Send className="w-3 h-3" />}
+                                    {notifMode === 'ai' ? 'Generate Preview' : notifMode === 'template' ? 'Send Template' : 'Send Notification'}
+                                  </>
+                                )}
+                              </button>
+                            )}
 
                             {/* Result */}
                             {notifResult && (
@@ -1238,11 +1315,22 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
 
                             {notifHistory.length > 0 && (
                               <div className="space-y-1.5">
-                                {notifHistory.slice(0, 3).map((h: any, i: number) => (
+                                {notifHistory.map((h: any, i: number) => (
                                   <div key={h.id || i} className={`text-xs rounded-lg px-2.5 py-1.5 ${isDark ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
-                                    <div className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{h.title}</div>
+                                    <div className="flex items-center gap-2">
+                                      <div className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{h.title}</div>
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                                        h.source === 'smart_reengagement' || h.sent_from === 'cloud_functions'
+                                          ? 'bg-blue-500/20 text-blue-400'
+                                          : h.source === 'ai_generated'
+                                            ? 'bg-purple-500/20 text-purple-400'
+                                            : 'bg-gray-500/20 text-gray-400'
+                                      }`}>
+                                        {h.source === 'smart_reengagement' || h.sent_from === 'cloud_functions' ? 'Auto' : h.source === 'ai_generated' ? 'AI' : h.source?.startsWith('template:') ? 'Template' : 'Manual'}
+                                      </span>
+                                    </div>
                                     <div className={isDark ? 'text-gray-500' : 'text-gray-400'}>
-                                      {h.body?.substring(0, 60)}{h.body?.length > 60 ? '...' : ''} · {h.source} · {h.sent_at ? new Date(h.sent_at).toLocaleDateString() : ''}
+                                      {h.body} · {h.sent_at ? new Date(h.sent_at).toLocaleDateString() : ''}
                                     </div>
                                   </div>
                                 ))}
@@ -1644,10 +1732,20 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                           >
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
+                                {conv.title && (
+                                  <p className={`text-sm font-medium mb-1 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+                                    {conv.title}
+                                  </p>
+                                )}
                                 <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                   {conv.preview}
                                 </p>
                                 <div className="flex items-center gap-3 mt-2">
+                                  {conv.is_voice && (
+                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-400">
+                                      <Mic className="w-3 h-3" /> Voice
+                                    </span>
+                                  )}
                                   <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                                     {conv.message_count} messages
                                   </span>
@@ -1904,7 +2002,7 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
                             <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                              {voiceSessions.length}
+                              {user?.total_voice_sessions || voiceSessions.length}
                             </p>
                             <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                               Voice Sessions
@@ -1937,15 +2035,50 @@ export default function UserDetailModal({ userId, analyticsKey, isDark, onClose 
                         </div>
                       )}
 
-                      {/* Voice Sessions */}
+                      {/* Voice Conversations (from conversations with is_voice flag) */}
+                      {voiceSessions.length === 0 && conversations.filter(c => c.is_voice).length > 0 && (
+                        <div>
+                          <h3 className={`text-sm font-medium mb-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            Voice Conversations
+                          </h3>
+                          <div className="space-y-2">
+                            {conversations.filter(c => c.is_voice).map((conv) => (
+                              <div key={conv.id} className={`p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                                <div className="flex items-center gap-3">
+                                  <div className={`p-2 rounded-lg ${isDark ? 'bg-purple-900/30' : 'bg-purple-100'}`}>
+                                    <Mic className="w-4 h-4 text-purple-500" />
+                                  </div>
+                                  <div className="flex-1">
+                                    {conv.title && (
+                                      <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{conv.title}</p>
+                                    )}
+                                    <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{conv.preview}</p>
+                                    <div className="flex items-center gap-3 mt-1">
+                                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{conv.message_count} messages</span>
+                                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{formatDate(conv.created_at)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Voice Sessions (from voice_sessions subcollection) */}
                       <div>
                         <h3 className={`text-sm font-medium mb-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                          Recent Voice Sessions
+                          {voiceSessions.length > 0 ? 'Recent Voice Sessions' : conversations.filter(c => c.is_voice).length > 0 ? 'Dedicated Voice Sessions' : 'Voice Sessions'}
                         </h3>
-                        {voiceSessions.length === 0 ? (
+                        {voiceSessions.length === 0 && conversations.filter(c => c.is_voice).length === 0 ? (
                           <div className={`text-center py-8 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                             <Mic className="w-12 h-12 mx-auto mb-4 opacity-50" />
                             <p>No voice sessions recorded</p>
+                            {(user?.total_voice_sessions || 0) > 0 && (
+                              <p className={`text-sm mt-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                {user.total_voice_sessions} sessions tracked in analytics
+                              </p>
+                            )}
                           </div>
                         ) : (
                           <div className="space-y-2">

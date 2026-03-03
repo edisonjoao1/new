@@ -310,3 +310,5 @@ All features work with the current live iOS app — no app update required.
 - `device_id` must be registered as a custom dimension in GA4 for per-user event queries to work
 - iOS app billing retry detection requires app update to deploy — until then, use manual override from dashboard
 - Billing retry users show `is_subscribed: false` in Firestore because StoreKit detects no active entitlements during retry
+- ASC Sales Reports API uses `filter[version]: '1_1'` (NOT `1_3`) — version `1_1` is the only supported version for SALES/SUMMARY reports
+- ASC report version `1_1` does not populate the `Period` field — subscription periods show as "Unknown"

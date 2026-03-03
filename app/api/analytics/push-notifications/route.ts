@@ -110,27 +110,36 @@ async function generateAINotification(
     .map(c => `- "${c.title}" (${c.messageCount} msgs): "${c.firstMessage}"`)
     .join('\n')
 
-  const prompt = `You are writing a push notification for a Spanish-language AI chat app called "Inteligencia Artificial Gratis".
+  const prompt = `You ARE the user's personal AI assistant from the app "Inteligencia Artificial Gratis".
+${assistantName !== 'la IA' ? `The user named you "${assistantName}". Write as ${assistantName}.` : ''}
+You're reaching out to someone you've been having real conversations with.
+Your job is to write a SHORT push notification (like a quick text from a friend) that provides GENUINE VALUE.
 
 USER CONTEXT:
 - Name: ${userName || 'Unknown'}
-- AI Assistant Name: ${assistantName}
 - Interests: ${interests || 'Not set'}
 - Total messages: ${totalMessages}
-- AI Memories about them: ${memories || 'None yet'}
+- Things you remember about them: ${memories || 'None yet'}
 - Recent conversation topics: ${recentTopics || 'None'}
 - Last conversations:
 ${conversationContext || '(No conversations yet)'}
 
-RULES:
-- Write in Spanish (the app's language)
-- Title: max 27 characters
-- Body: max 80 characters
+CRITICAL RULES:
+- Write in Spanish
+- Title: STRICTLY max 25 characters. Body: STRICTLY 55-65 characters MAX.
+- NEVER mention "la IA", "AI", "inteligencia artificial", or "la app" in third person. YOU are the assistant — speak in FIRST PERSON. Instead of "IA tiene consejos..." say "Tengo algo que contarte...". Instead of "Pídele a la IA..." say "¿Quieres que te ayude con...?". You're a friend texting, not an app advertising itself.
+- NEVER be generic. Every notification must feel like it was written specifically for THIS user.
+- NEVER say "vuelve", "te extrañamos", "come back" — that's pushy and generic.
+- NEVER use vague phrases like "Descubre algo nuevo", "Hay cosas nuevas", "Explora más" — be SPECIFIC.
+- BANNED words/patterns: "truco", "tip", "dato", "consejo", "prueba esto", "descubre", "¿Sabías que", "funcionalidades", "herramientas". Just talk like a real person texting.
 - Reference something SPECIFIC from their conversations/memories/interests
-- NEVER say "vuelve", "te extrañamos", "come back" — that's pushy
-- Make it feel like the AI has something interesting to share related to what they care about
-- If they have conversations, reference the topic naturally
-- If they have no conversations, reference their interests or suggest something specific
+- If they have conversations, pick up where you left off — reference a topic naturally
+- Be warm, clever, and specific — not cheesy or corporate
+- Include 1 relevant emoji max
+- The ENTIRE message must be a complete thought — never end mid-sentence
+- Title examples (use as inspiration, NOT literally): "Oye, pensé en algo 💭", "¿Y si hacemos esto?", "Para tu novia 💬", "Se me ocurrió algo", "Tengo una idea ✨"
+
+FINAL CHECK: Count your characters. Title must be ≤25. Body must be 55-65 chars. A complete short message beats a truncated long one.
 
 Return ONLY a JSON object: {"title": "...", "body": "...", "targetView": "chat"}`
 
@@ -148,15 +157,15 @@ Return ONLY a JSON object: {"title": "...", "body": "...", "targetView": "chat"}
     if (!jsonMatch) throw new Error('No JSON in AI response')
     const parsed = JSON.parse(jsonMatch[0])
     return {
-      title: (parsed.title || '').substring(0, 27),
-      body: (parsed.body || '').substring(0, 80),
+      title: (parsed.title || '').substring(0, 25),
+      body: (parsed.body || '').substring(0, 65),
       targetView: parsed.targetView || 'chat',
     }
   } catch {
     // Fallback if AI response can't be parsed
     return {
-      title: `${assistantName} te espera`,
-      body: memories ? `Recordando: ${memories.substring(0, 60)}...` : 'Tienes algo nuevo por descubrir.',
+      title: userName ? `Oye ${userName.substring(0, 18)} 💭` : 'Pensé en algo 💭',
+      body: memories ? `Me acordé de algo: ${memories.substring(0, 45)}` : '¿Seguimos con lo de la otra vez?',
       targetView: 'chat',
     }
   }
@@ -200,14 +209,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // === AI-GENERATED MODE ===
+    // === AI-GENERATED MODE (preview or send) ===
     if (mode === 'ai') {
-      const { userId } = body
+      const { userId, preview: previewOnly } = body
       if (!userId) {
         return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
       }
 
-      const userDoc = await db.collection('users').doc(userId).get()
+      const notification = await generateAINotification(db, userId as string)
+
+      // Preview mode — just return the generated notification without sending
+      if (previewOnly) {
+        return NextResponse.json({ preview: true, notification })
+      }
+
+      const userDoc = await db.collection('users').doc(userId as string).get()
       if (!userDoc.exists) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 })
       }
@@ -217,14 +233,40 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'User has no FCM token', sent: false }, { status: 400 })
       }
 
-      const notification = await generateAINotification(db, userId)
       try {
         await sendPush(fcmToken, notification.title, notification.body, notification.targetView, 'ai_generated')
-        await logNotification(db, userId, notification.title, notification.body, 'ai_generated', notification.targetView)
+        await logNotification(db, userId as string, notification.title, notification.body, 'ai_generated', notification.targetView)
         return NextResponse.json({ sent: true, userId, notification })
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Unknown error'
         return NextResponse.json({ sent: false, error: errorMsg, notification }, { status: 500 })
+      }
+    }
+
+    // === AI SEND (confirmed after preview) ===
+    if (mode === 'ai_send') {
+      const { userId, title, body: msgBody, targetView } = body
+      if (!userId || !title || !msgBody) {
+        return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+      }
+
+      const userDoc = await db.collection('users').doc(userId as string).get()
+      if (!userDoc.exists) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+
+      const fcmToken = userDoc.data()?.fcm_token
+      if (!fcmToken) {
+        return NextResponse.json({ error: 'User has no FCM token', sent: false }, { status: 400 })
+      }
+
+      try {
+        await sendPush(fcmToken, title as string, msgBody as string, (targetView as string) || 'chat', 'ai_generated')
+        await logNotification(db, userId as string, title as string, msgBody as string, 'ai_generated', (targetView as string) || 'chat')
+        return NextResponse.json({ sent: true, userId, notification: { title, body: msgBody, targetView } })
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error'
+        return NextResponse.json({ sent: false, error: errorMsg }, { status: 500 })
       }
     }
 
